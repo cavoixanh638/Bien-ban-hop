@@ -1,0 +1,20 @@
+{
+  "name": "mochop-07-backup-poc",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Standalone streaming ZIP64 and staged .mochop restore PoC",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test test-web.mjs && python3 -m unittest -v test_mochop.py && python3 interop-check.py",
+    "bench:512": "node bench.mjs --bytes 536870912",
+    "bench:2g": "node bench.mjs --bytes 2147483648",
+    "bench:zip64": "node bench.mjs --zip64-count 65536",
+    "bench:candidates": "node bench-candidates.mjs"
+  },
+  "optionalDependencies": {
+    "fflate": "0.8.3",
+    "client-zip": "2.5.1",
+    "@zip.js/zip.js": "2.25.0"
+  }
+}

@@ -1,50 +1,67 @@
-# PoC 07 — .mochop streaming ZIP/restore (reference oracle)
+# G07 — Sao lưu và khôi phục `.mochop` (PoC độc lập)
 
-This folder is self-contained. `mochop.py` is a **Python 3 stdlib reference/fixture adapter**, not a browser production implementation. It uses a 1 MiB streaming read/write buffer, ZIP Central Directory reading via `zipfile`, ZIP64-aware writes and SHA-256. It does **not** compare/benchmark JavaScript libraries or demonstrate actual OPFS/IndexedDB integration.
+**Phạm vi:** `poc/07-backup/` và checkpoint nhánh `gemini/20261115-07-backup`. Không phải ứng dụng tích hợp. Gói 1.5 và bản phát hành V1.2 chưa được nghiệm thu.
 
-## Commands
+Đây là **hai stack độc lập** để kiểm chứng định dạng và cách khôi phục:
 
-```bash
+1. `mochop.py` + `test_mochop.py`: oracle Python `zipfile`, chunk 1 MiB, ZIP64-aware, metadata/checksum, staging và khóa liên tiến trình. Không phải browser engine.
+2. `zip-stream.mjs` + `mochop-web.mjs`: writer **ZIP64 STORED** streaming bằng WHATWG Streams, SHA-256 + CRC32 tính dần, reader Central Directory random access từng chunk <=256 KiB; kiểm dữ liệu trước khi publish. Không cần cài npm để chạy Node tests. Chỉ hỗ trợ ZIP method 0, không hỗ trợ deflate/encryption/multidisk. Tác giả PoC tự viết, **không phải** một trong ba ứng viên thư viện cần so sánh.
+
+Các adapter thật nằm trong `candidates.mjs`, dùng **đúng package** `fflate@0.8.3`, `client-zip@2.5.1`, `@zip.js/zip.js@2.25.0` (khai báo exact version trong `package.json`, không dùng giả lập dưới cùng tên). Trong môi trường chưa cài được npm thì mã adapter có sẵn nhưng runtime các thư viện ấy là **NOT_RUN**, không được lấy benchmark ZIP độc lập làm benchmark của chúng. `client-zip` chỉ có chiều xuất; phải ghép reader khác (ở đây: zip.js) để khôi phục.
+
+## Chạy nhanh từ chính thư mục này
+
+```sh
 cd poc/07-backup
-python3 -m unittest -v test_mochop.py
-python3 mochop.py fixture /tmp/meeting-fixture --bytes 536870912
-python3 mochop.py export /tmp/meeting-fixture /tmp/meeting-512.mochop
-python3 mochop.py import /tmp/meeting-512.mochop /tmp/restored-meetings
-# 2 GiB (create in separate clean directories):
-python3 mochop.py fixture /tmp/meeting-2g --bytes 2147483648
-python3 mochop.py export /tmp/meeting-2g /tmp/meeting-2g.mochop
-python3 mochop.py import /tmp/meeting-2g.mochop /tmp/restore-2g
-# Linux memory measurement:
- /usr/bin/time -f 'peak_kb=%M wall=%e' python3 mochop.py export /tmp/meeting-2g /tmp/bench.mochop
+npm test                       # 23 Node tests + 13 Python tests + 2 kiểm tra đọc chéo runtime
+node bench.mjs --bytes 536870912 --output logs/bench-node-512MiB.json
+node bench.mjs --bytes 2147483648 --output logs/bench-node-2GiB.json
+node bench.mjs --zip64-count 65536 --output logs/bench-zip64-65536.json
+python3 browser-check.py --bytes 1048576 --output logs/chromium-1MiB.json
 ```
 
-The fixture uses deterministic **synthetic bytes**, not valid recorded PCM. The source files represent a common fixture contract, including ProseMirror JSON and `timeSpan` marks, one Meeting, one Recording Manifest, and one segment. Do not interpret audio length/sample metadata as actual audio for the generated volume.
+Lệnh browser cần Chromium, Playwright Python, origin HTTPS/localhost không bị policy chặn. Trong môi trường kiểm thử hiện tại, trình duyệt trả `ERR_BLOCKED_BY_ADMINISTRATOR`, do đó **không có PASS browser/OPFS**, mặc dù mã adapter OPFS/IndexedDB đã viết tại `browser-opfs.mjs` và `browser-run.mjs`.
 
-## Format .mochop v1 (provisional)
+Thử thư viện npm **khi có registry/lockfile được cấp**:
 
-| ZIP entry | Semantics |
+```sh
+npm install --include=optional --ignore-scripts
+node bench-candidates.mjs --candidate fflate --bytes 536870912 --output logs/fflate-512MiB.json
+node bench-candidates.mjs --candidate client-zip --bytes 536870912 --output logs/clientzip-512MiB.json
+node bench-candidates.mjs --candidate zip.js --bytes 536870912 --output logs/zipjs-512MiB.json
+# Lặp lại từng ứng viên với --bytes 2147483648
+```
+
+`bench-candidates.mjs` dùng exporter tương ứng và **zip.js importer chung** để so sánh đối xứng, không giả vờ client-zip có unzip. Cần bổ sung benchmark fflate `Unzip` chuyên biệt, phạt chậm I/O, quota/worker và thử ZIP64 >4GiB. Chưa có `package-lock.json` do registry không thể truy cập; các bản đã pin theo số phiên bản chứ chưa ghi integrity hash. Không được chốt thư viện production từ khả năng trên giấy.
+
+## Định dạng `.mochop` v1 thử nghiệm
+
+ZIP UTF-8 (hoặc ASCII hợp lệ), đường dẫn `/` tương đối, không có tên OPFS tuyệt đối:
+
+| ZIP path | Nội dung |
 |---|---|
-| `manifest.json` | `format:mochop`, `formatVersion:1`, `schemaVersion:1`, `appVersion`, `meetingIds`, `files[{path,size,sha256}]` |
-| `meeting.json` | Meeting fixture: ID, title, note ID, recording IDs |
-| `note.json` | NoteDocument fixture with original ProseMirror content/marks and revision |
-| `audio-manifest.json` | Recording ID, mappingPoints, segments, timeline intervals |
-| `audio/<segment>.pcm` | Audio bytes referenced by relative `filePath` |
+| `meeting.json` | `{meetingId,title,noteDocumentId,recordingIds,schemaVersion}` |
+| `note.json` | `NoteDocument` với ProseMirror JSON và Mark `timeSpan` nguyên bản, revision |
+| `audio-manifest.json` | Recording ID, mappingPoints, segments, intervals (pause/gap/recorded) |
+| `audio/<segment>.pcm` | Dữ liệu audio nguồn; fixture là **byte tổng hợp**, không phải PCM âm thanh thật |
+| `manifest.json` | `{format:'mochop',formatVersion:1,schemaVersion:1,appVersion,meetingIds,files:[{path,size,sha256}]}`; ghi cuối ZIP |
 
-Export places `manifest.json` last after streaming and hashing all other entries. Import opens Central Directory, validates all declared files including sizes and SHA-256 in a private staging directory, validates meeting/note/audio relationships, and publishes a new meeting directory only after successful validation. Import collision is rejected, never overwritten. Optional missing audio is permitted **only** with explicit `--allow-missing-audio`; segment status becomes `missing` with an explanatory reason, while original note marks remain unchanged.
+Ở JS, file data và manifest được ZIP64 writer stream qua sink có backpressure; CRC-32 có trong Central Directory; SHA256 từng file trong `manifest.json`. Không cần đọc cả `.mochop` vào RAM. Reader lấy Central Directory, kiểm tất cả đường dẫn/schema/size/collision rồi đọc **từng entry** theo offset; kiểm số byte thực, SHA256 và CRC32 trước khi publish. `timeSpan`/`typedAt`/`audioOffsetMs` **không bị rewrite**. Khi người dùng chấp nhận thiếu audio, phân đoạn thiếu có `completionState:'missing'` và `missingReason`, văn bản/Mark giữ nguyên.
 
-Safety controls: reject absolute/drive/traversal/noncanonical paths, symlinks, duplicate/casefold names, unlisted files, unsupported schema, invalid sha, missing required metadata, compression ratio >200, >10000 entries, aggregate uncompressed bytes >8 GiB, and oversized manifest. They are conservative PoC limits and require browser product threat modeling. Staging directory is discarded on failure. `os.replace` publication assumes same-filesystem atomic rename; a browser IndexedDB/OPFS adapter requires its own transaction+journal semantics.
+## Atomic publish / rollback
 
-## Candidate libraries: design comparison, **not benchmarked**
+- **Node reference:** `node-adapter.mjs` lưu file vào thư mục staging `stages/<UUID>`, flush; dùng `fs.link(pendingIndex,index/<meetingId>.json)` để công bố **con trỏ một cách nguyên tử, không thay thế ID có sẵn**. Hai importer đồng thời cùng ID: chỉ một thành công; staging thất bại bị xóa. File đã commit không bị ghi đè. Nếu crash trước index transaction có thể còn stage mồ côi, cần GC có lease/TTL.
+- **Browser adapter:** `browser-opfs.mjs` ghi stage trong OPFS rồi `IndexedDB.objectStore.add` record ID → stageId bằng transaction readwrite; chỉ công bố sau xác thực checksum. Thất bại hủy stage, collision không ghi đè. Cần thử thật trên Chrome/Edge và thiết kế GC orphan trước product.
+- **Python reference:** staging cùng filesystem + cooperative exclusive lock qua O_EXCL và rename; không thay thế ID đã tồn tại khi mọi writer dùng adapter. Khác với IndexedDB pointer, đây chưa phải bảo vệ đầy đủ trước tiến trình bên ngoài không tuân thủ khóa.
 
-| Candidate | Export | Import | ZIP64 and bounded memory | Status |
-|---|---|---|---|---|
-| `fflate` | streaming ZIP writer APIs | incremental unzip APIs | ZIP64 support/queue behavior **must be verified with exact API/version** | NOT_RUN |
-| `client-zip` | browser-friendly streaming ZIP export | no matching established import pipeline in this PoC | ZIP64 and backpressure **must be measured**, not inferred | NOT_RUN |
-| `zip.js` | stream readers/writers and ZIP entry APIs | Central Directory/random-access ZIP reader | ZIP64/limits to be benchmarked on Chrome/Edge | NOT_RUN |
-| Python stdlib `zipfile` | streaming files, ZIP64-aware | Central Directory seek and streaming individual entries | measured only on Linux reference fixture | PARTIAL PASS |
+## An toàn dữ liệu — giới hạn rõ ràng
 
-**Do not select a production JS library from this comparison.** The next runnable experiment must pin package versions and benchmark the same 512 MiB / 2 GiB datasets in Chrome/Edge Windows, using actual OPFS input/output and a separate target environment for cross-machine round-trip. In particular, bounded 1 MiB `read()` chunks do not prove total RAM bounded for every library. Validate native ZIP64 by 4+ GiB entry or 65536+ entries; `force_zip64=True` in the Python reference writes ZIP64-capable entry headers but is not a full multi-library interoperability test.
+Import giới hạn 10.000 entry, 8 GiB tổng kích thước khai báo/đã ghi, ratio 200:1, manifest <=1 MiB, metadata JSON đọc từng file tối đa theo fixture; chặn path tuyệt đối, drive-letter, backslash, `..`, Unicode alias (NFC), trùng tên theo casefold/lower, symlink, directory, file lạ, schema không hỗ trợ, thiếu metadata, thiếu audio khi chưa cấp phép, checksum/CRC sai, stream abort và ghi đè meeting. Không tự động phát nguồn audio gần nhất khi file thiếu.
 
-## Evidence and limitations
+**Các giới hạn trước product:** module JS tự viết chỉ ZIP STORED và không thử với corpus ZIP độc hại diện rộng; client-zip/fflate/zip.js chưa chạy; bảo vệ dữ liệu trong OPFS/IndexedDB thật chưa xác minh; browser Linux bị chặn, Windows/Edge/máy khác **NOT_RUN**; thiếu benchmark cổng quota, lỗi ngủ máy, file nguồn đang được ghi đồng thời; chưa kiểm ZIP64 >4GiB một file; storage adapter mock và logic cần nối Gói 1.1/1.2/1.3 sau khi tích hợp.
 
-See `RESULTS.md` for observed numbers. Tests are standalone-reference **TC30/TC38 subcases**; TC31 browser comparison, Windows runtime, actual two-machine restore and production storage remain **NOT_RUN**. The source is an adapter starting point; there is no existing app to integrate on this branch. Do not claim Gói 1.5 PASS on these results.
+## Hồ sơ bằng chứng
+
+`RESULTS.md`, `logs/npm-test-local.txt`, `logs/bench-node-{512MiB,2GiB}-final.json`, `logs/bench-zip64-65536.json`, `logs/zip64-python-cross.txt`, `logs/interop-cross-runtime.json`, `logs/browser-blocked.stderr`, `logs/npm-probe.stderr`.
+
+Tài liệu ứng viên: [fflate README](https://github.com/101arrowz/fflate), [client-zip README](https://github.com/Touffy/client-zip), [zip.js docs](https://gildas-lormeau.github.io/zip.js/).
