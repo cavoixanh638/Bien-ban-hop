@@ -58,6 +58,12 @@ jobs:
         if: matrix.os == 'ubuntu-24.04'
         working-directory: app
         run: npm run test:e2e
+      - name: Run G10 built production preview and offline PWA smoke
+        if: matrix.os == 'ubuntu-24.04'
+        working-directory: app
+        env:
+          G10_PREVIEW: '1'
+        run: npm run test:e2e
       - name: Upload failing browser traces (no personal data fixtures)
         if: failure() && matrix.os == 'ubuntu-24.04'
         uses: actions/upload-artifact@v4
