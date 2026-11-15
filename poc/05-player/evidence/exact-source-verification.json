@@ -1,47 +1,78 @@
 {
-  "codeSHA": "a85c2d526db4ed2ef01a654cf9f5d1280fcf852e",
-  "method": "reconstructed clean directory with all source Git blob SHA-1 equal GitHub, git clone unavailable due DNS",
+  "codeSHA": "17e1b6f317b1989b194f90dd00fc687d263debdb",
+  "testedSHA": "17e1b6f317b1989b194f90dd00fc687d263debdb",
+  "method": "clean isolated source directory; exact tested source blobs match GitHub git hash-object (git clone unavailable because container DNS cannot resolve github.com)",
   "os": "Linux-6.18.57-x86_64-with-glibc2.41",
   "node": "v22.16.0",
   "chromium": "144.0.7559.96",
-  "nodeTests": "10/10 PASS",
-  "browserTests": {
-    "passed": 10,
-    "failed": 0
+  "tests": {
+    "node": "PASS 10/10",
+    "browserSmoke": "PASS 10/10",
+    "browserBenchmark": "PASS after isolated retry; initial combined run timed out"
   },
   "fft": [
     {
       "engine": "C1",
       "rate": 0.75,
-      "peakHz": 220.0
+      "peakHz": 220.0,
+      "observedPeakRssBytes": 230146048
     },
     {
       "engine": "C1",
       "rate": 0.9,
-      "peakHz": 220.0
+      "peakHz": 220.0,
+      "observedPeakRssBytes": 247939072
     },
     {
       "engine": "C2",
       "rate": 0.75,
-      "peakHz": 165.0
+      "peakHz": 165.0,
+      "observedPeakRssBytes": 233062400
     },
     {
       "engine": "C2",
       "rate": 0.9,
-      "peakHz": 198.0
+      "peakHz": 198.0,
+      "observedPeakRssBytes": 233197568
     }
   ],
+  "seekStress": {
+    "count": 17,
+    "maxBlobURLs": 2,
+    "peakObservedRssBytes": 293765120,
+    "statuses": [
+      "valid",
+      "valid",
+      "valid",
+      "valid",
+      "valid",
+      "valid",
+      "valid",
+      "valid",
+      "valid",
+      "valid",
+      "missing",
+      "valid",
+      "valid",
+      "valid",
+      "valid",
+      "valid",
+      "valid"
+    ]
+  },
   "sourceBlobSHAs": {
     "timeline.js": "0cb08f6c9bd99de563006dd33cfabbc69d860ba5",
     "player.js": "ef7a12533a050c3ee014775b5858828c136c9fe8",
     "player.test.js": "087eba39b7e691ebe726952c168e10bc85850c1b",
     "index.html": "7be9c36020d1765a53fcf56e8f2b4d06674ba1db",
     "browser_smoke.py": "6755eee6ef421bd0a6d25ce6b314e35213dd8618",
-    "browser_benchmark.py": "073a6ac3623dc2b58fd3cc026b43b2db97f15fae",
-    "README.md": "a534b15d94ad2427b8f29b891151a75188f365a4",
+    "browser_benchmark.py": "2b36218c8b5e702655136e51eb8d05141209b363",
+    "README.md": "f0a8eb20c53a6deb99c29f2d81599ad2157cfbba",
     "package.json": "a368917215c2873cbeed3dc4c2b34291ba97cdc5"
   },
-  "createdAtUTC": "2026-11-15T11:33:16.240026+00:00",
+  "createdAtUTC": "2026-11-15T11:37:09.607333+00:00",
   "windowsRealDevice": "NOT_RUN",
-  "sampleAccurateExternalLoopback": "NOT_RUN"
+  "sampleAccurateExternalLoopback": "NOT_RUN",
+  "threeHourWallTime": "NOT_RUN",
+  "realVoice075_09": "NOT_RUN"
 }
