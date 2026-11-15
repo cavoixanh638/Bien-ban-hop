@@ -1,0 +1,42 @@
+/** Mốc Họp V1.2 PoC: standalone DOCX, TXT, Markdown, CSV exporters. */
+const utf8=new TextEncoder();
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const mdesc=s=>String(s??'').replace(/([\\`*_{}\[\]()#+.!|>~-])/g,'\\$1');
+const children=n=>Array.isArray(n?.content)?n.content:[];
+const anchor=n=>n?.marks?.find(m=>m.type==='timeSpan')?.attrs??null;
+const linked=a=>!!a&&typeof a.recordingId==='string'&&a.recordingId.trim().length>0&&Number.isInteger(a.audioOffsetMs)&&a.audioOffsetMs>=0;
+const clock=ms=>{let n=Math.floor(ms/1000);return [Math.floor(n/3600),Math.floor(n%3600/60),n%60].map(x=>String(x).padStart(2,'0')).join(':')+'.'+String(ms%1000).padStart(3,'0');};
+const label=a=>linked(a)?'['+a.recordingId+'@'+clock(a.audioOffsetMs)+']':'[không liên kết âm thanh]';
+function flatten(nodes,level=0,list=''){let out=[];
+ for(const n of nodes){if(n.type==='bulletList'||n.type==='orderedList'){out.push(...flatten(children(n),level+1,n.type==='bulletList'?'bullet':'ordered'));continue;}
+ if(n.type==='listItem'){let first=true;for(const b of flatten(children(n),level,list)){out.push({...b,list:first?list:'',level});first=false;}continue;}
+ if(n.type==='paragraph'||n.type==='heading'){const runs=[];function walk(ns){for(const c of ns){if(c.type==='text'){runs.push({text:String(c.text??''),bold:!!c.marks?.some(m=>m.type==='bold'),italic:!!c.marks?.some(m=>m.type==='italic'),anchor:anchor(c)});}else if(c.type==='hardBreak')runs.push({text:'\n',bold:false,italic:false,anchor:null});else walk(children(c));}}
+ walk(children(n));out.push({kind:n.type,heading:n.type==='heading'?Math.min(6,Math.max(1,n.attrs?.level||1)):0,list,level,runs});continue;}
+ out.push(...flatten(children(n),level,list));}return out;}
+export function normalize(input){const d=input?.document??input;const pm=d?.type==='doc'?d:d?.content?.type==='doc'?d.content:null;if(!pm||!Array.isArray(pm.content))throw new TypeError('Expected ProseMirror doc');return {title:input?.title??'',marked:input?.includeTimestamps===true,blocks:flatten(pm.content)};}
+function annotated(runs,marked){let last=null;const out=[];for(const r of runs){const a=r.anchor;const key=linked(a)?[a.recordingId,a.audioOffsetMs,a.anchorId].join('|'):'unlinked';if(marked&&key!==last)out.push({text:label(a)+' ',bold:false,italic:false});last=key;out.push(r);}return out;}
+function numbers(blocks){const counter=[];return blocks.map(b=>{if(b.list==='ordered'){counter[b.level]=(counter[b.level]||0)+1;counter.length=b.level+1;return counter[b.level];}if(!b.list)counter.length=0;return 0;});}
+function prefix(b,n){return b.list?'  '.repeat(Math.max(0,b.level-1))+(b.list==='bullet'?'• ':n+'. '):'';}
+export function exportTXT(input){const {title,marked,blocks}=normalize(input);const nums=numbers(blocks);return [title,...blocks.map((b,i)=>prefix(b,nums[i])+annotated(b.runs,marked).map(r=>r.text).join(''))].join('\n')+'\n';}
+export function exportMarkdown(input){const {title,marked,blocks}=normalize(input);const nums=numbers(blocks);return ['# '+mdesc(title),...blocks.map((b,i)=>(b.heading?'#'.repeat(b.heading)+' ':prefix(b,nums[i]))+annotated(b.runs,marked).map(r=>{const t=mdesc(r.text);return r.bold&&t.trim()?'**'+t+'**':r.italic&&t.trim()?'*'+t+'*':t;}).join(''))].join('\n\n')+'\n';}
+const quote=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
+export function exportCSV(input){const {title,marked,blocks}=normalize(input);const rows=[['meetingTitle','blockIndex','blockType','headingLevel','listType','text',...(marked?['anchorId','recordingId','audioOffsetMs','typedAt','source','linked']:[])]];blocks.forEach((b,i)=>{for(const r of b.runs.length?b.runs:[{text:'',anchor:null}]){const a=r.anchor;rows.push([title,i+1,b.kind,b.heading||'',b.list,r.text,...(marked?[a?.anchorId??'',a?.recordingId??'',Number.isInteger(a?.audioOffsetMs)?a.audioOffsetMs:'',Number.isFinite(a?.typedAt)?a.typedAt:'',a?.source??'',linked(a)]:[])]);}});return '\uFEFF'+rows.map(row=>row.map(quote).join(',')).join('\r\n')+'\r\n';}
+const u16=n=>[n&255,n>>>8&255],u32=n=>[n&255,n>>>8&255,n>>>16&255,n>>>24&255];
+const join=chunks=>{const size=chunks.reduce((s,x)=>s+x.length,0),data=new Uint8Array(size);let offset=0;for(const chunk of chunks){data.set(chunk,offset);offset+=chunk.length;}return data;};
+const table=Array.from({length:256},(_,i)=>{let c=i;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;return c>>>0;});
+const crc=bytes=>{let c=0xffffffff;for(const b of bytes)c=table[(c^b)&255]^(c>>>8);return c^0xffffffff;};
+function zip(files){const data=[],dir=[];let offset=0;for(const [name,content] of files){const filename=utf8.encode(name),bytes=utf8.encode(content),sum=crc(bytes)>>>0,s=bytes.length;const local=new Uint8Array([...u32(0x04034b50),...u16(20),...u16(0),...u16(0),...u16(0),...u16(0),...u32(sum),...u32(s),...u32(s),...u16(filename.length),...u16(0)]);const entry=new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(0),...u16(0),...u16(0),...u16(0),...u32(sum),...u32(s),...u32(s),...u16(filename.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(offset)]);data.push(local,filename,bytes);dir.push(entry,filename);offset+=local.length+filename.length+s;}const directory=join(dir);const end=new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(directory.length),...u32(offset),...u16(0)]);return join([...data,directory,end]);}
+const run=r=>String(r.text??'').split('\n').map((s,i)=>(i?'<w:r><w:br/></w:r>':'')+'<w:r>'+(r.bold||r.italic?'<w:rPr>'+(r.bold?'<w:b/>':'')+(r.italic?'<w:i/>':'')+'</w:rPr>':'')+'<w:t xml:space="preserve">'+esc(s)+'</w:t></w:r>').join('');
+const para=(runs,style='')=>'<w:p>'+(style?'<w:pPr><w:pStyle w:val="'+style+'"/></w:pPr>':'')+(runs.length?runs.map(run).join(''):'<w:r><w:t></w:t></w:r>')+'</w:p>';
+export function exportDOCX(input){const {title,marked,blocks}=normalize(input),nums=numbers(blocks);const body=para([{text:title,bold:true}],'Title')+blocks.map((b,i)=>para([...(b.list?[{text:prefix(b,nums[i])}]:[]),...annotated(b.runs,marked)],b.heading?'Heading'+b.heading:'')).join('');
+const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const styles='<w:styles xmlns:w="'+ns+'"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:rPr><w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/><w:sz w:val="22"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:rPr><w:b/><w:sz w:val="32"/></w:rPr></w:style>'+Array.from({length:6},(_,i)=>'<w:style w:type="paragraph" w:styleId="Heading'+(i+1)+'"><w:name w:val="heading '+(i+1)+'"/><w:rPr><w:b/><w:sz w:val="'+Math.max(22,32-i*2)+'"/></w:rPr></w:style>').join('')+'</w:styles>';
+const relns='http://schemas.openxmlformats.org/package/2006/relationships';return zip([
+['[Content_Types].xml','<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>'],
+['_rels/.rels','<Relationships xmlns="'+relns+'"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'],
+['word/_rels/document.xml.rels','<Relationships xmlns="'+relns+'"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+['word/styles.xml','<?xml version="1.0" encoding="UTF-8"?>'+styles],
+['word/document.xml','<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="'+ns+'"><w:body>'+body+'<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1200" w:right="1200" w:bottom="1200" w:left="1200"/></w:sectPr></w:body></w:document>']
+]);}
+export function exportAll(input){return {txt:exportTXT(input),md:exportMarkdown(input),csv:exportCSV(input),docx:exportDOCX(input)};}
+export const mime={txt:'text/plain;charset=utf-8',md:'text/markdown;charset=utf-8',csv:'text/csv;charset=utf-8',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'};
