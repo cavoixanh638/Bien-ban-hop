@@ -73,4 +73,6 @@ Entrypoint: [08-export](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini
 - [Bằng chứng stdout Round2](../../../../poc/08-export/evidence/QA_ROUND2_20261115.log) · [Báo cáo QA cập nhật](../../../../poc/08-export/evidence/QA_20261115.md).
 - Diff baseline tới HEAD sau vòng này: **chỉ `poc/08-export/**` và checkpoint `08-export.md`**, không chạm COMMON/worker khác, không merge/deploy.
 
+- **Kiểm thử ở source directory mới dựng sạch:** chỉ copy 14 file nguồn/fixture/config có Git blob đã xác thực sang thư mục trống; từ đó chạy lại 20+20+15 test, sinh 8 mẫu, DOCX/CSV/Markdown consumer và Chromium Blob 9/9, **PASS**. Đây **không phải** `git clone` hay checkout GitHub, nên clean remote Git vẫn **NOT_RUN**. [Log fresh source](../../../../poc/08-export/evidence/QA_CLEAN_SOURCE_20261115.log).
+
 **Đánh giá:** G08 **READY_FOR_REVIEW**; PoC độc lập đã giải quyết các nhiệm vụ khả thi trong môi trường này. Các tiêu chí Word/Excel Windows, HTTP-origin Chrome/Edge, clean remote checkout và nghiệm thu tích hợp vẫn **NOT_RUN**, phải làm khi có môi trường thực. **Không tuyên bố DONE cho ứng dụng tích hợp.**
