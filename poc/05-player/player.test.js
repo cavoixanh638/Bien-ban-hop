@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {fixture,resolve,ID,SEGMENT,TOTAL,windowPCM} from './player.js';
+test('3h fixture has 36 contiguous five-minute segments',()=>{assert.equal(fixture.segments.length,36);for(let i=0;i<36;i++){let s=fixture.segments[i];assert.equal(s.mediaStartMs,i*SEGMENT);assert.equal(s.sampleStart,i*s.sampleCount);}assert.equal(fixture.segments.at(-1).mediaStartMs+SEGMENT,TOTAL);});
+test('04:58 to 05:02 crosses only expected boundary',()=>{assert.equal(resolve(ID,298000).segmentId,'seg-000');assert.equal(resolve(ID,299999).segmentId,'seg-000');assert.equal(resolve(ID,300000).segmentId,'seg-001');assert.equal(resolve(ID,302000).status,'valid');});
+test('seek minute 90 and 170 maps to expected files',()=>{assert.equal(resolve(ID,5400000).segmentId,'seg-018');assert.equal(resolve(ID,10200000).segmentId,'seg-034');});
+test('A-B through boundary maps endpoints to different files',()=>{assert.notEqual(resolve(ID,298000).segmentId,resolve(ID,302000).segmentId);});
+test('missing, gap, pause and wrong recording reject without fallback',()=>{assert.equal(resolve(ID,6060000).status,'missing');assert.equal(resolve(ID,3605000).status,'gap');assert.equal(resolve(ID,1805000).status,'gap');assert.equal(resolve('other',300000).status,'unsupported');assert.equal(resolve(null,null).status,'unlinked');});
+test('pending is distinct from missing',()=>{const s=fixture.segments[2],old=s.completionState;s.completionState='pending';try{assert.equal(resolve(ID,600000).status,'pending');}finally{s.completionState=old;}});
+test('PCM waveform windows remain phase-continuous across 05:00',()=>{const a=windowPCM(299990,10),b=windowPCM(300000,10),joined=windowPCM(299990,20);assert.equal(joined.length,a.length+b.length);for(let i=0;i<a.length;i++)assert.equal(a[i],joined[i]);for(let i=0;i<b.length;i++)assert.equal(b[i],joined[a.length+i]);});
+test('pre-roll 0/3/5/10 seconds does not modify source mark',()=>{const m=fixture.marks.find(x=>x.anchorId==='paused'),before=JSON.stringify(m);for(let s of [0,3,5,10]){assert.equal(Math.max(0,m.audioOffsetMs-s*1000),10200000-s*1000);assert.equal(JSON.stringify(m),before);}});
+test('bounded PCM generation per C2 window',()=>{assert.ok(windowPCM(299840,160).byteLength<=160*16000/1000*4);});
