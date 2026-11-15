@@ -1,4 +1,6 @@
 import {defineConfig,devices} from '@playwright/test';
+const preview=process.env.G10_PREVIEW==='1';
+const port=preview?4173:5173;
 export default defineConfig({
   testDir:'./e2e',
   timeout:45000,
@@ -7,7 +9,7 @@ export default defineConfig({
   workers:1,
   reporter:process.env.CI?[['list'],['html',{open:'never',outputFolder:'playwright-report'}]]:'list',
   use:{
-    baseURL:'http://127.0.0.1:5173',
+    baseURL:'http://127.0.0.1:'+port,
     headless:true,
     ...devices['Desktop Chrome'],
     launchOptions:{args:[
@@ -20,8 +22,8 @@ export default defineConfig({
     screenshot:'only-on-failure'
   },
   webServer:{
-    command:'npm run dev',
-    url:'http://127.0.0.1:5173',
+    command:preview?'npm run preview':'npm run dev',
+    url:'http://127.0.0.1:'+port,
     timeout:120000,
     reuseExistingServer:!process.env.CI
   }
