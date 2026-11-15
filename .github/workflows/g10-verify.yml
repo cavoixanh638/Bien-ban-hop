@@ -49,3 +49,21 @@ jobs:
       - name: Test G08 document export (native Node)
         working-directory: poc/08-export
         run: npm test
+
+      - name: Install Chromium for true HTTP browser smoke
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: app
+        run: npx playwright install --with-deps chromium
+      - name: Run G10 Chromium integration smoke
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: app
+        run: npm run test:e2e
+      - name: Upload failing browser traces (no personal data fixtures)
+        if: failure() && matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: g10-browser-traces
+          path: |
+            app/test-results/
+            app/playwright-report/
+          retention-days: 3
