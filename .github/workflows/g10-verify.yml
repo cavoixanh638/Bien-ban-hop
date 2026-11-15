@@ -26,16 +26,26 @@ jobs:
       - name: Test G10 adapters without npm dependencies
         run: node --test app/tests/core.test.mjs
       - name: Install exact-version Tiptap/Vite dependencies
-        run: npm install --prefix app --ignore-scripts --no-audit --no-fund
+        working-directory: app
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Build integrated application
-        run: npm run build --prefix app
-      - name: Test G01 and G02 logic on imported sources
-        run: |
-          npm run test:unit --prefix poc/01-editor
-          npm test --prefix poc/02-capture
-      - name: Test remaining standalone source contracts
-        run: |
-          npm test --prefix poc/03-opfs
-          npm test --prefix poc/05-player
-          npm test --prefix poc/07-backup
-          npm test --prefix poc/08-export
+        working-directory: app
+        run: npm run build
+      - name: Test G01 editor policy (native Node)
+        working-directory: poc/01-editor
+        run: npm run test:unit
+      - name: Test G02 audio and transport (native Node)
+        working-directory: poc/02-capture
+        run: npm test
+      - name: Test G03 OPFS reference (native Node)
+        working-directory: poc/03-opfs
+        run: npm test
+      - name: Test G05 player reference (native Node)
+        working-directory: poc/05-player
+        run: npm test
+      - name: Test G07 backup reference (native Node)
+        working-directory: poc/07-backup
+        run: npm test
+      - name: Test G08 document export (native Node)
+        working-directory: poc/08-export
+        run: npm test
