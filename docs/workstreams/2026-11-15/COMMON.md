@@ -5,7 +5,7 @@
 ## Một chat, một nhánh, một bộ dữ liệu thử
 
 1. Mở đúng nhánh và checkpoint trên entrypoint. Kiểm HEAD và diff so với baseline, xác nhận chỉ có một writer. Làm từ trạng thái hiện tại khi tiếp quản.
-2. Clone/checkout riêng. Đặt toàn bộ code, dependencies/lockfile, fixture, test, báo cáo và demo của mình trong `poc/<mã-luồng>/`. Có thể dùng package/tool riêng ở thư mục đó. Mỗi worker chỉ ghi thư mục mình và checkpoint của mình. Chỉ tổng chỉ huy ghi tracker và checkpoint điều phối. Nhánh nào chỉ đọc thì xem qua GitHub.
+2. Clone/checkout riêng. Đặt code, `package.json`/lockfile, `.gitignore` nếu cần, fixture nhỏ hoặc trình sinh fixture, test, báo cáo và demo của mình trong `poc/<mã-luồng>/`. Cài và chạy từ thư mục đó, bỏ qua `node_modules`, bản build và các file thử nghiệm lớn khi commit. Lưu lệnh sinh dữ liệu và link artifact được phép dùng. Mỗi worker chỉ ghi thư mục mình và checkpoint của mình. Chỉ tổng chỉ huy ghi tracker và checkpoint điều phối. Nhánh nào chỉ đọc thì xem qua GitHub.
 3. Vừa bắt đầu đã có đủ đầu vào. Tự tạo fixture, adapter giả hoặc tín hiệu tổng hợp theo hợp đồng bên dưới. Test từ checkout sạch của đúng nhánh. Đầu ra của worker khác không xuất hiện trong bước setup, build, test hoặc tiêu chí DONE. Hợp đồng ghim từ entrypoint; nếu phát hiện bất cập, lưu minh chứng và đề xuất adapter ở lượt tích hợp, tiếp tục theo phần hợp đồng đã đóng băng. Cấm import code/fixture, cần artifact, CI, PR hoặc đợi xác nhận của luồng khác để xong phần mình.
 4. Làm và tự kiểm tới đích. Chạy kiểm thử, sửa lỗi trong phạm vi và chạy lại case bị ảnh hưởng. Nếu cần thiết bị thực hoặc tài khoản được cấp quyền còn thiếu, làm xong các bước độc lập với môi trường đó. Ghi đúng NOT_RUN và vật chứng còn thiếu, không ghi PASS thay bằng fixture.
 
@@ -22,7 +22,7 @@
 ## Bằng chứng và tiếp quản
 
 - Có checkpoint đầu tiên trước khi làm sâu, sau thay đổi có ý nghĩa, test, lỗi mới, trước tác vụ dài và trước khi dừng. Chưa có mốc thì lưu theo khoảng 5 lượt công cụ có nội dung mới hoặc khoảng 10 phút đang làm, tùy điều nào đến trước. Gộp ghi theo lô, push mã WIP đã kiểm diff và checkpoint lên đúng nhánh. Với tác vụ dài, thêm run ID/link ngay khi có.
-- Từng kết quả ghi `PASS`, `FAIL` hoặc `NOT_RUN`, kèm code/tested SHA, môi trường, fixture, lệnh và log/artifact. Phân biệt synthetic, browser thật, thiết bị thật và PoC tại sao. Chỉ DONE khi đạt toàn bộ điều kiện của entrypoint. OK của PoC không đánh dấu gói sản phẩm PASS. Khi không thể push ghi LOCAL_ONLY, path/worktree và SHA chưa push.
+- Từng kết quả ghi `PASS`, `FAIL` hoặc `NOT_RUN`, kèm code/tested SHA, môi trường, fixture, lệnh và log/artifact. Nêu rõ từng kết quả đến từ fixture tổng hợp, trình duyệt thật hay thiết bị thật. Chỉ DONE khi đạt toàn bộ điều kiện của entrypoint. OK của PoC không đánh dấu gói sản phẩm PASS. Khi không thể push ghi LOCAL_ONLY, path/worktree và SHA chưa push.
 - Chat thay thế đọc entrypoint + checkpoint rồi tiếp tục ở HEAD, kiểm working tree và run đang chạy, giữ test PASS còn hiệu lực. Một writer mỗi nhánh, không force-push. Chỉ commit code đã xem diff; giữ audio họp thật, bí mật và dữ liệu nhạy cảm ngoài repo.
 
 ## Ranh giới tích hợp
