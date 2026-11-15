@@ -1,1 +1,1 @@
-{"name":"mochop-opfs-poc","private":true,"type":"module","scripts":{"test":"node --test test.mjs","bench":"node bench.mjs"},"engines":{"node":">=20"}}
+{"name":"mochop-opfs-poc","private":true,"type":"module","scripts":{"test":"node --test test.mjs test-extended.mjs test-worker.mjs","bench":"node bench.mjs --sample-rate=48000 --duration=10800","bench:quick":"node bench.mjs --sample-rate=1000 --duration=10800"},"engines":{"node":">=20"}}
