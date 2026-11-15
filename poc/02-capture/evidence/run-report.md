@@ -1,38 +1,47 @@
-# Capture 02 · Báo cáo chạy độc lập (15/11/2026)
+# G02 capture · Báo cáo kiểm thử vòng sửa ADD-01..05 — 15/11/2026
 
-## Môi trường
+**Phạm vi bằng chứng:** mã nguồn G02 chạy độc lập trong `poc/02-capture/` trên Linux Node.js 22.16.0. Các trường `PASS` bên dưới gắn **Node mock + worker_threads MessageChannel thật**, không thay thế Chrome AudioWorklet/Windows mic thật. `Code SHA` và `Tested SHA` được chốt trong [checkpoint 02](../../../docs/workstreams/2026-11-15/checkpoints/02-capture.md) sau khi push và đối chiếu tất cả Git blob.
 
-- Linux x86_64 container, Node.js `v22.16.0`, Chromium `144.0.7559.96` (headless), ffprobe có sẵn, không phải máy Windows người dùng.
-- Không có micro vật lý hay audio track màn hình/thực; Chromium được quản lý bởi chính sách `URLBlocklist: ["*"]`; trang localhost chuyển sang `chrome-error://chromewebdata/` với thông báo tổ chức chặn. **Không chỉnh chính sách để chạy bài test.**
-- Browser harness đã chạy và **BLOCKED_ENV** trước ca đo. CPU/RAM mỗi engine, HTMLAudioElement decode/seek, timeslice MediaRecorder, micro thật, tab visibility, TC21 = **NOT_RUN**.
+## Môi trường và lệnh
 
-## Đã chạy
+```bash
+cd poc/02-capture
+npm test                         # 36 PASS / 0 FAIL / exit 0
+npm run test:virtual3h           # PASS_METADATA_ONLY / exit 0
+npm run test:browser -- --quick  # NOT_RUN/BLOCKED_ENV / exit 2
+# Chỉ ở máy Windows/browser thật đã chuẩn bị:
+npm run test:browser -- --three-hours
+```
 
-| Test | Nguồn | Kết quả | Bằng chứng |
+- Node `v22.16.0`, Linux `x86_64`, Chromium `144.0.7559.96`, server thử chạy `127.0.0.1` với `crossOriginIsolated=false` khi được phép.
+- Chromium trong runtime này bị chính sách tổ chức `URLBlocklist:["*"]` chặn `localhost` (đường dẫn `chrome-error://chromewebdata/`). Bài chạy CDP 0 PASS / 0 FAIL / 1 NOT_RUN, **không vô hiệu hóa chính sách**.
+- Không có Windows Chrome/Edge tương tác, micro vật lý, track chia sẻ màn hình thật. Không có phép đo CPU/RAM/cadence của hai engine trên cùng trình duyệt.
+
+## G02-ADD — test kết quả cụ thể
+
+| Yêu cầu | Kết quả từ nguồn độc lập | Bằng chứng | Chưa thể khẳng định |
 |---|---|---|---|
-| 11 unit/integration case | Node pure logic + `worker_threads` MessageChannel Transferable, buffer ownership | **11 PASS / 0 FAIL** | [`unit-tests.txt`](unit-tests.txt) |
-| Kiểm tra 2.048/4.096, quantum không cố định, pool, queue nghẽn, pause/resume và track ended | Fake Worklet trong Node + Worker thực | **PASS trong mô phỏng Node**, không phải AudioWorklet chạy Chrome | [`unit-tests.txt`](unit-tests.txt) |
-| Duyệt index 3 giờ, 48 kHz, 518.400.000 frames, 2.048 và 4.096 | Metadata generator, không đọc/ghi PCM thật | **PASS_METADATA_ONLY** | [`virtual-3h.json`](virtual-3h.json) |
-| Browser compare/timeslice/CPU/RAM/decode/seek | Chromium headless cùng host | **NOT_RUN — BLOCKED_ENV** | [`browser-results.json`](browser-results.json) |
-| 3 giờ âm thanh thời gian thực | Chrome/Edge Windows | **NOT_RUN** | Thiếu môi trường và thiết bị |
-| OPFS crash/quota/flush | luồng 03-opfs | **Ngoài phạm vi 02** | Không đánh PASS |
+| ADD-01 State/race Start–Stop | **PASS Node mock**: Stop trước grant mic, double Start, Stop trong `AudioContext.resume()`, quyền bị từ chối, track kết thúc đồng thời Stop; session không được khởi tạo sau khi đã hủy, track đóng 1 lần | `tests/lifecycle.test.mjs`, `unit-tests-round2.txt` | Prompt/UX, mic Windows thật NOT_RUN |
+| ADD-02 Cleanup/reject/timeout | **PASS Node mock**: MediaRecorder.stop reject, timeout, worker final reject/không ACK, error khi Worklet attach; context/worker/track được giải phóng; Stop idempotent | `tests/lifecycle.test.mjs`, `tests/pcm-lifecycle.test.mjs` | Worker crash/OS/Browser thực NOT_RUN |
+| ADD-03 Mapping | **PASS Node mock**: START ACK từ Worklet; ≥2 điểm từ `getOutputTimestamp`, event trễ 3s không dời mốc, drift +100ppm, pause 10s không tăng media sample, gap/unavailable/sink reject không nội suy, timestamp chưa hiệu chuẩn bị pending | `tests/clock-mapper.test.mjs`, `tests/pcm-lifecycle.test.mjs` | Độ trễ micro input, drift thật/TC17 ≤1s NOT_RUN |
+| ADD-04 Guard cấp phát | **PASS Node V8**: invalid 0/127/-1/fraction/NaN/1e8, pool 1/65/Infinity, channels 0/3, recordingId invalid, port invalid → zero allocations và `invalid-configuration`. Giới hạn hợp lệ ≤2MiB; lỗi OOM báo đúng | `tests/unit.test.mjs` | Memory pressure AudioWorklet thực NOT_RUN |
+| ADD-05 MediaRecorder spool | **PASS Node synthetic sink**: bounded queue Bytes/Chunks, rejects có đếm, xử lý lỗi quota, ghi nối đầy đủ theo đúng thứ tự dù vượt retained-prefix RAM, getFile và discard; 3h runner có mốc 90 phút | `tests/spool.test.mjs`, `tests/browser-runner.mjs` | FileSystemWritableFileStream/OPFS thật, full WebM seek/decoding 3h NOT_RUN |
+| Hợp đồng ban đầu | **PASS Node**: f32le frames/bytes, quantum biến thiên, batch 2048/4096, pool overflow, Worker thread MessagePort transferable và ACK recycle ≠ durability | `tests/unit.test.mjs`, `tests/transport.test.mjs` | `AudioWorkletProcessor` chạy trên Chrome thật NOT_RUN |
 
-## Dữ liệu mô phỏng 3 giờ
+### Số kiểm thử
 
-- `48.000 Hz × 10.800 giây = 518.400.000 frames`.
-- Batch **2.048** → **253.125** block metadata; batch **4.096** → **126.563** block (khối cuối partial).
-- Đầu `sampleIndex=0`, giữa `259.200.000` (90 phút), cuối `518.399.999`; một hàm signature xác định cho ba vị trí, xem JSON. Không tạo dữ liệu PCM 2 GB để giả lập ghi âm.
-- Dữ liệu bình thường: `receivedFrames=518400000`, `missingFrames=0`, `overlappedFrames=0`, `sequenceErrorCount=0` theo logical ledger.
-- Chèn lỗi cố tình thiếu một batch và lặp một batch: phát hiện đủ `missingFrames=batchFrames`, `overlappedFrames=batchFrames`, `sequenceErrorCount=2`.
-- **Chú ý**: các con số trên là phép duyệt metadata/logic mẫu, không phải tốc độ ghi, dung lượng file, sample dropout thực, CPU/RAM hay tín hiệu ghi nhận trong Chrome. Không thể dùng chúng để quyết định engine production.
+- `npm test` **36 PASS, 0 FAIL, 0 skipped**. Xem `evidence/unit-tests-round2.txt` (stdout đầy đủ).
+- `npm run test:virtual3h` trả exit 0, dữ liệu metadata 518.400.000 frame (`48.000 Hz × 10.800s`). Batch 2.048 = 253.125 block, batch 4.096 = 126.563 block (partial cuối). Injection mất/trùng được phát hiện; **không ghi hoặc phát dữ liệu PCM 3h thực**. Đọc `virtual-3h.json` và `virtual-3h-run.txt`.
+- Browser `--quick` exit 2 **NOT_RUN**: xem `browser-results.json` và `browser-run.txt`; không có lý do cơ sở để chấm PASS/FAIL engine.
 
-## Tình trạng TC và kiến nghị
+### Giới hạn và bất biến
 
-- **TC12:** Worklet/transfer trên Node PASS đối với logic; ghi 3 giờ thực và xác minh phát/tua **NOT_RUN**.
-- **TC13:** pause/resume trên mock + worker PASS; drift Chrome thật **NOT_RUN**.
-- **TC14:** unavailable/track-ended logic PASS; ngắt micro vật lý **NOT_RUN**.
-- **TC15/19:** OPFS durability/crash/quota cần luồng 03; **NOT_RUN** trong capture.
-- **TC17:** khung `sampleIndex/inputMonoMs` được xuất, chưa hiệu chuẩn latency/cross-clock/dẫn liệu beep thực; **NOT_RUN**.
-- **TC21:** audio online chỉ hợp lệ nếu có audio track thật trên nền tảng cụ thể; **NOT_RUN**.
+1. `CaptureClockMapper` dùng `AudioContext.getOutputTimestamp()` để ánh xạ **render/output context time** sang monotonic `performance` time; **không đo được hardware microphone input latency**. Nếu timestamp không có/không hợp lệ, không phát mốc giả. Note không được suy `valid media` từ mapping nếu chưa có storage manifest/ACK.
+2. `PCM worker` còn chỉ giữ WAV prefix tối đa 8 giây và mô tả đầu/mốc mục tiêu phút 90/cuối, **không thể chứng minh full PCM 3h seek**. Bài 3 giờ CLI trên browser có mã chạy nhưng chưa chạy tại đây.
+3. `MediaRecorder` timeslice là mảnh của **một container**: append liên tục vào File OPFS chẩn đoán, chưa có journal/flush bảo đảm chống crash, `durable:false` kể cả sau khi đóng file. Độ chính xác seek WebM/Opus dài và vấn đề metadata duration vẫn chưa được xác minh.
+4. `recycle` chỉ hoàn trả ownership của transferable `ArrayBuffer`; `committedThroughSampleExclusive:null` giữ nguyên. G03 chỉ được cấp quyền durable ACK sau khi verify flush/journal, không dùng Worker acceptance thay thế.
+5. Spool max 8MB/32 blob, retained-prefix 20MB, PCM pool ≤2MiB, clock mapping cap 12000 points; tình huống queue đầy được báo thiếu chứ không tự tạo silence/audio. Các counter/summary là các đối tượng thực đã kiểm trên Node, không phải benchmark CPU/RAM Windows.
 
-Tạm giữ AudioWorklet/PCM làm ứng viên ưu tiên để tiếp tục đo vì có kiểm soát số frame và gap; MediaRecorder giữ làm đối chứng độc lập. Không chốt engine hoặc Gói 1.2 DONE khi browser/wall-clock/durability chưa có chứng cứ.
+## Kết luận
+
+**G02-ADD-01..04 được sửa và có regression PASS Node độc lập. ADD-05 có streaming diagnostic PoC + negative tests PASS Node nhưng hiệu quả/seek thực chưa đo.** Không chốt AudioWorklet hay MediaRecorder làm production, không báo DONE G02/TC12/TC17/TC21/ứng dụng tích hợp. Ưu tiên tiếp theo là Windows Chrome/Edge: browser synthetic short + stress, ngắt micro vật lý, chuyển tab, audio online conditional, và chạy 3h wall-clock từ nguồn có marker với full WebM seek và đối chứng sample/audio duration.

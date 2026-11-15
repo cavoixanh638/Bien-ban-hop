@@ -1,0 +1,7 @@
+
+> moc-hop-capture-poc@0.1.0 test:browser
+> node tests/browser-runner.mjs --quick
+
+Error: BLOCKED_ENV: Chromium managed URLBlocklist blocks localhost; browser tests NOT_RUN
+    at file:///mnt/data/capture-work/poc/02-capture/tests/browser-runner.mjs:90:11
+Evidence: /mnt/data/capture-work/poc/02-capture/evidence/browser-results.json, 0 PASS, 0 FAIL, 1 BLOCKED

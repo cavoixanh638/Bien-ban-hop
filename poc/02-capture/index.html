@@ -32,10 +32,14 @@ window.capturePoc = {CaptureComparison, runAutomated, verifyDecodable};
 const el = id => document.getElementById(id);
 el('isolated').textContent = String(crossOriginIsolated);
 let run = null;
-function buttons(active, paused = false) {
-  el('start').disabled = active; el('stop').disabled = !active;
-  el('pause').disabled = !active || paused; el('resume').disabled = !active || !paused;
-  el('trackEnd').disabled = !active;
+let uiMode = 'idle';
+function buttons(mode,paused=false) {
+  uiMode=mode;
+  el('start').disabled = mode!=='idle' && mode!=='stopped';
+  el('stop').disabled = mode==='idle'||mode==='stopped'||mode==='stopping';
+  el('pause').disabled = mode!=='capturing'||paused;
+  el('resume').disabled = mode!=='capturing'||!paused;
+  el('trackEnd').disabled = mode!=='capturing';
 }
 function config() {return {source:el('source').value,engine:el('engine').value,
   batchFrames:Number(el('batchFrames').value),poolSize:Number(el('poolSize').value),maxQueue:Number(el('maxQueue').value),
@@ -45,21 +49,51 @@ function reportEvent(event) {
   el('status').textContent = `${event.type} · ${Math.round(event.inputMonoMs)} ms · ${run?.recordingId || ''}`;
 }
 el('start').onclick = async () => {
-  try {run = new CaptureComparison(reportEvent); await run.start(config()); buttons(true); el('results').textContent='Đang thu...';}
-  catch(error) {el('status').textContent=`Lỗi: ${error}`; buttons(false);}
-};
-el('pause').onclick = () => {run.pause(); buttons(true,true);};
-el('resume').onclick = () => {run.resume(); buttons(true,false);};
-el('trackEnd').onclick = () => {run.simulateTrackEnd();};
-el('stop').onclick = async () => {
+  if(uiMode!=='idle' && uiMode!=='stopped')return; // Protect against synchronous double clicks.
+  buttons('starting');
+  el('results').textContent='Đang yêu cầu quyền và thiết lập nguồn…';
+  el('downloadWav').disabled=true;el('downloadWebm').disabled=true;
+  const previous=run;
+  const candidate=new CaptureComparison(reportEvent);
+  run=candidate; // never overwrite an active/pending recorder
   try {
-    const result = await run.stop();
-    if (run.media && !run.media.truncated) result.mediaVerification = await verifyDecodable(run.media.getBlob());
-    el('results').textContent = JSON.stringify(result,null,2);
-    buttons(false);
-    el('downloadWav').disabled = !run.worker;
-    el('downloadWebm').disabled = !run.media || run.media.truncated;
-  } catch(error) {el('status').textContent=`Lỗi dừng: ${error}`;}
+    await previous?.dispose?.();
+    await candidate.start(config());
+    if(run===candidate && candidate.state==='capturing') {
+      buttons('capturing');el('results').textContent='Đang thu…';
+    }
+  } catch(error) {
+    if(run===candidate){
+      buttons('stopped');
+      el('status').textContent=`Không thể bắt đầu: ${error}. Đã dọn tài nguyên.`;
+    }
+  }
+};
+el('pause').onclick = () => {if(run?.state==='capturing'){run.pause();buttons('capturing',true);}};
+el('resume').onclick = () => {if(run?.state==='capturing'){run.resume();buttons('capturing',false);}};
+el('trackEnd').onclick = () => {if(run?.state==='capturing')run.simulateTrackEnd();};
+el('stop').onclick = async () => {
+  if(!run || uiMode==='stopping')return;
+  const candidate=run;
+  buttons('stopping');
+  el('status').textContent='Đang dừng/hủy khởi tạo, giải phóng micro và chờ ACK…';
+  try {
+    const result=await candidate.stop();
+    if(candidate.media) {
+      const file=await candidate.media.getCompleteBlob();
+      if(file)result.mediaVerification=await verifyDecodable(file);
+    }
+    if(run!==candidate)return;
+    el('results').textContent=JSON.stringify(result,null,2);
+    el('downloadWav').disabled=!candidate.worker || !candidate.workletFinal;
+    el('downloadWebm').disabled=!candidate.media || !(await candidate.media.getCompleteBlob());
+    buttons('stopped');
+  } catch(error) {
+    if(run!==candidate)return;
+    buttons('stopped');
+    el('results').textContent=JSON.stringify(candidate.results(),null,2);
+    el('status').textContent=`Lỗi dừng/timeout: ${error}. Bộ thu đã thử dọn tài nguyên; KHÔNG có ACK lưu bền vững.`;
+  }
 };
 function download(blob,name) {
   const url = URL.createObjectURL(blob);
@@ -67,5 +101,5 @@ function download(blob,name) {
   setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
 el('downloadWav').onclick = async () => {try {const result = await run.exportPcmPrefixWav();download(new Blob([result.wav],{type:'audio/wav'}), 'capture-prefix.wav');} catch(error){el('status').textContent=String(error);}};
-el('downloadWebm').onclick = () => {try {download(run.media.getBlob(),'capture-mediarecorder.webm');} catch(error){el('status').textContent=String(error);}};
+el('downloadWebm').onclick = async () => {try {const file=await run.media.getCompleteBlob();if(!file)throw new Error('Full container incomplete/unavailable');download(file,'capture-mediarecorder.webm');} catch(error){el('status').textContent=String(error);}};
 </script></body></html>

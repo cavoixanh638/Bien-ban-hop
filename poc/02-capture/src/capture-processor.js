@@ -19,6 +19,9 @@ class TransferCaptureProcessor extends AudioWorkletProcessor {
     this.inFlight = 0;
     this.peakInFlight = 0;
     this.openGap = null;
+    this.inQuantum = false;
+    this.contextAtFrameCursor = 0;
+    this.poolSize = 0;
   }
   command(command) {
     switch (command?.type) {
@@ -27,28 +30,39 @@ class TransferCaptureProcessor extends AudioWorkletProcessor {
         break;
       case 'attach': {
         if (this.state !== 'idle') return;
-        if (!command.port || !Number.isInteger(command.batchFrames) || command.batchFrames < 128 ||
+        const bytes = command.batchFrames * command.channels * 4 * command.poolSize;
+        // A public caller may bypass the UI. Never allocate arbitrary memory on the audio thread.
+        if (!command.port || typeof command.port.postMessage !== 'function' ||
+            typeof command.recordingId !== 'string' || command.recordingId.length < 1 || command.recordingId.length > 128 ||
+            ![2048, 4096].includes(command.batchFrames) ||
             !Number.isInteger(command.poolSize) || command.poolSize < 2 || command.poolSize > 64 ||
-            !Number.isInteger(command.channels) || command.channels < 1 || command.channels > 2) {
+            !Number.isInteger(command.channels) || command.channels < 1 || command.channels > 2 ||
+            !Number.isSafeInteger(bytes) || bytes > 2 * 1024 * 1024) {
           this.emit('error', { reason: 'invalid-configuration' }); return;
+        }
+        let free;
+        try {
+          free = Array.from({length:command.poolSize}, () => new ArrayBuffer(command.batchFrames * command.channels * 4));
+        } catch (error) {
+          this.emit('error', {reason:'pool-allocation-failed'}); return;
         }
         this.recordingId = command.recordingId;
         this.batchFrames = command.batchFrames;
         this.channels = command.channels;
+        this.poolSize = command.poolSize;
+        this.free = free;
+        this.allocated = free.length;
         this.transport = command.port;
         this.transport.onmessage = (event) => {
           if (event.data?.type === 'recycle' && event.data.pcm instanceof ArrayBuffer &&
-              event.data.pcm.byteLength === this.batchFrames * this.channels * 4) {
+              event.data.pcm.byteLength === this.batchFrames * this.channels * 4 &&
+              this.inFlight > 0 && this.free.length < this.poolSize) {
             this.free.push(event.data.pcm);
             this.recycled++;
             this.inFlight = Math.max(0, this.inFlight - 1);
           }
         };
         this.transport.start?.();
-        for (let i = 0; i < command.poolSize; i++) {
-          this.free.push(new ArrayBuffer(this.batchFrames * this.channels * 4));
-          this.allocated++;
-        }
         this.state = 'armed';
         this.emit('ready');
         break;
@@ -85,7 +99,8 @@ class TransferCaptureProcessor extends AudioWorkletProcessor {
       workletDroppedFrames: this.workletDroppedFrames, quantumCounts: this.quantumCounts};
   }
   emit(type, extra = {}) {
-    const value = {type, sampleIndex: this.frameCursor, contextTimeSec: currentTime,
+    const value = {type, sampleIndex: this.frameCursor,
+      contextTimeSec: this.inQuantum ? this.contextAtFrameCursor : currentTime,
       ...extra};
     this.port.postMessage(value);
     if (type !== 'started' && type !== 'stopped') this.transport?.postMessage({type: 'source-event', event: value});
@@ -95,13 +110,16 @@ class TransferCaptureProcessor extends AudioWorkletProcessor {
     const gap = this.openGap;
     this.openGap = null;
     this.emit('gap', {start: gap.start, end: gap.start + gap.count,
-      count: gap.count, reason: gap.reason});
+      count: gap.count, reason: gap.reason, contextTimeSec: gap.endContextTimeSec});
   }
   addGap(count, reason) {
     if (!count) return;
     if (this.openGap && (this.openGap.reason !== reason || this.openGap.start + this.openGap.count !== this.frameCursor)) this.closeGap();
     if (!this.openGap) this.openGap = {start: this.frameCursor, count: 0, reason};
     this.openGap.count += count;
+    // Save the actual render timestamp of the last lost frame. A late Stop
+    // must not relabel a gap as occurring at the Stop command's delivery time.
+    this.openGap.endContextTimeSec = this.inQuantum ? this.contextAtFrameCursor : currentTime;
     this.workletDroppedFrames += count;
     this.frameCursor += count;
   }
@@ -141,10 +159,18 @@ class TransferCaptureProcessor extends AudioWorkletProcessor {
     const frames = data[0]?.length ?? outputs?.[0]?.[0]?.length ?? 0;
     if (frames > 0) this.quantumCounts[frames] = (this.quantumCounts[frames] || 0) + 1;
     if (this.state !== 'capturing' || frames === 0) return true;
-    if (!data.length) { this.flush(); this.addGap(frames, 'no-input-channel'); return true; }
+    this.inQuantum = true;
+    this.contextAtFrameCursor = currentTime;
+    if (!data.length) {
+      this.flush();
+      this.contextAtFrameCursor = currentTime + frames / sampleRate;
+      this.addGap(frames, 'no-input-channel');
+      this.inQuantum = false; return true;
+    }
     let offset = 0;
     while (offset < frames) {
       if (!this.borrow()) {
+        this.contextAtFrameCursor = currentTime + frames / sampleRate;
         this.addGap(frames - offset, 'pool-exhausted');
         break;
       }
@@ -165,8 +191,10 @@ class TransferCaptureProcessor extends AudioWorkletProcessor {
       this.used += take;
       this.frameCursor += take;
       offset += take;
+      this.contextAtFrameCursor = currentTime + offset / sampleRate;
       if (this.used === this.batchFrames) this.flush();
     }
+    this.inQuantum = false;
     return true;
   }
 }

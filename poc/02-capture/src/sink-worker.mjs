@@ -73,8 +73,12 @@ function summarizeBlock(chunk) {
   };
   firstBlock ??= summary;
   lastBlock = summary;
-  // Middle sample of the *observed* input stream, not necessarily the 90-minute point.
-  if ((ledger?.blocks || 0) % 31 === 0) middleBlock = summary;
+  // Full 3h benchmark: capture the exact 90-minute sample window, not an
+  // arbitrary 'middle-looking' block. Short runs use a rolling diagnostic.
+  const target=config?.targetMidFrame;
+  if (target!==null && chunk.firstSample<=target && chunk.firstSample+chunk.sampleCount>target)
+    middleBlock=summary;
+  else if (target===null && (ledger?.blocks || 0) % 31 === 0) middleBlock=summary;
 }
 
 function recycle(chunk) {
@@ -154,7 +158,9 @@ self.onmessage = event => {
       delayMs: Math.max(0, Math.min(message.delayMs || 0, 5000)),
       cpuBurnMs: Math.max(0, Math.min(message.cpuBurnMs || 0, 1000)),
       maxQueue: Math.max(1, Math.min(message.maxQueue || 6, 128)),
-      maxPrefixFrames: Math.max(0, Math.round((message.maxPrefixSeconds ?? 8) * message.sampleRate))
+      maxPrefixFrames: Math.max(0, Math.round((message.maxPrefixSeconds ?? 8) * message.sampleRate)),
+      targetMidFrame: Number.isFinite(message.targetMidSeconds) && message.targetMidSeconds>=0 ?
+        Math.round(message.targetMidSeconds * message.sampleRate) : null
     };
     ledger = new CoverageLedger(message.recordingId);
     transport = message.port;

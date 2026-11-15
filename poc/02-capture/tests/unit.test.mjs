@@ -129,3 +129,80 @@ test('no input and unavailable state do not claim silence as recorded', () => {
   assert.equal(statuses.length,1);
   assert.equal(statuses[0].reason,'track-ended');
 });
+
+test('G02-ADD-04 rejects invalid public worklet configurations with zero allocations', () => {
+  const code = readFileSync(new URL('../src/capture-processor.js',import.meta.url),'utf8');
+  let Processor,allocations=0;
+  class TrackedArrayBuffer extends ArrayBuffer {
+    constructor(bytes){allocations++;super(bytes);}
+  }
+  class Base {constructor(){this.events=[];this.port={postMessage:msg=>this.events.push(msg)};}}
+  runInNewContext(code,{AudioWorkletProcessor:Base,Float32Array,ArrayBuffer:TrackedArrayBuffer,
+    sampleRate:48000,currentTime:0,Number,
+    registerProcessor:(_name,value)=>{Processor=value;}});
+  const cases=[
+    {batchFrames:0},{batchFrames:127},{batchFrames:-1},{batchFrames:100000000},
+    {batchFrames:128},{batchFrames:2048.5},{batchFrames:NaN},
+    {poolSize:1},{poolSize:65},{poolSize:Infinity},{poolSize:0},
+    {channels:0},{channels:3},{channels:NaN},
+    {recordingId:''},{recordingId:'a'.repeat(129)},
+    {port:{}}
+  ];
+  for(const changed of cases) {
+    const p=new Processor();
+    const valid={type:'attach',recordingId:'valid',batchFrames:2048,poolSize:2,channels:1,
+      port:{postMessage(){},start(){}}};
+    p.command({...valid,...changed});
+    assert.equal(p.state,'idle',JSON.stringify(changed));
+    assert.equal(p.allocated,0,JSON.stringify(changed));
+    assert.equal(p.events.at(-1).reason,'invalid-configuration');
+  }
+  assert.equal(allocations,0,'invalid configs must allocate zero bytes on audio thread');
+  const p=new Processor();
+  p.command({type:'attach',recordingId:'valid',batchFrames:4096,poolSize:64,channels:2,
+    port:{postMessage(){},start(){}}});
+  assert.equal(p.state,'armed');
+  assert.equal(p.allocated,64);
+  assert.equal(allocations,64);
+  assert.equal(p.free.length*4096*2*4,2*1024*1024,'max accepted pool is 2MiB');
+});
+
+test('G02-ADD-04 allocation failure is fail-closed, no partial transport',()=>{
+  const code=readFileSync(new URL('../src/capture-processor.js',import.meta.url),'utf8');
+  let Processor;
+  class DeniedArrayBuffer extends ArrayBuffer {constructor(bytes){throw new RangeError('out of memory');}}
+  class Base {constructor(){this.events=[];this.port={postMessage:msg=>this.events.push(msg)};}}
+  runInNewContext(code,{AudioWorkletProcessor:Base,Float32Array,ArrayBuffer:DeniedArrayBuffer,
+    sampleRate:48000,currentTime:0,Number,registerProcessor:(_name,value)=>{Processor=value;}});
+  const p=new Processor();
+  p.command({type:'attach',recordingId:'valid',batchFrames:2048,poolSize:2,channels:1,
+    port:{postMessage(){},start(){}}});
+  assert.equal(p.state,'idle');
+  assert.equal(p.allocated,0);
+  assert.equal(p.transport,null);
+  assert.equal(p.events.at(-1).reason,'pool-allocation-failed');
+});
+
+test('delayed STOP does not move an earlier pool-exhausted gap timestamp forward',()=>{
+  const code=readFileSync(new URL('../src/capture-processor.js',import.meta.url),'utf8');
+  let Processor;let audioTime=0;const signals=[];
+  class Base {constructor(){this.port={postMessage:m=>signals.push(m)};}}
+  const realm={AudioWorkletProcessor:Base,ArrayBuffer,Float32Array,Number,sampleRate:48000,
+    registerProcessor:(_name,value)=>{Processor=value;}};
+  Object.defineProperty(realm,'currentTime',{get:()=>audioTime});
+  runInNewContext(code,realm);
+  const proc=new Processor();
+  const port={postMessage(){},start(){}};
+  proc.command({type:'attach',port,recordingId:'rec-1',batchFrames:2048,poolSize:2,channels:1});
+  proc.command({type:'start'});
+  for(let i=0;i<32;i++){audioTime=i*128/48000;proc.process([[new Float32Array(128)]],[[new Float32Array(128)]]);}
+  audioTime=4096/48000;proc.process([[new Float32Array(128)]],[[new Float32Array(128)]]);
+  // An AudioContext stop command arrives one second after the dropped quantum.
+  audioTime=1.2;proc.command({type:'stop'});
+  const gap=signals.find(x=>x.type==='gap');
+  assert.ok(gap,'gap must be explicit at stop');
+  assert.equal(gap.start,4096);
+  assert.equal(gap.end,4224);
+  assert.ok(Math.abs(gap.contextTimeSec-4224/48000)<.0001,'gap must carry captured render timestamp');
+  assert.notEqual(gap.contextTimeSec,1.2);
+});

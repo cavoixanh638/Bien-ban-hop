@@ -59,6 +59,7 @@ function browserProcMetrics(rootPid) {
 
 const argv=process.argv;
 const short=argv.includes('--quick');
+const threeHours=argv.includes('--three-hours');
 const tmp=await mkdtemp(path.join(tmpdir(),'moc-hop-capture-'));
 const {server,port}=await startServer(0);
 let chrome, cdp;
@@ -94,7 +95,10 @@ try{
   assert(evidence.environment.isolated===false,'isolation unexpectedly true');
   assert(evidence.environment.secureContext===true,'localhost not secure context');
 
-  const cases=short ? [
+  const cases=threeHours ? [
+    ['3h-both-2048',{engine:'both',source:'synthetic',batchFrames:2048,
+      targetMidSeconds:5400,durationMs:10_800_000,pauseResume:false}]
+  ] : short ? [
     ['pcm-2048',{engine:'pcm',batchFrames:2048,durationMs:2200}],
     ['both-4096',{engine:'both',batchFrames:4096,durationMs:2600}],
     ['stress',{engine:'pcm',batchFrames:2048,poolSize:2,maxQueue:1,delayMs:130,durationMs:2200}]
@@ -112,10 +116,26 @@ try{
   for(const [name,config] of cases){
     const before=browserProcMetrics(chrome.pid);
     let peakKB=before.sumRssKB;
-    const sampler=setInterval(()=>{peakKB=Math.max(peakKB,browserProcMetrics(chrome.pid).sumRssKB);},130);
+    const sampler=setInterval(()=>{peakKB=Math.max(peakKB,browserProcMetrics(chrome.pid).sumRssKB);},threeHours?5000:130);
     const began=performance.now();
     try {
-      const result=await cdp.evaluate(`window.capturePoc.runAutomated(${JSON.stringify(config)})`);
+      let result;
+      if (threeHours) {
+        await cdp.evaluate(`window.__captureOutcome={status:'running'};window.capturePoc.runAutomated(${JSON.stringify(config)}).then(
+          result=>{window.__captureOutcome={status:'done',result}},
+          error=>{window.__captureOutcome={status:'error',error:String(error)}}); 'started'`);
+        const maxMs=config.durationMs+60_000;
+        const startedAt=Date.now();
+        while (Date.now()-startedAt<maxMs) {
+          await sleep(5000);
+          const state=await cdp.evaluate('window.__captureOutcome?.status');
+          if (state==='done' || state==='error') break;
+          if (Date.now()-startedAt>=maxMs) throw new Error('3h case timed out');
+        }
+        const outcome=await cdp.evaluate('window.__captureOutcome');
+        if (outcome?.status!=='done') throw new Error(outcome?.error || '3h incomplete');
+        result=outcome.result;
+      } else result=await cdp.evaluate(`window.capturePoc.runAutomated(${JSON.stringify(config)})`);
       const elapsed=performance.now()-began;
       clearInterval(sampler);
       const after=browserProcMetrics(chrome.pid);
@@ -135,7 +155,19 @@ try{
       }
       if(config.engine!=='pcm') {
         assert(result.media?.blobCount>0,'MediaRecorder emitted no blobs');
-        assert(result.mediaVerification?.decoded===true,'WebM failed decoder: '+JSON.stringify(result.mediaVerification));
+        const mediaCheck=result.mediaVerification;
+        assert(threeHours ? (mediaCheck?.metadataReadable===true && mediaCheck.seekMidpoint===true &&
+          mediaCheck.seekNearEnd===true) : mediaCheck?.decoded===true,
+          'WebM full-container read/seek verification failed: '+JSON.stringify(mediaCheck));
+        if(threeHours)assert(result.media.spool?.status==='FINISHED' &&
+          result.media.spool.writtenBytes===result.media.totalBytes,'full WebM spool unavailable');
+      }
+      if(threeHours) {
+        assert(result.pcm?.middleBlock?.firstSample<=5400*result.actualSampleRate &&
+          result.pcm.middleBlock.firstSample+result.pcm.middleBlock.sampleCount>5400*result.actualSampleRate,
+          '90-minute PCM diagnostic sample window missing');
+        assert(result.pcm?.highWaterSample>=10800*result.actualSampleRate*.999,
+          'PCM capture stopped before 3h wall-clock target');
       }
       if(name.startsWith('slow')||name==='stress') assert((result.pcm?.rejectedFrames||0)+(result.pcm?.missingFrames||0)>0,'stress did not cause backpressure');
       evidence.cases.push(metrics);
