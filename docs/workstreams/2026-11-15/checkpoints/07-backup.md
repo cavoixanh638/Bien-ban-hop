@@ -1,28 +1,38 @@
 # Checkpoint · 07-backup
 
-- Chủ sở hữu: 07-backup · Sao lưu và khôi phục .mochop
-- Nhánh: `gemini/20261115-07-backup`
-- Baseline chung: `6142f56a6efdb27aa9445920c9321f7930c0d5fd`
-- HEAD lúc tiếp quản: `951baf62c04ac529d8a22e5c580707b6a8400ca5` (chỉ checkpoint, chưa có mã trong thư mục sở hữu)
-- Trạng thái: **IN_PROGRESS**, code/tested SHA: chưa có
-- Kiểm thử TC30/TC31/TC38: **NOT_RUN**; nguồn fixture tổng hợp dự kiến, không dữ liệu họp thật
-- Môi trường khởi tạo: Linux container, Node.js v22.16.0, npm 10.9.2, Python 3.13.5; RAM 5.8 GiB, disk trống ~30 GiB. **Không phải Windows/Chrome/Edge người dùng.**
+- Owner: Gemini 07-backup · branch: `gemini/20261115-07-backup`
+- Baseline: `6142f56a6efdb27aa9445920c9321f7930c0d5fd`
+- Status: **IN_PROGRESS / PARTIAL_DELIVERABLE**, **NOT DONE**
+- Current evidence commit: `6e7a0b7b2c356c25705e78979d8db00e07c49aa6`
+- Code/test commit: `c77ffb0d2d9e06fad5ea2d690fa2edaf616f5e6b`
+- Tested SHA of **local original reference script**: SHA256 `43386dd7da58c04867d7f0a6208bac3215a3449fb3dea4d3a91af2e3392bfff8`
+- Exact committed GitHub `mochop.py` blob SHA: `ca36bc562a12ead5192a18fcc8fcc63b61637308` (not independently runtime-tested yet).
+- Test status: **10/10 PASS locally on equivalent Python reference**; **NOT_RUN on exact committed revision, browsers or Windows**.
+- Environment: Linux x86_64 kernel 6.18.57, Python 3.13.5; synthetic 512 MiB/2 GiB archive; no real meeting audio.
+- Scope written: only `poc/07-backup/` and this checkpoint.
 
-Entrypoint: [07-backup](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/07-backup.md) · [COMMON](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/COMMON.md).
+## Delivered
 
-## Đã làm
-- Đã đọc entrypoint, COMMON, AGENTS, PLAN, STATUS, ARCHITECTURE, ACCEPTANCE_TESTS và baseline.
-- Đã kiểm HEAD và cây nguồn của nhánh. Chỉ ghi `poc/07-backup/` và checkpoint này.
-- Thử truy cập npm registry từ container bị timeout (chưa coi là bằng chứng về thư viện).
+1. [Reference exporter/importer](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-07-backup/poc/07-backup/mochop.py): .mochop ZIP, schema/version/checksum, streaming 1 MiB chunks, ZIP64-capable entry headers; verify staging before publish, reject existing ID, optional missing-audio state.
+2. [Tests](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-07-backup/poc/07-backup/test_mochop.py): round-trip, marks, optional missing audio, checksum, rollback, malicious paths, bomb, collision, schema and truncated archive.
+3. [README and fixture commands](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-07-backup/poc/07-backup/README.md): self-contained Python 3 standard library implementation and provisional format.
+4. [Measurements](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-07-backup/poc/07-backup/RESULTS.md): synthetic 512 MiB: export wall 2.13 s / peak RSS 98,568 KiB, import 1.36 s / 98,700 KiB; 2 GiB: export 3.72 s / 98,568 KiB, import 4.02 s / 98,568 KiB. Separate 65,536-entry ZIP64 EOCD verified (not import, because safety policy has 10k entry cap). These are local reference observations, not JavaScript/browser benchmarks.
 
-## Đang thực hiện
-1. Dựng fixture + adapter độc lập; định nghĩa manifest, ZIP streaming, staging/commit, test dữ liệu hỏng.
-2. Chạy test và benchmark trong môi trường hiện có; đối chiếu khả năng thư viện.
-3. Xem diff, cập nhật log/SHA và chỉ sau đó đánh giá đủ điều kiện DONE.
+## Acceptance
 
-## Còn thiếu
-- Code, chứng cứ TC30/TC31/TC38, đo 0,5 và 2 GB, ZIP64 riêng, test môi trường khác.
-- Xác minh thực tế trên Windows/Chrome/Edge và cổng tích hợp là trách nhiệm đợt tiếp theo.
-- Chỉ có writer hiện tại trong luồng này; không suy đoán trạng thái các client khác.
+| Requirement | Status | Why |
+|---|---|---|
+| TC30 round-trip text/marks/audio/checksum | **PARTIAL** | Synthetic local reference works; browser DB/OPFS and cross-machine restore NOT_RUN |
+| TC31 large 512 MiB and 2 GiB restore | **PARTIAL** | Local Python reference measured; pinned fflate/client-zip/zip.js comparisons, browser random-access/backpressure/JS heap, >4GiB interop NOT_RUN |
+| TC38 missing audio preserves text | **PARTIAL** | Synthetic mock works with explicit allow_missing_audio; browser/UI not integrated |
+| Malicious archive/rollback | **PARTIAL** | Local negative tests pass; exact committed SHA and real browser adapter NOT_RUN |
 
-WIP/chưa push: không · Chặn bên ngoài: npm registry chưa truy cập được từ container ban đầu.
+## Remaining (do not mark DONE until proven)
+
+- Run test suite from a **clean clone of this exact GitHub branch**, record tested commit SHA, fix any drift between local and GitHub script.
+- Implement three independent pinned JS candidate adapters; obtain npm access and run in Windows Chrome + Edge with actual streaming/OPFS, quota/backpressure and user-visible progress instrumentation. No npm registry access in this worker environment.
+- Run 512 MiB, 2 GiB comparative benchmark for each candidate; separate ZIP64 interoperability and decompression limits; capture peak RAM and throughput both ways with run logs.
+- Reopen .mochop on another actual device/browser; verify original text, marks, media mapping, missing-source and collision/rollback in IndexedDB/OPFS staging.
+- Hand off final measured recommendation to commander to decide D13; do not alter shared tracker or status as worker.
+
+Previous checkpoint said NOT_STARTED; this update is an explicit partial handoff. Local working originals were held in `/mnt/data/backup_poc/`, and committed Github scripts are a compact adaptation rather than byte-identical.
