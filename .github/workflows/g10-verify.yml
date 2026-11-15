@@ -10,6 +10,9 @@ on:
       - ".github/workflows/g10-verify.yml"
 permissions:
   contents: read
+concurrency:
+  group: g10-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 jobs:
   contracts:
     name: G10 contract + Vite build (Linux/Windows)
