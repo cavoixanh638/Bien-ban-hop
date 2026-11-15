@@ -56,13 +56,27 @@ async def main():
     await page.select_option('#rate',str(rate));await page.evaluate('poc.seek(298000)')
     await attach_tap(page,engine)
     initial_rss=rss()
+    peak=[initial_rss];monitorActive=[True]
+    async def monitor():
+     while monitorActive[0]:
+      peak[0]=max(peak[0],rss());await asyncio.sleep(.05)
+    task=asyncio.create_task(monitor())
     await page.click('#play')
     await page.wait_for_timeout(2250)
     data=await frequency(page)
-    data.update({'engine':engine,'rate':rate,'rssBytesSnapshot':rss(),'rssBytesInitial':initial_rss,'urlCount':await page.evaluate('poc.player.stats().urls??null'),'maxPending':await page.evaluate('poc.player.stats().maxPending??null'),'errors':errors})
+    monitorActive[0]=False;await task
+    data.update({'engine':engine,'rate':rate,'rssBytesSnapshot':rss(),'rssBytesInitial':initial_rss,'rssBytesPeakObserved':peak[0],'urlCount':await page.evaluate('poc.player.stats().urls??null'),'maxPending':await page.evaluate('poc.player.stats().maxPending??null'),'errors':errors})
     result['measurements'].append(data)
     await page.evaluate('poc.player.pause()')
     await page.close()
+  # Repeated far seeks across 3-hour virtual media, not three hours of wall time.
+  page,errors=await page_from_sources(browser)
+  seek_points=[1000,299000,301000,900000,1799000,1805000,2400000,3599000,3605000,5400000,6030000,6300000,7419900,7422000,8400000,10200000,10799000]
+  baseline=rss();peak=[baseline];all_urls=[];latencies=[];statuses=[]
+  for ms in seek_points:
+   t=time.perf_counter();res=await page.evaluate('ms=>poc.seek(ms)',ms);latencies.append(round(1000*(time.perf_counter()-t),1));statuses.append(res['status']);peak[0]=max(peak[0],rss());all_urls.append(await page.evaluate('poc.player.stats().urls'))
+  result['seekStress']={'engine':'C1','virtualDurationMs':10800000,'wallSeekCount':len(seek_points),'seekTargetsMs':seek_points,'statuses':statuses,'latencyMs':latencies,'urlCounts':all_urls,'maxBlobURLs':max(all_urls),'baselineRssBytes':baseline,'observedPeakRssBytes':peak[0],'note':'snapshots after each seek, not continuously sampled; one synthetic fixture only','errors':errors}
+  await page.close()
   await browser.close()
  ROOT.joinpath('evidence').mkdir(exist_ok=True)
  (ROOT/'evidence'/'synthetic-benchmark.json').write_text(json.dumps(result,indent=2,ensure_ascii=False))
