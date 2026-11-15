@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#114a65">
+  <title>Moc Hop - PWA safety PoC</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <div><p class="overline">MOC HOP / POC 09</p><h1>Offline and multi-tab safety</h1><p class="muted">Synthetic recording fixture only. No microphone capture or real meeting data.</p></div>
+      <div class="version">App <strong data-testid="version">...</strong><br><span data-testid="network">Checking network</span><br><span data-testid="isolation">Checking isolation</span></div>
+    </header>
+    <section class="panel">
+      <h2>Meeting writer lease</h2>
+      <p>Meeting: <code data-testid="meeting-id"></code> | <span data-testid="lease-status">Initializing</span></p>
+      <div class="actions"><button data-testid="acquire">Acquire writer</button><button data-testid="release" disabled>Release writer</button><button data-testid="start" disabled>Start simulated recording</button><button data-testid="stop" disabled>Stop</button></div>
+      <p class="muted" data-testid="recording-status">Fixture idle</p>
+      <p class="muted" data-testid="opfs-status">OPFS: not checked</p>
+    </section>
+    <section class="panel">
+      <h2>Fixture document (IndexedDB)</h2>
+      <p class="muted">The original timeSpan mark stays in the first paragraph. Editing here changes only the second paragraph.</p>
+      <textarea data-testid="notes" rows="5" disabled aria-label="Fixture notes"></textarea>
+      <p data-testid="save-status">Not saved in this tab</p>
+      <p class="muted" data-testid="schema-status">Schema: checking</p>
+      <button data-testid="migrate">Validate / migrate fixture</button>
+    </section>
+    <section class="panel">
+      <h2>Controlled PWA update</h2>
+      <div class="actions"><button data-testid="check-update">Check for update</button><button data-testid="activate" disabled>Activate when safe</button><button data-testid="reload">Reload intentionally</button></div>
+      <p data-testid="update-status">Checking Service Worker</p>
+      <p class="muted">Waiting workers do not call skipWaiting automatically. Activation takes an exclusive maintenance lock; never forces a reload.</p>
+    </section>
+    <section class="panel"><h2>Event log</h2><ol data-testid="log" class="log" aria-live="polite"></ol></section>
+    <footer>Run on localhost or HTTPS. Do not use real meeting data with a shared GitHub Pages origin.</footer>
+  </main>
+</body>
+</html>
