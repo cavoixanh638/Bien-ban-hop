@@ -13,6 +13,7 @@ const $=id=>document.getElementById(id),state={store:null,run:null,lease:new Mee
 const player=new AudioPlayer((type,detail)=>{
   if(type==='unavailable')show('Không phát được: '+(detail.reason??detail.status),'error');
   if(type==='error')show('Lỗi phát: '+detail.message,'error');
+  if(type==='preroll-limited')show('Không có đủ âm thanh trước mốc; phát từ đúng mốc ghi chú, không bỏ qua đoạn thiếu.');
   if(type==='underrun')$('technical-status').textContent='Bộ phát đang thiếu đệm; chưa chứng minh nối mẫu không ngắt.';
   if(type==='playing')$('anchor-status').textContent='Đang phát từ '+(detail.offsetMs/1000).toFixed(2)+' giây · '+detail.recordingId;
 });
