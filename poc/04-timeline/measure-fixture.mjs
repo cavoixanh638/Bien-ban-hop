@@ -42,6 +42,7 @@ function runScenario(sampleRate, driftPpm) {
       typedAt: 1794740000000 + t, inputMonoMs: t, sessionMonoOriginMs: 0, meetingOriginMs: 0 });
     if (resolution.status !== 'valid') throw Error(`nonplayable impulse t=${t}, status=${resolution.status}: ${resolution.reason}`);
     if (anchor.audioOffsetMs !== null && !Number.isInteger(anchor.audioOffsetMs)) throw Error('non-integer anchor');
+    if (resolution.segmentId !== (t < R ? 'first' : 'second')) throw Error(`wrong source segment t=${t}: ${resolution.segmentId}`);
     if (anchor.audioOffsetMs === null || resolve([m], m.recordingId, anchor.audioOffsetMs).status !== 'valid') {
       throw Error(`anchor cannot resolve t=${t}`);
     }
