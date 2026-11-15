@@ -82,9 +82,11 @@ export class SaveQueue {
   async flush() {
     clearTimeout(this.timer); clearTimeout(this.maxTimer);
     this.timer = this.maxTimer = null;
-    if (this.inFlight) { await this.inFlight; if (this.generation === this.durableGeneration) return; }
+    // Reuse the same promise for ALL concurrent flush callers. Do not create a
+    // second writer after awaiting a previously in-flight commit.
+    if (this.inFlight) return this.inFlight;
     if (this.generation === this.durableGeneration) return;
-    this.inFlight = (async () => {
+    const task = (async () => {
       this.onStatus('saving');
       while (this.durableGeneration < this.generation) {
         const target = this.generation;
@@ -97,7 +99,8 @@ export class SaveQueue {
       }
       this.firstDirty = 0; this.onStatus('saved');
     })();
-    try { await this.inFlight; } finally { this.inFlight = null; }
+    this.inFlight = task;
+    try { await task; } finally { if (this.inFlight === task) this.inFlight = null; }
   }
   async drain() {
     await this.flush();
