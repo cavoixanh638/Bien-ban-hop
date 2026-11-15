@@ -26,7 +26,7 @@ The committed fixture follows COMMON.md manifest/Mark fields and adds segment co
 
 ## Test evidence
 
-Local command `npm test`, Node 22.16.0 Linux, 15/15 PASS, 0 FAIL. Tests cover first/end boundaries, pause/gap, bad segment, multiple sources, playback seek/pause, drift and out-of-calibration, pending→valid, wrong-source rejection, manifest conflicts, immutable pre-roll.
+Local command `npm test`, Node 22.16.0 Linux, 16/16 PASS, 0 FAIL. Tests cover first/end boundaries, pause/gap, bad segment, multiple sources, playback seek/pause, drift and out-of-calibration, pending→valid, wrong-source rejection, manifest conflicts, orphan-segment-without-recorded-interval rejection, immutable pre-roll.
 
 Synthetic impulse **clock calculation**: 271 deterministic positions at 37ms steps with synthetic +100ppm clock drift and 48kHz sample counter; expected≤1000ms, observed **maximum 0.508ms** (rounded millisecond output). This measures numerical mapping only, **not real microphone/input event/audio device latency**.
 
