@@ -33,3 +33,10 @@ Entrypoint: [02-capture](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemin
 Chỉ một writer tại nhánh này; tiếp tục từ HEAD hiện hành. Không chờ output luồng khác để chạy PoC riêng. Dùng `poc/02-capture/package.json` và lệnh trong README; chạy trên Windows Chrome/Edge có quyền localhost/HTTPS; lưu kết quả/thông số/log ở `poc/02-capture/evidence/`, cập nhật checkpoint đúng tested SHA. Không tự động đổi kết quả fixture sang nghiệm thu ứng dụng.
 
 WIP/chưa push: **none** · Chặn bên ngoài: browser policy trong container, Windows/micro/screen audio thật và bài thu 3 giờ wall-clock.
+
+## Tiếp tục theo TRACKER G00 — 15/11/2026 (bắt đầu vòng sửa)
+
+- HEAD tiếp nhận: `8a9780cf01e3b7e0a014ddf76bdbf9db1f2ad7e8`; so sánh Git blob local 18/18 trùng blob SHA trên HEAD; source cục bộ tại `/mnt/data/capture-work/poc/02-capture`, worktree tạm ban đầu chưa ánh xạ commit remote.
+- Đã đọc TRACKER.md tại nhánh `gemini/20261115-00-command`. Các mã `G02-ADD-01..04` còn cần fix và negative regressions; `G02-ADD-05` cần streaming/rolling diagnostic, benchmark browser/Windows.
+- Trạng thái: IN_PROGRESS. Kiểm thử mới: NOT_RUN tại mốc này; giữ bằng chứng Node 11/11 đã có không chạy lại khi chưa bị ảnh hưởng.
+- Mục tiêu: vòng sửa race lifecycle, cleanup fail-closed, đồng hồ worklet/context ↔ performance timestamp, guard pool allocations và benchmark streaming; test Node exact code rồi commit/push chỉ scope G02. TC12/14/17/21 cần browser/Windows sẽ ghi NOT_RUN nếu chưa có môi trường phù hợp.
