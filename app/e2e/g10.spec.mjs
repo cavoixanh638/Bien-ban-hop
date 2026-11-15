@@ -50,7 +50,12 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
   const marked=page.locator('.tiptap [data-time-recording-id]');
   await expect(marked.first()).toBeVisible({timeout:10000});
   await marked.first().click();
-  // Playback status can report genuine missing/pending; these must NOT silently become another recording.
-  await expect(page.locator('#anchor-status')).toContainText(/Đang phát|Mốc |Đoạn chữ/);
+  // This must actually invoke the durable OPFS player, not merely select a mark.
+  await expect(page.locator('#anchor-status')).toContainText('Đang phát từ',{timeout:20000});
+  await page.locator('#play-stop').click();
+  await page.reload();
+  await expect(page.locator('.tiptap [data-time-recording-id]').first()).toBeVisible({timeout:15000});
+  await page.locator('.tiptap [data-time-recording-id]').first().click();
+  await expect(page.locator('#anchor-status')).toContainText('Đang phát từ',{timeout:20000});
   expect(errors).toEqual([]);
 });
