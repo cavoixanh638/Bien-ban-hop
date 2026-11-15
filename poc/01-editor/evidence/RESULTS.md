@@ -21,7 +21,7 @@ node --test tests/policy.test.mjs
 ```
 
 - JS syntax: **PASS** với các tệp liệt kê.
-- Node built-in tests: **23/23 PASS, 0 FAIL**, chạy dựa trên các hàm logic phụ thuộc 0 thư viện; log TAP có trong terminal phiên làm việc, không phải GitHub Actions.
+- Node built-in tests: **23/23 PASS, 0 FAIL**, chạy dựa trên các hàm logic phụ thuộc 0 thư viện; log TAP tại [`policy-node22.tap.md`](policy-node22.tap.md), chạy từ bản sao code/test độc lập không cần node_modules (không phải checkout GitHub sạch hoặc CI).
 - `npm install`, `npm run build`, Playwright browser test: **NOT_RUN** do npm registry không truy cập được.
 - P95 gõ với trình duyệt và Unicode composition của máy Windows: **NOT_RUN**.
 - Các phép đo Node chỉ kiểm **quy tắc thuần**; `TC02 synthetic` chỉ là 120 bước logic, **không phải** gõ trong 120 giây qua bộ gõ thật.
