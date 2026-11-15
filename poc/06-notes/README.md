@@ -1,54 +1,45 @@
-# 06-notes — Meeting / NoteDocument / IndexedDB PoC
+# 06-notes · Kho cuộc họp, tìm kiếm và autosave (PoC độc lập)
 
-Independent workstream implementation for Mốc Họp V1.2. No real audio, microphone, PWA, backup or actual ProseMirror editor are bundled.
+**Phạm vi:** Meeting / NoteDocument / EditJournal / revision; IndexedDB adapter; tìm kiếm tiếng Việt; giao diện thử quản lý cuộc họp. Không bao gồm editor Tiptap thực, thu âm OPFS, backup .mochop, đa tab Web Locks hoặc ứng dụng phát hành.
 
-## Run
+## Cách chạy
 
-From a clean checkout of branch \`gemini/20261115-06-notes\`:
+Yêu cầu Node.js >=20 cho bộ test. Từ thư mục `poc/06-notes`:
 
-\`\`\`sh
-cd poc/06-notes
-node --test notes.test.mjs
+```sh
+node --test --test-reporter=tap notes.test.mjs notes.regression.test.mjs
+node bench_autosave.mjs
 python -m http.server 8765
-\`\`\`
+```
 
-Open \`http://localhost:8765/\` in Chrome/Edge (the server must run inside \`poc/06-notes\`). The demo uses browser IndexedDB at that origin, without installing packages or network calls. Avoid opening \`file://\` (storage/origin restrictions). If a different port/origin is used, its IndexedDB is separate.
+Mở `http://localhost:8765/` để dùng demo IndexedDB. Dữ liệu được cô lập theo origin (`localhost:8765` khác `127.0.0.1:8765` hoặc port khác). Không dùng `file://`.
 
-## Contract and boundaries
+Kiểm thử trình duyệt thật tùy chọn: cài `playwright` cho Python và Chromium; sau đó chạy `python browser_smoke.py`. Script tự mở HTTP origin localhost, thử ProseMirror round-trip, hai trang cùng ghi một revision, reload và rollback giao dịch. Biến môi trường `CHROMIUM_EXECUTABLE` trỏ đến binary Chrome/Chromium nếu cần. Script dùng dữ liệu tổng hợp và database tên ngẫu nhiên.
 
-- \`notes.mjs\`: \`openIndexedDB\`, \`NotesRepository\`, \`Autosave\`, \`createMockLease\`, \`migrateNote\`, \`createMemoryDB\`.
-- Storage: \`meetings\`, \`notes\`, \`journals\` IndexedDB object stores; a write transaction covers snapshot + append-only committed revision entry + meeting timestamp. The revision returned by \`saveNote(content, expectedRevision)\` is only an ACK when the transaction's \`oncomplete\` fires. An aborted transaction cannot falsely advance the revision.
-- ProseMirror content is preserved as JSON (including text, rich text marks, \`timeSpan.attrs\`, anchor IDs, Vietnamese diacritics). Full-text search strips diacritics from query and indexed text in memory. The path into the corresponding meeting is returned.
-- \`migrateNote\` reads legacy \`{schemaVersion:0,text:"…"}\` without modifying the old storage, upgrades to \`{type:"doc",content:[…]}\` in memory, then writes schema 1 only after a subsequent successful save. Unknown newer schemas are rejected.
-- Lease interface: \`acquire(meetingId) => Promise<{ held, release() }|null>\`. The bundled mock rejects a second writer **within one JS instance only**. Integrate with real multi-tab Web Locks implementation from 09-pwa before shipping.
-- Audio reference adapter: \`canDelete(recordingIds, meeting)\` may veto deletion; \`onDelete(recordingIds, meeting)\` is a fake cleanup hook. Actual audio files are owned by 03-opfs; all-in-one restoration is owned by 07-backup.
-- \`Autosave\` defaults: trailing debounce 350 ms, maximum scheduling wait 1500 ms after first unsaved edit; status is \`dirty/saving/saved/error/conflict\`. These timers **do not guarantee** a transaction finishes within two seconds or survive a browser kill. Failed/conflicting writes remain unacknowledged. Errors must be shown to the user; do not equate dispatch with durable commit.
-- Journals preserve committed snapshots, not uncommitted keystrokes. Recovery is to load the latest committed document; unacknowledged typing can be lost on crash.
+## Hợp đồng bàn giao
 
-## Demo limitations
+- `openIndexedDB(name, indexedDBImpl?)` tạo ba object store `meetings`, `notes`, `journals` và trả `{run(stores, mode, fn), close()}`. Mutation ghi snapshot, journal và cập nhật meeting trong cùng một transaction. `run()` chỉ trả kết quả khi `transaction.oncomplete` phát sinh, không ở `IDBRequest.onsuccess`.
+- `NotesRepository`: `createMeeting`, `getMeeting`, `listMeetings`, `renameMeeting`, `deleteMeeting`, `getNote`, `getJournal`, `saveNote(noteDocumentId, content, expectedRevision, lease?)`, `search(query)`.
+- Dữ liệu `NoteDocument` lưu nguyên ProseMirror JSON, gồm các `timeSpan` Mark và attributes do editor cung cấp. Không nhúng file-status vào Mark. Kết quả `search()` gồm `meetingId`, `noteDocumentId`, `snippet`, `location`, `length` theo offset UTF-16 của văn bản gốc, kể cả tìm không dấu.
+- `migrateNote` đọc schema cũ (`{schemaVersion:0,text:'…'}`) thành JSON trong bộ nhớ mà không rewrite dữ liệu cũ trước khi lưu thành công; schema mới hơn bị từ chối, không downgrade. 
+- `Autosave` debounce 350 ms, maxWait timer 1.500 ms kể từ lần sửa chưa lưu đầu tiên, tuần tự flush các lần sửa thêm trong khi đang commit; trạng thái `dirty/saving/saved/error/conflict`. `saved` chỉ được phát sau ACK. Nếu `dispose` mà còn dirty/in-flight, hàm báo lỗi thay vì thả lease và làm mất thay đổi. Lỗi cần retry thủ công, không tự báo thành công.
+- Mock lease `acquire(meetingId) => {held,release()} | null`, dùng identity token để stale release không ảnh hưởng lease hiện tại. **Không phải khóa đa tab thật**; người tích hợp cần adapter Web Locks của 09-pwa.
+- Audio adapter giả `canDelete(recordingIds, meeting)` có thể chặn xóa cuộc họp; `onDelete(recordingIds, meeting)` chỉ là hook. Audio vật lý thuộc 03-opfs. Đồng bộ tham chiếu và xử lý race với backup/restore thật thuộc đợt tích hợp.
 
-The textarea demo is intentionally **plain text only**. It creates a ProseMirror document with paragraph/text nodes and autosaves it; it is disabled when a stored note contains marks, so editing the demo cannot accidentally destroy a \`timeSpan\`. A real Tiptap/ProseMirror editor from 01-editor is needed to edit marked documents. This is an independent proof-of-concept, not the final product.
+## Demo và giới hạn
 
-Meeting deletion is confirmed in the demo. It checks the audio-reference adapter before the database transaction and preserves note documents if referenced by another meeting. For production, revalidate audio reference integrity under a coordinated deletion protocol to avoid a race with concurrent audio references.
+Demo dùng `textarea` để tạo **chỉ nội dung plain paragraph/text**; nếu tài liệu có Mark, heading hoặc cấu trúc ProseMirror ngoài dạng này, vùng chỉnh sửa được khóa để tránh làm mất dữ liệu. Chỉ editor của 01-editor mới được sửa văn bản giàu định dạng và mốc trong ứng dụng tích hợp.
 
-## Tests and provenance
+`EditJournal` là các **snapshot đã commit**, không có log của ký tự chưa được xác nhận. Sau sự cố chỉ khôi phục đến revision hoàn tất; dữ liệu mới nhập còn dirty có thể mất. Bộ nhớ IndexedDB thuộc trình duyệt/origin, không thay cho backup ngoài trình duyệt.
 
-\`notes.test.mjs\` provides nine isolated, repeatable tests with synthetic fixtures:
+## Kiểm thử và bằng chứng
 
-1. create/rename/reopen/delete;
-2. lossless Vietnamese/marks/anchor round-trip, full-text search, committed journal;
-3. revision conflicts;
-4. quota-like failed commit with no false acknowledgment;
-5. lease collision, autosave status;
-6. failed autosave with retry;
-7. legacy schema non-destructive migration;
-8. future schema rejection;
-9. audio reference delete veto.
+Xem [báo cáo Node 22 và browser attempt](evidence/20261115-node22-browser.md) và [checkpoint G06](../../docs/workstreams/2026-11-15/checkpoints/06-notes.md) để biết Code SHA / Tested SHA / PASS / NOT_RUN.
 
-During initial preparation, these nine test functions ran in the ChatGPT JavaScript V8 test harness against the committed \`notes.mjs\` source, 9 PASS / 0 FAIL. **That harness is not the Node CLI and it uses a deterministic memory adapter.** The following remain NOT_RUN: \`node --test\` from an independent checkout; browser IndexedDB transaction, quota, crash/kill and persistence verification; Chrome/Edge on Windows; timed 2-second data-loss window under real browser load; and integrated TC29/TC35. A CI or human tester must run these before marking the workstream DONE.
+- `notes.test.mjs`: 9 ca gốc, không chạy lại bằng V8 shim.
+- `notes.regression.test.mjs`: 13 ca bổ sung về Unicode offset, autosave trong khi in-flight, writer lease, rollback/index/quota mô phỏng, schema cũ, hai kết nối race, crash giả lập và timeSpan.
+- **Node Linux v22.16.0: 22/22 PASS**, files được tái tạo trong thư mục độc lập và xác minh Git blob trùng đúng với tệp trên GitHub tại Code SHA. Không thể `git clone` trực tiếp do DNS container; **không gọi đó là clean Git checkout**.
+- Benchmark Node trên fixture: 36 edits / 3,08 giây, 2 revision xác nhận, max và P95 unconfirmed **1.526 ms**. Mục tiêu khoảng 2 giây **chưa được đo trên browser thật**.
+- Chromium 144 trên Linux: **NOT_RUN IndexedDB browser** vì chính sách quản trị chặn localhost với `ERR_BLOCKED_BY_ADMINISTRATOR`. Windows Chrome/Edge, crash process/kill, quota thật, Web Locks hai tab và TC29/TC35 tích hợp: **NOT_RUN**.
 
-## Relevant acceptance mapping
-
-- **TC29, partial (memory fixture only):** revision ACK after commit, autosave dirty/error state and retry; real IndexedDB crash/quota/reload NOT_RUN.
-- **TC35, partial (memory fixture only):** migration legacy fixture and future-schema refusal; real browser upgrade/restore NOT_RUN.
-- **TC32:** only mock in-process lease, not the real multi-tab lock; NOT_RUN.
+**Tình trạng:** mã và test PoC độc lập đã commit; chưa đủ điều kiện DONE toàn bộ entrypoint khi browser IndexedDB thật còn NOT_RUN. Tuyệt đối không dùng kết quả giả lập để nhận PASS sản phẩm.
