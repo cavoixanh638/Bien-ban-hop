@@ -260,3 +260,41 @@ test('TC07 / copied HTML contains no internal audio IDs but trusted MIME retains
   expect(copied.html).not.toContain('data-time-');
   expect(copied.token).toBe(true);
 });
+
+test('G01-ADD-01 / pending clock resolves only after a second confirmed sample point', async ({ page }) => {
+  await openEditor(page);
+  await page.locator('#coverage').selectOption('pending');
+  await page.locator('.tiptap').click();
+  await page.keyboard.type('truong');
+  const before = (await getRuns(page)).find(r => r.anchor)?.anchor;
+  expect(before).toBeTruthy();
+  expect(before.source).toBe('unlinked');
+  expect(before.recordingId).toBeNull();
+  expect(before.audioOffsetMs).toBeNull();
+  const pending = await page.evaluate(() => window.__mochop.pendingState());
+  expect(pending.records).toHaveLength(1);
+  expect(pending.records[0].recordingId).toBe('demo-recording-01');
+  await page.locator('#clock-progress').click();
+  const after = (await getRuns(page)).find(r => r.anchor)?.anchor;
+  expect(after.recordingId).toBe('demo-recording-01');
+  expect(after.audioOffsetMs).toBeGreaterThanOrEqual(0);
+  expect(after.source).toBe('live_recording');
+  expect(after.anchorId).toBe(before.anchorId);
+  expect(after.typedAt).toBe(before.typedAt);
+  expect((await page.evaluate(() => window.__mochop.pendingState())).records).toHaveLength(0);
+});
+
+test('G01-ADD-01 / pause-gap before next calibration never fabricates a linked mark', async ({ page }) => {
+  await openEditor(page);
+  await page.locator('#coverage').selectOption('pending');
+  await page.locator('.tiptap').click();
+  await page.keyboard.type('tieng');
+  const before = (await getRuns(page)).find(r => r.anchor)?.anchor;
+  expect(before.recordingId).toBeNull();
+  await page.locator('#coverage').selectOption('gap');
+  const result = await page.evaluate(() => window.__mochop.finalizePending());
+  expect(result.applied).toBe(0);
+  const after = (await getRuns(page)).find(r => r.anchor)?.anchor;
+  expect(after.recordingId).toBeNull();
+  expect(after.audioOffsetMs).toBeNull();
+});

@@ -44,12 +44,17 @@
 - Nguồn audio giả lập; không có audio/video họp thật trong repo. Không thay đổi G00 `COMMON.md` hoặc nhánh khác; không merge/deploy.
 - **Kết luận: IN_PROGRESS.** Code và fixture độc lập được cải thiện, cần 4 ca Windows IME thật và browser Tiptap qua gate mới `READY_FOR_REVIEW`.
 
-## Hồi quy sau TRACKER G00 — theo TRACKER G00 mới nhất (blob e4d613ac)
+## Bổ sung sau G00 TRACKER / hồi quy 45 tests
 
-- Mã mới/Code SHA đã push: `78aa598d423bba2ebc3bba3562e6bcbea2c2f644`.
-- G00 phát hiện checkpoint G01 thiếu Code SHA/Tested SHA sau cập nhật 41 tests. Đã bổ sung test hồi quy và chốt mốc trong checkpoint commit kế tiếp.
-- **Cụ thể ba lỗi đã sửa:** (1) Undo/Redo bị lọc khỏi collectTextChanges trước khi `InputTracker` reset burst và paste — thao tác gõ sau history có thể tái dùng mốc cũ; (2) con trỏ tại biên linked/unlinked hoặc foreign-invalid trả nhầm mốc bên cạnh thay vì `ambiguous`; (3) HTML copy ra ứng dụng ngoài mang `data-time-*` tiết lộ recordingId/audioOffsetMs — đã strip các thuộc tính trên HTML ngoài và giữ immutable Slice trong token store nội bộ.
-- **PASS:** `npm run test:unit` Node v22.16.0, Linux x86_64, 45/45 bài, 0 FAIL, exit 0. `node --check` mọi `src/*.mjs`, `tests/*.mjs`, `scripts/*.mjs`: PASS. Bài mới chỉ sử dụng fixture + ProseMirror-like mock, không chứng minh hoạt động Tiptap.
-- **NOT_RUN:** Tiptap build/Vite/Playwright editor E2E vì không có npm package cache, registry DNS không truy cập được (thử `npm install --offline --package-lock-only` nhận `ENOTCACHED`). Windows Chrome/Edge + 4 tổ hợp UniKey/EVKey × Telex/VNI, 120 giây gõ thật, Word clipboard, P95 trên máy người dùng vẫn **NOT_RUN**.
-- Đã viết thêm **2 browser E2E specs** về cursor linked/unlinked và clipboard HTML để chạy khi có dependency; chưa có runtime browser PASS.
-- Log ngắn: [`evidence/node22-45-summary.md`](evidence/node22-45-summary.md). SHA source được đối chiếu theo Git blob 4/4 trước push; không báo là chạy Node từ `git clone` sạch.
+- HEAD input từ Github: `71595a60626396fa07f04e539c12c9e7fb0da675`; G00 yêu cầu cập nhật Code/Tested SHA bị lệch.
+- Lỗi sửa mới phát hiện bằng thử âm tính: `append()` trả trước khi reset trạng thái Undo/Redo vì collector đã lọc transaction `history$`; hậu quả `active/pendingDeletion/pendingPaste` có thể còn sót, khiến văn bản gõ sau Undo thừa hưởng mốc cũ. Đã đưa history reset lên đầu; unit chứng minh reset và mốc mới sau history.
+- Cursor đúng biên chữ có link và chữ không link trước kia trả linked dù không biết bên nào; giờ trả `ambiguous`, tương tự biên giữa nguồn hợp lệ/foreign-invalid, tránh nghe nhầm đoạn.
+- Sao chép ra HTML hệ điều hành trước kia mang thuộc tính `data-time-*` (recording/offset/anchor). Giờ xóa timeSpan ở phần HTML nhưng vẫn giữ ProseMirror Slice gốc theo token cục bộ cho thao tác di chuyển đáng tin cậy; nhánh paste ngoài/cross-meeting vẫn unlinked.
+- Node fixture 45/45 PASS, 0 FAIL, exit 0, Linux Node v22.16.0. Cú pháp source/test PASS. Log ngắn: [`node22-45-summary.md`](node22-45-summary.md). **Không** đổi TC01–TC11 tổng thể sang PASS.
+- Tiptap/Vite/Playwright NOT_RUN: `npm install --offline --package-lock-only` thất bại `ENOTCACHED` vì `@playwright/test` không có cache; DNS github.com/registry.npmjs.org không phân giải. Windows IME 4 tổ hợp + 120s gõ thật và P95 vẫn NOT_RUN.
+
+## G01-ADD-01 — Bằng chứng logic chưa thay cổng thực địa
+
+Phát hiện của G00 tại `TRACKER.md` blob `bae8bf111fe13633f7734be08bf8231586539293`: nguồn âm thanh `pending` do clock chưa có mapping point kế tiếp từng bị biến thành `unlinked` mà không còn provenance. Bản PoC mới giữ dữ liệu tại `PendingLinkJournal` ngoài Mark và có kịch bản t=1500 ms → pending → valid 1500 ms khi t=2000 đến. Mark trước khi xác minh không mang offset giả. Các trường hợp đổi dấu, Undo, copy đôi, xóa, source sai, pause/gap/stop, mở lại offline và thay meeting đều có Node regression.
+
+**Phân loại:** Node unit fixture PASS theo log `evidence/g01-add01-node-tests.tap` (Code SHA ghi tại checkpoint sau push). Browser Tiptap/Vite/Playwright E2E: **NOT_RUN**; Windows UniKey/EVKey × Telex/VNI, 120s, tải nặng, latency P95: **NOT_RUN**. TC01–TC11 tổng thể **HOLD**. Không đụng COMMON, G00 tracker hoặc dữ liệu luồng khác.

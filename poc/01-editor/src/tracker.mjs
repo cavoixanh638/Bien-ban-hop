@@ -6,6 +6,7 @@ import {
   makeAnchor, normalizeContext, p95, safeKeyboardKey, sameAnchor, shouldCoalesce, shouldRetainWordAnchor, wordRange,
 } from './policy.mjs';
 import { collectTextChanges } from './step-changes.mjs';
+import { PendingLinkJournal, pendingContext } from './pending-links.mjs';
 
 const trackerKey = new PluginKey('mochop-input-tracker');
 const TRACE_LIMIT = 10000;
@@ -150,6 +151,10 @@ export class InputTracker {
     if (!meetingId || typeof getAudioContext !== 'function') throw new Error('meetingId + getAudioContext required');
     this.meetingId = meetingId;
     this.allowed = new Set(recordingIds || []);
+    // Stores *provisional provenance outside* ProseMirror JSON. The unlinked
+    // timeSpan contains only the six frozen attrs until a verified clock pair
+    // and coverage for the SAME interval permit finalization.
+    this.pendingLinks = new PendingLinkJournal({ meetingId, recordingIds: this.allowed });
     this.getAudioContext = getAudioContext;
     this.clock = clock || { mono: () => performance.now(), epoch: () => Date.now() };
     this.maxTrace = maxTrace;
@@ -178,10 +183,46 @@ export class InputTracker {
     const raw = this.getAudioContext(mono) || {};
     let normalized = normalizeContext(raw);
     if (normalized.recordingId && !this.allowed.has(normalized.recordingId)) normalized = normalizeContext({ source: 'unlinked' });
-    return { ...normalized, epoch: raw.epoch ?? 0, coverage: raw.coverage ?? 'valid' };
+    const pending = pendingContext(raw, mono, this.allowed);
+    return { ...normalized, epoch: raw.epoch ?? 0, coverage: raw.coverage ?? 'valid', pending };
   }
-  newAnchor(context, epoch) {
-    return makeAnchor(context, { anchorId: `span-${this.sessionId}-${++this.nextId}`, typedAt: epoch });
+  newAnchor(context, epoch, insertedLength = 0) {
+    const mark = makeAnchor(context, { anchorId: `span-${this.sessionId}-${++this.nextId}`, typedAt: epoch });
+    if (context.pending) {
+      const registered = this.pendingLinks.register(mark, context.pending, insertedLength);
+      // A journal-capacity error must remain harmless unlinked text.
+      if (!registered) this.log('pending-unlinked', { reason: 'invalid-or-full-journal' });
+      else this.log('pending-created', { anchorId: mark.anchorId });
+    }
+    return mark;
+  }
+  exportPendingState() { return this.pendingLinks.exportState(); }
+  restorePendingState(snapshot, doc) { return this.pendingLinks.restoreState(snapshot, doc); }
+  // A G02/G04 adapter may call this after receiving another confirmed clock
+  // mapping point. Never mutate the note while IME composition is active.
+  finalizePendingLinks(resolver, view = this.view) {
+    if (this.meetingId !== this.pendingLinks.meetingId) {
+      return { status: 'blocked', reason: 'meeting-changed', applied: 0, pending: this.pendingLinks.size };
+    }
+    if (!view || this.composing) return { status: 'deferred', applied: 0, pending: this.pendingLinks.size };
+    const { plans, results } = this.pendingLinks.prepare(view.state.doc, resolver);
+    if (!plans.length) return { status: 'unchanged', applied: 0, pending: this.pendingLinks.size, results };
+    const tr = view.state.tr;
+    const type = view.state.schema.marks.timeSpan;
+    for (const plan of plans) {
+      for (const { from, to } of plan.ranges) {
+        tr.removeMark(from, to, type);
+        tr.addMark(from, to, type.create(plan.mark));
+      }
+    }
+    if (!tr.docChanged) return { status: 'unchanged', applied: 0, pending: this.pendingLinks.size, results };
+    tr.setMeta('mochop:mark-applied', true);
+    tr.setMeta('addToHistory', false); // clock calibration is not a user edit
+    // Do not acknowledge finalization until the view accepted the transaction.
+    view.dispatch(tr);
+    this.pendingLinks.complete(plans);
+    this.log('pending-finalized', { count: plans.length });
+    return { status: 'applied', applied: plans.length, pending: this.pendingLinks.size, results };
   }
   reset(reason) {
     this.active = null;
@@ -221,7 +262,7 @@ export class InputTracker {
     if (!range || range.from === range.to) return;
     const previous = safeSource(base.oldAnchor, this.allowed) || safeSource(nearMark(view.state.doc, range.from), this.allowed);
     const ctx = this.getContext(base.now.mono);
-    const anchor = previous || this.active?.anchor || this.newAnchor(ctx, base.now.epoch);
+    const anchor = previous || this.active?.anchor || this.newAnchor(ctx, base.now.epoch, range.to - range.from);
     const mark = view.state.schema.marks.timeSpan.create(anchor);
     const tr = view.state.tr;
     // Only unmarked portions of the composition word, not existing neighbors.
@@ -331,6 +372,7 @@ export class InputTracker {
       const anchorEpoch = currentIntent?.epoch ?? now.epoch;
       const type = currentIntent?.type || change.inputType || 'unknown';
       if (!insertedText.length) {
+        if (oldRangeAnchor && deletedText.length) this.pendingLinks.noteEdit(oldRangeAnchor.anchorId, -deletedText.length);
         if (deletedText.length > 0 && deletedText.length <= 3 && !hasWordBoundary(deletedText) && oldAnchor) {
           this.pendingDeletion = { pos: from, oldAnchor, at: now.mono, deletedText };
         } else this.pendingDeletion = null;
@@ -354,12 +396,19 @@ export class InputTracker {
       const canGroup = shouldCoalesce(this.active, { monotonicMs: now.mono, from,
         insertedLength: insertedText.length, insertedText, contextEpoch: context.epoch,
         recordingId: context.recordingId, source: context.source, contextState: context.coverage,
+        pendingGeneration: context.pending?.generation, pendingIntervalId: context.pending?.intervalId,
         isPaste, isHistory, isNewIdea: false });
       let anchor;
       if (isPaste) anchor = this.newAnchor({ source: 'paste' }, anchorEpoch);
       else if (keepOld) anchor = stable;
       else if (canGroup) anchor = this.active.anchor;
-      else anchor = this.newAnchor(context, anchorEpoch);
+      else anchor = this.newAnchor(context, anchorEpoch, insertedText.length);
+      // A known pending word may have been transformed by IME (replacement or
+      // Backspace+Insert). Preserve its original input time; only update the
+      // expected UTF-16 length to detect pasted duplicates/ghost ranges.
+      if ((keepOld || canGroup) && anchor && this.pendingLinks.has(anchor.anchorId)) {
+        this.pendingLinks.noteEdit(anchor.anchorId, insertedText.length - deletedText.length);
+      }
       // A valid source must match the explicitly allowed meeting recordings.
       const safe = safeSource(anchor, this.allowed) || this.newAnchor({ source: 'unlinked' }, anchorEpoch);
       tr.addMark(from, to, newState.schema.marks.timeSpan.create(safe));
@@ -369,6 +418,7 @@ export class InputTracker {
       this.pendingDeletion = null;
       this.active = isPaste || hasWordBoundary(insertedText) ? null : {
         anchor: safe, contextEpoch: context.epoch, contextState: context.coverage,
+        pendingGeneration: context.pending?.generation, pendingIntervalId: context.pending?.intervalId,
         startMonoMs: canGroup && this.active ? this.active.startMonoMs : now.mono,
         monotonicMs: now.mono, nextPos: to,
         charCount: canGroup && this.active ? this.active.charCount + insertedText.length : insertedText.length,
@@ -405,6 +455,7 @@ export class InputTracker {
       while (walker.nextNode()) count += 1;
       return count;
     })() : null;
+    metrics.pendingAnchors = this.pendingLinks.size;
     metrics.p95AppendMs = p95(this.latencies);
     metrics.samples = this.latencies.length;
     metrics.p95InputToPaintMs = p95(this.inputPaintLatencies);
@@ -428,6 +479,7 @@ export class InputTracker {
         hasCompositionEvents: this.trace.some(event => event.kind.startsWith('composition')),
         hasBackspace: this.trace.some(event => event.kind === 'keydown' && event.key === 'Backspace'),
       },
+      // Never export out-of-band pending input timing in an IME trace.
       metrics: this.snapshot(), events: this.trace };
   }
 }

@@ -25,8 +25,9 @@ export function normalizeContext(context = {}) {
   const audioOffsetMs = Number.isFinite(context.audioOffsetMs) && context.audioOffsetMs >= 0
     ? Math.round(context.audioOffsetMs) : null;
   // Never invent a media position when paused/gap/micro lost/unavailable.
-  if (!recordingId || audioOffsetMs === null || context.coverage === 'gap'
-    || context.coverage === 'missing' || context.coverage === 'unavailable'
+  if (!recordingId || audioOffsetMs === null || context.coverage === 'pending'
+    || context.coverage === 'gap' || context.coverage === 'missing'
+    || context.coverage === 'unavailable'
     || source === 'unlinked' || source === 'paste' || source === 'historical_edit') {
     return { recordingId: null, audioOffsetMs: null, source: source === 'paste' ? 'paste' : 'unlinked' };
   }
@@ -71,7 +72,11 @@ export function shouldCoalesce(previous, next, config = {}) {
     && next.contextEpoch === previous.contextEpoch
     && next.recordingId === previous.anchor.recordingId
     && next.source === previous.anchor.source
-    && next.contextState === previous.contextState;
+    && next.contextState === previous.contextState
+    // Pending links have null recordingId in their Mark by design. A change
+    // of capture generation/interval must still break coalescing immediately.
+    && (previous.pendingGeneration ?? null) === (next.pendingGeneration ?? null)
+    && (previous.pendingIntervalId ?? null) === (next.pendingIntervalId ?? null);
 }
 
 // Conservative: only a short same-word revision can retain an existing mark.

@@ -30,10 +30,12 @@
         <label for="source">Nguồn của chữ mới</label>
         <select id="source"><option value="live_recording">Micro đang ghi</option><option value="imported_playback">Đang phát file nhập</option><option value="playback_paused">File đang tạm dừng</option><option value="unlinked">Không có nguồn</option></select>
         <label for="coverage">Coverage (mô phỏng)</label>
-        <select id="coverage"><option value="valid">Vùng hợp lệ</option><option value="gap">Gap / mất audio</option><option value="missing">File thiếu</option><option value="unavailable">Chưa có nguồn</option></select>
+        <select id="coverage"><option value="valid">Vùng hợp lệ</option><option value="pending">Chờ xác nhận clock (fixture)</option><option value="gap">Gap / mất audio</option><option value="missing">File thiếu</option><option value="unavailable">Chưa có nguồn</option></select>
         <label for="offset">Mốc audio đầu vào <output id="offset-value">45 giây</output></label>
         <input type="range" id="offset" min="0" max="3600000" step="1000" value="45000">
         <div class="muted" id="context-preview"></div>
+        <button id="clock-progress" disabled>Xác nhận điểm clock kế tiếp (fixture)</button>
+        <small>Chỉ kết nối mốc đang chờ khi có 2 điểm hợp lệ cùng recording, generation và interval; không gán sang gap/pause.</small>
         <h2>Mốc tại con trỏ</h2>
         <pre id="anchor-inspector" aria-live="polite">Chưa có mốc</pre>
         <h2>Đo lường</h2>
@@ -50,7 +52,7 @@
           <button id="start-load">Giả lập máy tải nặng 15 s</button>
           <small id="load-state">no load</small>
         </div>
-        <div class="actions"><button id="export-document">Xuất NoteDocument JSON</button><button id="export-trace">Tải trace đã lược nội dung gõ</button></div>
+        <div class="actions"><button id="export-document">Xuất NoteDocument JSON</button><button id="export-pending">Xuất pending journal riêng</button><button id="export-trace">Tải trace đã lược nội dung gõ</button></div>
         <small>Trace chỉ ghi loại sự kiện, vị trí, độ dài, metadata mốc; không lưu ký tự vừa gõ hay HTML clipboard. Kiểm tra lại tệp trước khi chia sẻ.</small>
       </aside>
     </main>

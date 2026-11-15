@@ -24,7 +24,7 @@ test('TC01: all six source values explicitly recognized', () => {
   assert.deepEqual(normalizeContext({ recordingId: 'rec', source: 'imported_playback', audioOffsetMs: 35 }),
     { recordingId: 'rec', source: 'imported_playback', audioOffsetMs: 35 });
 });
-for (const coverage of ['gap', 'missing', 'unavailable']) {
+for (const coverage of ['gap', 'missing', 'unavailable', 'pending']) {
   test(`TC01: ${coverage} never gets an invented audio offset`, () => {
     assert.deepEqual(normalizeContext({ recordingId: 'rec', audioOffsetMs: 12000, coverage, source: 'live_recording' }),
       { recordingId: null, audioOffsetMs: null, source: 'unlinked' });

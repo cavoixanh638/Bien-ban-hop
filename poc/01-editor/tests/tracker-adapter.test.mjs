@@ -9,6 +9,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const base = new URL('../src/', import.meta.url);
 const policyUrl = new URL('policy.mjs', base).href;
 const changesUrl = new URL('step-changes.mjs', base).href;
+const pendingUrl = new URL('pending-links.mjs', base).href;
+const clockUrl = new URL('../fixtures/pending-clock.mjs', base).href;
 let source = fs.readFileSync(fileURLToPath(new URL('tracker.mjs', base)), 'utf8');
 source = source.replace("import { Extension, Mark } from '@tiptap/core';", `
 const Extension = { create: value => value };
@@ -29,8 +31,11 @@ class PluginKey { constructor(key) { this.key = key; } }
 `);
 source = source.replace("} from './policy.mjs';", `} from '${policyUrl}';`);
 source = source.replace("import { collectTextChanges } from './step-changes.mjs';", `import { collectTextChanges } from '${changesUrl}';`);
+source = source.replace("import { PendingLinkJournal, pendingContext } from './pending-links.mjs';",
+  `import { PendingLinkJournal, pendingContext } from '${new URL('pending-links.mjs', base).href}';`);
 const mod = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const { InputTracker, Fragment, Slice, readAnchorAtCursor } = mod;
+const { CalibratedClockFixture } = await import(clockUrl);
 
 class FakeNode {
   constructor(text, anchor = null) {
@@ -99,7 +104,8 @@ function makeNewState(doc) {
   const marks = [];
   const tr = { docChanged: false, marks,
     addMark(from, to, mark) { this.docChanged = true; marks.push({ from, to, mark }); return this; },
-    setMeta() { return this; },
+    removeMark(from, to, type) { this.docChanged = true; this.removed = [...(this.removed || []), { from, to, type }]; return this; },
+    setMeta(k, v) { (this.meta ||= new Map()).set(k, v); return this; },
   };
   return { doc, tr, schema: { marks: { timeSpan: { create: attrs => ({ attrs }) } } } };
 }
@@ -281,4 +287,111 @@ test('TC08: Undo/Redo metadata does not cause automatic re-anchoring', () => {
   assert.equal(postHistory.marks.length, 1);
   assert.notEqual(postHistory.marks[0].mark.attrs.anchorId, anchorA.anchorId);
   assert.equal(postHistory.marks[0].mark.attrs.audioOffsetMs, 95000);
+});
+
+function newPendingTracker() {
+  const context = { source: 'live_recording', recordingId: 'rec-1',
+    audioOffsetMs: null, coverage: 'pending', epoch: 9, generation: 'generation-1', intervalId: 'interval-1' };
+  const runtime = newTracker(context);
+  runtime.advance(500); // t=1500, between t=1000 and unreceived t=2000
+  const t = new CalibratedClockFixture({ meetingId: 'meet-1', recordingId: 'rec-1',
+    generation: 'generation-1', intervalId: 'interval-1' });
+  t.progress(0, 0);
+  t.progress(1000, 48000);
+  return { ...runtime, t };
+}
+function typePending(tracker, text = 'truong') {
+  const oldDoc = new FakeDoc([]);
+  const newDoc = new FakeDoc([{ text }]);
+  tracker.event('beforeinput', { state: { selection: { from: 1, to: 1 } } },
+    { inputType: 'insertText', data: text });
+  const appended = tracker.append([makeTransaction(1, 0, text.length)],
+    { doc: oldDoc }, makeNewState(newDoc));
+  assert.equal(appended.marks.length, 1);
+  return appended.marks[0].mark.attrs;
+}
+test('G01-ADD-01 InputTracker creates out-of-band pending record rather than guessing audioOffset', () => {
+  const { tracker } = newPendingTracker();
+  const anchor = typePending(tracker);
+  assert.equal(anchor.recordingId, null);
+  assert.equal(anchor.audioOffsetMs, null);
+  assert.equal(anchor.source, 'unlinked');
+  const item = tracker.pendingLinks.get(anchor.anchorId);
+  assert.equal(item.recordingId, 'rec-1');
+  assert.equal(item.inputMonoMs, 1500);
+  assert.equal(item.generation, 'generation-1');
+  assert.equal(item.mark.typedAt, baseEpoch + 1500);
+});
+test('G01-ADD-01 InputTracker finalizes original mark after later confirmed clock point', () => {
+  const { tracker, t } = newPendingTracker();
+  const anchor = typePending(tracker);
+  const state = makeNewState(new FakeDoc([{ text: 'truong', anchor }]));
+  let dispatched = null;
+  const view = { state, dispatch(tr) { dispatched = tr; } };
+  const before = tracker.finalizePendingLinks(e => t.resolve(e), view);
+  assert.equal(before.applied, 0);
+  assert.equal(tracker.pendingLinks.size, 1);
+  assert.equal(dispatched, null);
+  t.progress(2000, 96000);
+  const after = tracker.finalizePendingLinks(e => t.resolve(e), view);
+  assert.equal(after.applied, 1);
+  assert.equal(tracker.pendingLinks.size, 0);
+  assert.equal(dispatched.removed.length, 1);
+  assert.equal(dispatched.meta.get('mochop:mark-applied'), true);
+  assert.equal(dispatched.meta.get('addToHistory'), false);
+  const mapped = dispatched.marks[0].mark.attrs;
+  assert.equal(mapped.recordingId, 'rec-1');
+  assert.equal(mapped.audioOffsetMs, 1500);
+  assert.equal(mapped.typedAt, anchor.typedAt);
+  assert.equal(mapped.anchorId, anchor.anchorId);
+});
+test('G01-ADD-01 failed dispatch does not acknowledge applied clock mapping', () => {
+  const { tracker, t } = newPendingTracker();
+  const anchor = typePending(tracker);
+  const state = makeNewState(new FakeDoc([{ text: 'truong', anchor }]));
+  t.progress(2000, 96000);
+  const view = { state, dispatch() { throw new Error('state mutated elsewhere'); } };
+  assert.throws(() => tracker.finalizePendingLinks(e => t.resolve(e), view), /state mutated/);
+  assert.equal(tracker.pendingLinks.size, 1);
+});
+test('G01-ADD-01 history/delete before finalize never emits a ghost linked mark', () => {
+  const { tracker, t } = newPendingTracker();
+  const anchor = typePending(tracker);
+  const tx = makeTransaction(1, 6, 0);
+  tx.getMeta = key => key === 'history$' ? { redo: false } : undefined;
+  const gone = new FakeDoc([]);
+  assert.equal(tracker.append([tx], { doc: new FakeDoc([{ text: 'truong', anchor }]) },
+    makeNewState(gone)), null);
+  t.progress(2000, 96000);
+  const view = { state: makeNewState(gone), dispatch() { throw new Error('ghost link'); } };
+  assert.equal(tracker.finalizePendingLinks(e => t.resolve(e), view).applied, 0);
+  assert.equal(tracker.pendingLinks.size, 0);
+});
+test('G01-ADD-01 pending record is adjusted across same-word IME replacement', () => {
+  const { tracker, t } = newPendingTracker();
+  const anchor = typePending(tracker);
+  const oldDoc = new FakeDoc([{ text: 'truong', anchor }]);
+  const newDoc = new FakeDoc([{ text: 'trường', anchor }]);
+  tracker.append([makeTransaction(3, 2, 2)], { doc: oldDoc }, makeNewState(newDoc));
+  assert.equal(tracker.pendingLinks.get(anchor.anchorId).expectedChars, 6);
+  t.progress(2000, 96000);
+  const state = makeNewState(newDoc);
+  let called = false;
+  const res = tracker.finalizePendingLinks(e => t.resolve(e),
+    { state, dispatch() { called = true; } });
+  assert.equal(res.applied, 1);
+  assert.equal(called, true);
+});
+
+test('G01-ADD-01 changed editor meeting cannot finalize previous pending source', () => {
+  const { tracker, t } = newPendingTracker();
+  const anchor = typePending(tracker);
+  const state = makeNewState(new FakeDoc([{ text: 'truong', anchor }]));
+  tracker.meetingId = 'different-meeting';
+  t.progress(2000, 96000);
+  const res = tracker.finalizePendingLinks(e => t.resolve(e),
+    { state, dispatch() { throw new Error('must not dispatch'); } });
+  assert.equal(res.status, 'blocked');
+  assert.equal(res.applied, 0);
+  assert.equal(tracker.pendingLinks.size, 1);
 });
