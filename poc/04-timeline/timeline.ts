@@ -259,9 +259,13 @@ export function createPlaybackAnchor(manifests: readonly Manifest[], ctx: Playba
       const raw = ctx.currentMediaMs!;
       const selected = quantizeInSource(known[0], raw);
       if (selected === null) {
-        // Preserve a future-recoverable offset only if integer rounding does not change
-        // its resolution state (e.g. no mounted media yet, or an incomplete recording).
-        if (!Number.isInteger(raw) && resolve(manifests, ctx.recordingId, anchor.audioOffsetMs).status !== resolve(manifests, ctx.recordingId, raw).status) {
+        // No integer ms in the current covered region: NEVER round into a neighboring
+        // valid segment even if both resolution statuses would be "valid".
+        const insideMediaRegion = known[0].intervals.some(it => it.mediaStartMs !== undefined &&
+          it.mediaEndMs !== undefined && inside(raw, it.mediaStartMs, it.mediaEndMs));
+        const before = resolve(manifests, ctx.recordingId, raw);
+        const after = resolve(manifests, ctx.recordingId, anchor.audioOffsetMs);
+        if ((insideMediaRegion && !Number.isInteger(raw)) || before.status !== after.status) {
           anchor.audioOffsetMs = null;
           return { anchor, resolution: fail('unsupported', 'cannot quantize playback position without changing media source', ctx.recordingId) };
         }
