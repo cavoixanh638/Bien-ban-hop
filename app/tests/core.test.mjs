@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createMemoryDB} from '../../poc/06-notes/notes.mjs';
 import {CaptureClockMapper} from '../../poc/02-capture/src/clock-mapper.mjs';
 import {MeetingStore,SaveQueue} from '../src/meeting-store.mjs';
+import {verifiedClickedAnchor} from '../src/anchor-bridge.mjs';
 import {contextFor,resolvePending,intervalFor} from '../src/clock-bridge.mjs';
 import {fixture as audioFixture} from '../../poc/05-player/player.js';
 import {resolveMedia,meetingToMedia} from '../../poc/05-player/timeline.js';
@@ -104,4 +105,19 @@ test('G10/G05: media offset and meeting time are different at pause; wrong sourc
   assert.equal(resolveMedia(audioFixture,audioFixture.recordingId,1805000).status,'valid');
   assert.equal(meetingToMedia(audioFixture,audioFixture.recordingId,1805000).status,'gap');
   assert.equal(resolveMedia(audioFixture,'foreign-recording',1805000).status,'unsupported');
+});
+
+test('G10: clicking the visible timeSpan verifies the model, not an ambiguous cursor',()=>{
+  const attrs={anchorId:'same',recordingId:'rec-x',audioOffsetMs:1234,typedAt:1794740000000,source:'live_recording',schemaVersion:1};
+  const model={descendants(fn){fn({isText:true,marks:[{type:{name:'timeSpan'},attrs}]});}};
+  assert.deepEqual(verifiedClickedAnchor(model,'same',new Set(['rec-x'])),attrs);
+  assert.equal(verifiedClickedAnchor(model,'same',new Set(['other'])),null);
+  assert.equal(verifiedClickedAnchor(model,'same',new Set(['rec-x']),new Set(['same'])),null);
+  assert.equal(verifiedClickedAnchor(model,'missing',new Set(['rec-x'])),null);
+});
+test('G10: duplicate anchor with conflicting provenance cannot be played',()=>{
+  const a={anchorId:'same',recordingId:'rec-x',audioOffsetMs:2000,typedAt:1794740000000,source:'live_recording',schemaVersion:1};
+  const b={...a,recordingId:'other'};
+  const model={descendants(fn){fn({isText:true,marks:[{type:'timeSpan',attrs:a}]});fn({isText:true,marks:[{type:'timeSpan',attrs:b}]});}};
+  assert.equal(verifiedClickedAnchor(model,'same',new Set(['rec-x','other'])),null);
 });
