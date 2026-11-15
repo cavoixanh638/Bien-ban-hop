@@ -183,3 +183,24 @@ Kiểm cổng Gói 1.1 và bằng chứng thực trên từng SHA. Chốt các a
 6. Sau G01 qua gate 1.1, tổ chức **đợt tích hợp được giao riêng** bằng cách pin code SHA 9 nhánh, dùng adapter theo `COMMON.md`, test âm tính source sai/saved giả/dual writer, chạy TC01–TC38 trên bản tích hợp với Windows/thiết bị thật. **Không merge/main/deploy khi chưa có lệnh tích hợp và chứng cứ nghiệm thu.**
 
 **Không phát hiện thêm FAIL runtime mới trong lần rà review này**. Đây là rà từ code/checkpoint/evidence và đối chiếu diff; tôi **không thể chạy lại toàn bộ bộ test trong container qua git clone** do DNS không phân giải `github.com`. Bài có browser/Windows không chạy vẫn là `NOT_RUN`, không được diễn dịch thành PASS.
+
+## G02-capture — rà soát bổ sung sau vòng PASS 36/36 (15/11/2026)
+
+**HEAD kiểm lại:** `c4845450d2ef6cc3d24fe22a9a445c588229b942`. `Code/Tested SHA` theo checkpoint G02: `0083a670e5537952899afb247949bc71442b46b8`, 36/36 Node PASS bằng byte-identical Git blobs. ADD-01..05 **đã xử lý** theo checkpoint, **không yêu cầu làm lại**. G02 vẫn `PARTIAL / NEEDS_BROWSER_AND_WINDOWS_EVIDENCE; NOT DONE` ở entrypoint; 3h real/browser/TC21 `NOT_RUN`.
+
+### G02-ADD-06 — High: đang thu nhưng mốc gõ ngay sau điểm clock cuối bị trả `unlinked`
+
+- **Source:** `poc/02-capture/src/clock-mapper.mjs` (`CaptureClockMapper.resolveInput`). Trong `active` recorded interval, `last = interval.mappingPoints.at(-1)?.inputMonoMs`; điều kiện `inputMonoMs >= last` bỏ qua ngay cả thời điểm bằng điểm clock đã xác nhận, và mọi thời điểm sau điểm cuối nhưng trước `progress` tiếp theo.
+- **Reproducer trên đúng GitHub blob** `7a167940b6b2c95361f77170ae7a2fbaeda57276`, thực thi JavaScript V8 không cần micro: `receive(started sample=0,t=0)`, `receive(progress sample=48000,t=1000)`; `resolveInput(1000)` và `resolveInput(1500)` đều trả `{status:'unlinked',reason:'outside calibrated recorded coverage'}`; sau `receive(progress sample=96000,t=2000)`, `resolveInput(1500)` trả `valid, sampleIndex=72000`. Đây là sai trạng thái tạm thời có thể làm mất liên kết ghi chú nếu Editor ghi `unlinked` vĩnh viễn ở thời điểm gõ.
+- **Yêu cầu:** ở đoạn recorded đang hoạt động, cho phép ánh xạ **đúng** điểm clock cuối hợp lệ; đối với input sau điểm cuối nhưng chưa có điểm để nội suy, trả `pending` rõ ràng (không bịa audioOffsetMs) kèm dấu vết `inputMonoMs`/recording source để hàng đợi liên kết về sau. Khi có điểm mới, xét lại pending; khi pause/gap/stop, fail-closed đúng vùng và không tự chọn nearest segment. **Không nhúng trạng thái pending/valid vào `timeSpan` Mark**, giữ `typedAt` là thời điểm gõ đầu cụm.
+- **Regression deterministic:** t=1000 exact, t=1500 pending → valid(sample=72000) sau progress; pause trước progress không hồi tố nối nhầm; stop ngay sau điểm cuối, sink-gap và unavailable không tự gán audio. Kiểm hợp đồng với G01/G04 ở **đợt tích hợp** qua thin adapter, không sửa COMMON/nhánh khác.
+- **Phân loại bằng chứng:** logic outcome `unlinked` đã tái hiện trong V8 trên source byte GitHub, **browser live NOT_RUN**. Không gán `TC17 FAIL` runtime trước khi kiểm thật.
+
+### G02-ADD-07 — Medium/High: Stop chờ vô hạn nếu permission prompt không settle
+
+- **Source:** `poc/02-capture/src/controller.mjs`, `start()` chờ `getUserMedia()` và `stop()` với `prior==='starting'` `await this.startPromise` không có thời hạn/hủy trạng thái khi browser prompt không Grant/Deny. G02-ADD-01 đã test quyền cấp **trễ rồi hoàn tất**, chưa test promise **không bao giờ settle**.
+- **Reproducer trên đúng GitHub blob** `e7b0370adb6e6fb5d3ce64cb56485f4299a8c955`: fake `navigator.mediaDevices.getUserMedia=()=>new Promise(()=>{})`, `start({engine:'media',source:'microphone'})` rồi `stop()`; sau nhiều microtask `startStatus=pending,stopStatus=pending,state=stopping`. Đây là kiểm đường async bằng V8 fake, **không phải UI Windows test**.
+- **Yêu cầu:** cung cấp cách hủy/thoát UI có giới hạn khi permission bị bỏ mặc; đánh dấu cancellation generation, đảm bảo nếu quyền được cấp **sau khi hủy** thì mọi track phải dừng ngay, tuyệt đối không Start lần nữa. Không báo “đã giải phóng micro” nếu browser chưa trả permission; nếu chưa thể khẳng định release, thể hiện `permission_pending_cleanup`/cảnh báo. Cho phép reset hoặc retry chỉ khi không tạo session writer trùng và không có rò nguồn.
+- **Regression deterministic:** permission không settle (Stop/UI không mắc kẹt vô hạn); grant muộn sau cancel dọn nguồn đúng 1 lần; deny muộn; double-click start/stop; không phát start event sau cancel. Thử browser thật khi có môi trường.
+
+**Phạm vi sửa:** chỉ `poc/02-capture/src/clock-mapper.mjs`, `controller.mjs`, `index.html`, các bài test trong `poc/02-capture/tests/`, README/evidence, checkpoint G02. Owner G02 tự sửa và push, ghi Code/Tested SHA, 36 test gốc vẫn PASS, các bài mới PASS/FAIL/NOT_RUN thực chất. Không thay COMMON và không đánh dấu DONE vì chưa có Windows/3h thật. Các ADD này là **hai ca mới**, không tái mở ADD-01..05.
