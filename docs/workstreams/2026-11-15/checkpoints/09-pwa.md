@@ -1,14 +1,35 @@
-# Checkpoint · 09-pwa (WIP follow-up 2026-11-15)
+# Checkpoint · 09-pwa (G00 ADD-01…04 resolved in fixture)
 
 - Owner: Gemini 09-pwa; branch: `gemini/20261115-09-pwa`.
 - Baseline: `6142f56a6efdb27aa9445920c9321f7930c0d5fd`.
-- **HEAD at takeover:** `4cdde5a51909e1db016bfe880097944a3c26ea06`.
-- Status: **IN_PROGRESS** (new G00 findings require code and regression tests; supersedes earlier READY_FOR_REVIEW).
-- Previous code commit: `46e82448d03c710eef8f1feeb74fb073d9b13737`; earlier Node mock 10/10 PASS; real browser/Windows/Pages NOT_RUN. New tested SHA: —.
-- G00 TRACKER source on `gemini/20261115-00-command`: G09-ADD-01/02 High, ADD-03 Medium, ADD-04 safety; all require new negative tests, not just documentation.
-- Local worktree: `/mnt/data/bien-ban-pwa-g09-work/` (copy of exact PoC Git blobs; GitHub fetch used for HEAD/checkpoint; direct git clone unavailable because github.com DNS inaccessible in container).
-- Plan: deterministic delayed ACK + autosave drain unit tests and fixes; maintenance release across meetings; SW self-guard/consistent shell; revise Playwright scenarios, run Node and browser when possible; commit/push only `poc/09-pwa/` and this checkpoint. No merge/deploy.
-- Browser checks NOT_RUN until actually executed, no claim from mocks.
-- WIP status: changes pending; no new results yet.
+- HEAD at takeover: `4cdde5a51909e1db016bfe880097944a3c26ea06`.
+- **Status: READY_FOR_REVIEW — independent PoC logic fixed and pushed; browser acceptance HOLD / NOT_RUN; NOT DONE for TC32–TC35 runtime or integrated app.**
+- **Code SHA:** `2a0f68d88fb7fbc206e8946cdea7aa89203211ef` ([code commit](https://github.com/cavoixanh638/Bien-ban-hop/commit/2a0f68d88fb7fbc206e8946cdea7aa89203211ef)).
+- **Tested source SHA:** `2a0f68d88fb7fbc206e8946cdea7aa89203211ef` (byte-identical local replay of PoC source, not an authenticated remote git clone; 21/21 modified source/log files match returned Git blob SHA; 3 unchanged representative source files also match inherited Git blob SHA; GitHub compare verifies only this checkpoint + `poc/09-pwa/` changed). Direct `git clone github.com` in container impossible: DNS resolution failed.
+- **Node tests:** **28/28 PASS**, 0 fail, 0 skipped. Linux x86_64, Node v22.16.0, `cd poc/09-pwa && npm test`, standalone synthetic mocks, post-push clean local replay `postpush-clean-2a0f68d`. Duration 198–226 ms across last runs. Evidence: [NODE_TEST_20261115.txt](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-09-pwa/poc/09-pwa/tests/NODE_TEST_20261115.txt).
+- **Nested HTTP asset smoke:** **9/9 PASS**, Python 3.13.5, `python poc/09-pwa/tests/http_smoke.py`, actual Python HTTP localhost requests to prefix `/Bien-ban-hop/poc/09-pwa/`; **not SW/browser offline PASS**. Evidence: [HTTP_SMOKE_20261115.txt](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-09-pwa/poc/09-pwa/tests/HTTP_SMOKE_20261115.txt).
+- **Chromium/Playwright:** **10 scenarios collected; runtime NOT_RUN**. Attempt `python -m pytest -q tests/test_pwa.py --maxfail=1 --tb=short` exited 1 **before first scenario loaded**, because administered Chromium policy blocks `127.0.0.1` with `Page.goto net::ERR_BLOCKED_BY_ADMINISTRATOR`. Never label this software PASS or FAIL. Evidence: [BROWSER_NOT_RUN_20261115.txt](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-09-pwa/poc/09-pwa/tests/BROWSER_NOT_RUN_20261115.txt).
+- **Windows Chrome/Edge, real device, GitHub Pages HTTPS/base path, service-worker live activation, real OPFS/IDB crash/quota, `crossOriginIsolated=false` in browser:** **NOT_RUN**. No deploy/merge/DNS modifications.
 
-Entrypoint: [09-pwa](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/09-pwa.md) · [COMMON.md](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/COMMON.md).
+## G00 findings addressed in source and deterministic tests
+
+- **G09-ADD-01 (High): PASS — Node controlled fixture; browser NOT_RUN.** `recording-session.js` serializes `starting/active/stopping/failed` with generation; tracks first and periodic Worker ACK and waits before release. Early Stop/Release invalidates generation, prevents late ticker; indeterminate first/tick timeout refuses release. `lease.js` uses identity-token release; stale release cannot unlock newer owner. `opfs-worker.js` rolls back partial writes with truncate+flush when possible and marks unknown rollback as indeterminate. Tests: `tests/session-races.test.mjs`, `tests/lease.test.mjs`, `tests/worker.test.mjs` and browser test `test_g09_add01_release_during_deferred_first_opfs_ack` awaiting runtime.
+- **G09-ADD-02 (High): PASS — Node controlled fixture; browser NOT_RUN.** `autosave-session.js` single-flight revision-aware loop saves A then new dirty B before release. `app.js` disables input immediately, waits all outstanding IDB commits and Worker ACKs, checks final dirty; save abort/CAS/quota does not refresh/clear notes, does not release writer, never reports old revision as saved for new dirty text. Tests: `tests/session-races.test.mjs` (delayed ACK, transaction abort, revision conflict). Real IDB timing still NOT_RUN.
+- **G09-ADD-03 (Medium): PASS — Node controlled fixture; browser NOT_RUN.** `makeChannel` forwards `writer-released` from ALL meetings for maintenance hint, never as authorization; `maintenance-retry.js` bounded rechecks at 250/750/1500/3000 ms under actual Web Locks; manual `Retry migration` button remains available. Tests: `tests/maintenance-retry.test.mjs`, `tests/lease.test.mjs`; browser test `test_g09_add03_migration_retries_on_other_meeting_release` prepared.
+- **G09-ADD-04 (Safety): PASS — SW/WebLocks simulation; browser NOT_RUN.** `sw.js` ignores old unguarded command; explicit `REQUEST_SAFE_ACTIVATION` validates sending client scope and **Service Worker itself** requests exclusive origin-wide maintenance Web Lock before `skipWaiting`. If another writer holds shared lock, missing SW Web Locks, or sender is outside scope, activation denied. HTML navigation cache-first from same versioned shell as JS/CSS prevents network v2 HTML + cached v1 JS mix. No forced reload; old cache retained. Tests: `tests/sw.test.mjs`, `tests/assets.test.mjs`, browser negative `test_g09_add04_direct_worker_activation_message_cannot_bypass_writer` awaiting runtime.
+- **TC35 fixture:** pure v1→v2 migration / snapshot/marks/revision tests previously PASS remain valid; real IndexedDB migration rollback NOT_RUN.
+- **TC33 fixture:** 9 nested HTTP routes PASS, SW cache mock PASS, no audio/IndexedDB data in CacheStorage; **actual browser offline reload/OPFS NOT_RUN**.
+
+## Exact artifact/review references
+
+- [PoC README](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-09-pwa/poc/09-pwa/README.md) — run, limitations, shared origin caution and integration contract.
+- [Tests/RESULTS.md](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-09-pwa/poc/09-pwa/tests/RESULTS.md) — test matrix and controls.
+- [Entrypoint 09](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/09-pwa.md) · [frozen COMMON](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/COMMON.md) · G00 `TRACKER.md` reviewed (latest observed blob `a9ae1f054d260fef848f391077c29c39c54c148a`, G09 findings unchanged).
+
+## HOLD / next gate (do not mark DONE)
+
+1. On ordinary authorized Windows Chrome and Edge or Linux Chrome without administrator URL policy, run all **10** `python -m pytest -q poc/09-pwa/tests/test_pwa.py` scenarios. Archive browser versions, traces/screenshot, pass/fail for TC32–TC35, including two tabs, deferred ACK, other-meeting retry, direct SW message and v1→v2 old Mark/data preservation. Fix any observed runtime FAIL on this branch.
+2. If authorized later, verify the GitHub Pages HTTPS nested scope and dedicated-origin handling, `crossOriginIsolated=false`, SW waiting activation, offline reload, IndexedDB and OPFS persistence. No live user data on shared `*.github.io` origin. Same-scope scripts are not a separate security boundary.
+3. Integration with real recorder/journal/backup needs the next authorized integration gate; this fixture cannot prove 3-hour capture, quota, crash recovery, Windows IME or full app acceptance.
+
+**WIP not pushed:** none. **Protected:** no changes to COMMON.md, other workers, main, deployment or tracker.
