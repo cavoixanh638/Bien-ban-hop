@@ -25,7 +25,7 @@ Các số trên là **lần đo cuối sau sửa lỗi tra cứu entry O(N²)** 
 - **65.536 entry** (mỗi entry 0 byte) chạy trên JS ZIP64 writer, Central Directory parser đọc lại 65.536, 12.451.938 bytes, 6,323 s; peak RSS 99.028.992 B. Python `zipfile` kiểm lại 65.536 và thấy ZIP64 EOCD signature. *Chỉ test định dạng/reader với maxEntries nới riêng; không import PoC vì guard an toàn 10.000 entry.*
 - **Python → Node**: xuất bằng `zipfile`, Node đọc Central Directory, staging/publish, giữ `timeSpan`; PASS.
 - **Node → Python**: writer ZIP64, Python `zipfile.testzip` CRC PASS, Python staging import và giữ mốc; PASS.
-- **Một entry >4 GiB**: NOT_RUN; hai bộ 0,5/2 GiB không tự kích hoạt giới hạn 4 GiB. Bài 65.536 entry là fixture ZIP64 tách biệt.
+- **Một entry >4 GiB**: PASS Node reference ở phép đo mới bên dưới (cũng có bài 65.536 entry ZIP64 tách biệt).
 
 ## Test hành vi âm tính và khôi phục
 
@@ -49,7 +49,31 @@ Nguồn tính năng ứng viên: https://github.com/101arrowz/fflate · https://
 | TC | PoC độc lập | App tích hợp | Điều kiện chưa đủ |
 |---|---|---|---|
 | TC30 | **PASS trên fixture Python ↔ Node** | NOT_RUN | Bản app, IndexedDB+OPFS trên browser và khôi phục máy thứ hai |
-| TC31 | **PASS reference 0,5/2 GiB và ZIP64-count** | NOT_RUN | Benchmark đúng ba ứng viên npm, ZIP64 >4GiB, Windows Chrome/Edge/peak RAM thực/quota |
+| TC31 | **PASS reference 0,5/2 GiB, ZIP64-count và entry >4 GiB** | NOT_RUN | Benchmark đúng ba ứng viên npm, ZIP64 cross-library, Windows Chrome/Edge/peak RAM thực/quota |
 | TC38 | **PASS missing-audio fixture** | NOT_RUN | Resolve/UI của app thực, browser OPFS staging, kiểm thực địa |
 
 **Không báo DONE cho G07** cho tới khi benchmark ba package thực, kiểm backpressure/import ZIP64 và browser/restore môi trường khác đạt theo entrypoint. Không merge, deploy hoặc sửa COMMON/TRACKER.
+
+## Tiếp tục 15/11/2026 — G00 không giao ADD mới cho G07, đã tìm lỗi CRC cần vá
+
+- G00 TRACKER mới nhất được kiểm tra: SHA blob `e4d613ac6af6ed58a1d257fac6405379a878d9dc`; G07 vẫn chặn ở package benchmark thật, browser và restore máy khác. Không thay kết quả đã PASS của benchmark 0,5/2GiB cũ.
+- **Phát hiện mới (FAIL trước vá):** chỉnh byte cuối chuỗi `appVersion` trong nội dung `manifest.json` mà không cập nhật CRC ở Central Directory, ZIP/JSON vẫn hợp lệ và importer JS cũ **đã trả về thành công** (`TAMPER_REPRODUCED_AND_ACCEPTED`).
+- **Sửa và chạy lại:** `mochop-web.mjs/readLimited`: bắt buộc số byte manifest khớp Central Directory và tính CRC32 streaming ngay trước parse; abort trước khi tạo staging nếu lệch. `zip-stream.mjs/fileName` và Python `clean_path` đồng bộ chặn tên Windows không an toàn và Unicode không chuẩn. Regression mới kiểm manifest CRC giả, khai báo chiều dài không đúng, Windows path; đã kiểm lại test tích hợp tự chủ.
+- Test local sau vá: **26/26 Node JS PASS**, **14/14 Python PASS**, **2/2 tương thích hai runtime PASS**, `logs/npm-test-after-integrity-fix.txt`; Linux Node 22.16.0/Python 3.13.5. Test browser Windows/Edge vẫn **NOT_RUN**.
+- Bản vá chỉ thay tiền kiểm manifest/path; phép đo 0,5/2GiB cũ vẫn là kết quả PASS nguồn trước vá, **không được tự gắn vào SHA mới**.
+- Npm tiếp tục lỗi DNS `EAI_AGAIN registry.npmjs.org`; ba adapter `fflate/client-zip/zip.js` vẫn **NOT_RUN**, không được chốt thư viện từ dữ liệu reference.
+
+### Đối chiếu bổ sung tài liệu ứng viên (chưa phải benchmark)
+
+- `client-zip` 2.5.1 ghi rõ chỉ làm ZIP, không có unzip; tác giả mô tả ZIP64 từ phiên bản 2: https://www.npmjs.com/package/client-zip . Vì vậy phải đánh giá cặp **client-zip xuất + zip.js nhập** thay vì coi client-zip là giải pháp khôi phục hoàn chỉnh.
+- `zip.js` 2.25.0 công bố `ZipReader`, `ZipWriter`, streaming và khuyến cáo giới hạn `uncompressedSize` **trước** khi giải nén dữ liệu không tin cậy: https://newreleases.io/project/npm/%40zip.js/zip.js/release/2.25.0 . Adapter đã có kiểm metadata và giới hạn trước stage, nhưng tính đúng trong runtime thư viện là NOT_RUN.
+- `fflate` 0.8.3 vá một số lỗi ZIP64; vẫn có [issue #298](https://github.com/101arrowz/fflate/issues/298) báo `unzipSync` có thể cấp phát gần 4 GiB từ metadata ZIP64 lỗi. Không sử dụng `unzipSync` để import gói không tin cậy; đường nhập PoC hiện ghép zip.js và có guard trước khi đọc. Đây là **báo cáo bên ngoài, chưa xác minh chạy tại chỗ**, không phải benchmark hoặc kết luận thư viện đã bị loại.
+
+### ZIP64 >4 GiB single entry — phép đo mới
+
+- Command: `node bench.mjs --bytes 4294967297 --output logs/bench-node-zip64-single4GiB-20261115.json` (EXIT 0), archive+staging trong ổ local; xóa toàn bộ dữ liệu lớn sau khi kiểm.
+- **PASS Node reference**: audio giả **4.294.967.297 byte** (= 4 GiB + 1 byte); ZIP **4.294.969.754 byte**; xuất **102,081 s**, import staged **106,843 s**; `missingAudio=[]`, note/manifest/audio size khớp. Peak RSS Node **72.871.936 byte (~69,5 MiB)**, peak JS heap **20.767.712 byte**, peak mỗi chunk **262.144 byte**.
+- Log: `logs/bench-node-zip64-single4GiB-20261115.json` + `.stdout`/`.stderr`. Dữ liệu là byte giả, không phải file ghi âm thật; không dùng làm benchmark thư viện npm.
+- Benchmark này khởi chạy sau **vá CRC manifest** nhưng trước chỉnh sửa chỉ-phần-path của `fileName` (bổ sung NFC), vì vậy **không gán sai nó là phép đo trên chính xác toàn bộ SHA GitHub sau cùng**. Phần CRC/ZIP64 streaming được chạy thực. Bộ unit/regression chạy lại trên source đã push có hash 5/5 khớp.
+- **Đã kiểm thêm đúng source vừa push:** `npm test` tại local byte-identical với 5 Git blob của commit `4b6ebd2b26dc35ab9a7e60455ff7bb1c85e776a6`: **26/26 Node + 14/14 Python + 2/2 interop PASS**; stdout `logs/npm-test-exact-git-blobs-20261115.txt`, đối chiếu SHA tại `logs/source-blobs-after-fix.txt`. `git clone` trực tiếp từ GitHub bằng shell: NOT_RUN vì DNS.
+- Tình trạng thực địa/ba candidate: **NOT_RUN**, không gọi Gói 1.5 DONE.
