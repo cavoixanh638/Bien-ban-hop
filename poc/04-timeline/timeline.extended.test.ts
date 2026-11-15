@@ -190,10 +190,46 @@ test('seek then type on selected import never resolves another recording at same
   b.segments[1].completionState = 'missing';
   const created = createPlaybackAnchor([a, b], { recordingId: 'session-2', currentMediaMs: 12000.8,
     anchorId: 'p', typedAt: 1794740000000, paused: false });
-  assert.equal(created.anchor.audioOffsetMs, 12000);
+  assert.equal(created.anchor.audioOffsetMs, 12001); // nearest valid integer in the same source segment
   assert.equal(created.anchor.recordingId, 'session-2');
   assert.equal(created.resolution.status, 'missing');
   const invalid = createPlaybackAnchor([a], { recordingId: 'session-1', currentMediaMs: -1, anchorId: 'q', typedAt: 1, paused: true });
   assert.equal(invalid.resolution.status, 'unsupported');
   assert.equal(invalid.anchor.audioOffsetMs, null);
+});
+
+test('44.1kHz fractional segment start quantizes inside the correct post-pause file', () => {
+  const m: Manifest = {
+    recordingId: 'fractional', sampleRate: 44100,
+    mappingPoints: [
+      { inputMonoMs: 0, sampleIndex: 0 },
+      { inputMonoMs: 20000, sampleIndex: 881929 },
+      { inputMonoMs: 23000, sampleIndex: 881929 },
+      { inputMonoMs: 43000, sampleIndex: 1763858 },
+    ],
+    segments: [
+      { segmentId: 'before-pause', filePath: 'before.wav', mediaStartMs: 0,
+        mediaDurationMs: 881929 * 1000 / 44100, sampleStart: 0, sampleCount: 881929, completionState: 'complete' },
+      { segmentId: 'after-pause', filePath: 'after.wav', mediaStartMs: 881929 * 1000 / 44100,
+        mediaDurationMs: 881929 * 1000 / 44100, sampleStart: 881929, sampleCount: 881929, completionState: 'complete' },
+    ],
+    intervals: [
+      {kind: 'recorded', meetingStartMs: 0, meetingEndMs: 20000,
+        mediaStartMs: 0, mediaEndMs: 881929 * 1000 / 44100, segmentRefs: ['before-pause']},
+      {kind: 'paused', meetingStartMs: 20000, meetingEndMs: 23000, segmentRefs: []},
+      {kind: 'recorded', meetingStartMs: 23000, meetingEndMs: 43000,
+        mediaStartMs: 881929 * 1000 / 44100, mediaEndMs: 2 * 881929 * 1000 / 44100, segmentRefs: ['after-pause']},
+    ],
+  };
+  assert.deepEqual(validateManifest(m), []);
+  const atResume = live(m, 23000);
+  assert.equal(atResume.resolution.status, 'valid');
+  assert.equal(atResume.resolution.segmentId, 'after-pause');
+  assert.equal(atResume.anchor.audioOffsetMs, 19999); // floor=19998 incorrectly belongs to before-pause
+  const playback = createPlaybackAnchor([m], {recordingId: 'fractional', currentMediaMs: 881929 * 1000 / 44100,
+    paused: true, anchorId: 'paused-note', typedAt: 100});
+  assert.equal(playback.resolution.segmentId, 'after-pause');
+  assert.equal(playback.anchor.audioOffsetMs, 19999);
+  const justBefore = live(m, 19999.99);
+  assert.equal(justBefore.resolution.segmentId, 'before-pause');
 });
