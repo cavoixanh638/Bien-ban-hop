@@ -37,7 +37,7 @@ Các số trên là **lần đo cuối sau sửa lỗi tra cứu entry O(N²)** 
 
 | Ứng viên pin version | Chiều xuất | Chiều nhập | ZIP64 | Đo 0,5 / 2 GiB trên chính package | Kết luận |
 |---|---|---|---|---|---|
-| `fflate` 0.8.3 | Có API `Zip` + `ZipPassThrough`; adapter trong `candidates.mjs` | Có `Unzip` streaming nhưng chưa nối vào verified staging; PoC ghép zip.js reader | Cần xác minh >4GiB và giới hạn thực tế | **NOT_RUN** | Không chốt |
+| `fflate` 0.8.3 | `Zip` + `ZipPassThrough`, **ZIP32 output only** theo source tag; guard mới giới hạn 4GiB/65.534 entry | Có `Unzip` streaming, PoC ghép zip.js reader | **Không có ZIP64 writer** theo kiểm mã tĩnh; chưa kiểm package runtime | **NOT_RUN** | Không chọn cho backup vượt ZIP32; benchmark gói nhỏ vẫn NOT_RUN |
 | `client-zip` 2.5.1 | Có `makeZip` ReadableStream, adapter generator + SHA256 | **Không có unzip**, phải ghép reader zip.js | Tác giả công bố hỗ trợ ZIP64 | **NOT_RUN** | Không thể là engine nhập độc lập |
 | `zip.js` 2.25.0 | `ZipWriter`, `zip64` | `ZipReader`, Central Directory + stream entry | Công bố ZIP64 | **NOT_RUN** | Ứng viên cần kiểm thử ưu tiên, chưa chốt |
 | **JS ZIP64 STORED tham chiếu** (tự viết, không phải ứng viên) | ZIP64 streaming | Central Directory reader, staging | 65.536 entry PASS | **PASS Node fixture**, browser NOT_RUN | Oracle kiểm chứng schema và rollback |
@@ -77,3 +77,10 @@ Nguồn tính năng ứng viên: https://github.com/101arrowz/fflate · https://
 - Benchmark này khởi chạy sau **vá CRC manifest** nhưng trước chỉnh sửa chỉ-phần-path của `fileName` (bổ sung NFC), vì vậy **không gán sai nó là phép đo trên chính xác toàn bộ SHA GitHub sau cùng**. Phần CRC/ZIP64 streaming được chạy thực. Bộ unit/regression chạy lại trên source đã push có hash 5/5 khớp.
 - **Đã kiểm thêm đúng source vừa push:** `npm test` tại local byte-identical với 5 Git blob của commit `4b6ebd2b26dc35ab9a7e60455ff7bb1c85e776a6`: **26/26 Node + 14/14 Python + 2/2 interop PASS**; stdout `logs/npm-test-exact-git-blobs-20261115.txt`, đối chiếu SHA tại `logs/source-blobs-after-fix.txt`. `git clone` trực tiếp từ GitHub bằng shell: NOT_RUN vì DNS.
 - Tình trạng thực địa/ba candidate: **NOT_RUN**, không gọi Gói 1.5 DONE.
+
+## Bổ sung kiểm mã nguồn fflate@0.8.3 — không phải benchmark package (15/11/2026)
+
+- G00 mới nhất **không mở ADD mới cho G07**; cổng tồn đọng vẫn npm/browser/Windows. Shell kiểm lại `npm view fflate@0.8.3` trả `EAI_AGAIN registry.npmjs.org`; không giả lập kết quả thư viện thực.
+- Đã đọc trực tiếp tag `v0.8.3` [fflate/src/index.ts](https://github.com/101arrowz/fflate/blob/v0.8.3/src/index.ts) qua GitHub: hàm `wzh` viết size/offset bằng `wbytes` 32-bit; `wzf` viết số entry/EOCD legacy; `Zip.e()` tạo footer legacy. Do đó xuất >4GiB một entry hoặc >=65.535 entry **không có ZIP64 writer**, dù thư viện có thể đọc vài biến thể ZIP64. Đây là **kết luận tĩnh về code version**, không phải số đo lỗi runtime.
+- Bổ sung `ClassicZip32Budget` cho adapter `exportWithFflate`: kiểm số file trước `import('fflate')`, kiểm tổng byte output gồm central directory/EOCD ngay trước khi gửi sink; ngưỡng an toàn `0xfffffffe`, `65535` entry. Chạm ngưỡng => lỗi tường minh + abort output, không gọi export thành công. Test riêng với producer giả có lỗi giới hạn, **mock PASS** không đếm như `fflate` thật.
+- Chưa thay đổi engine reference ZIP64: các benchmark 512MiB/2GiB, 4GiB+1 cũ vẫn thuộc Tested SHA đã ghi, không chạy lại và không chuyển số liệu sang `fflate`.

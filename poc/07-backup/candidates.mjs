@@ -5,6 +5,33 @@
 import {Sha256} from './zip-stream.mjs';
 import {exportMochop,validateContract,LIMITS,BackupError} from './mochop-web.mjs';
 const json=thing=>new TextEncoder().encode(JSON.stringify(thing));
+/** fflate@0.8.3 Zip writer emits classic 16-bit entry counts and 32-bit
+ * compressed sizes, offsets, and EOCD; its ZIP64 *reader* support does not
+ * make this writer safe above classic ZIP limits. 0xffffffff is a ZIP64
+ * sentinel, so reserve that value as well. This guard is fail-closed; a
+ * partial sink MUST be discarded by the caller after a rejected export.
+ */
+export const CLASSIC_ZIP32_MAX_BYTES = 0xfffffffe;
+export const CLASSIC_ZIP32_MAX_ENTRIES = 0xfffe; // 0xffff is the ZIP64 sentinel
+export class ClassicZip32Budget {
+  constructor({maxBytes=CLASSIC_ZIP32_MAX_BYTES,maxEntries=CLASSIC_ZIP32_MAX_ENTRIES}={}){
+    if(!Number.isSafeInteger(maxBytes)||maxBytes<0||maxBytes>CLASSIC_ZIP32_MAX_BYTES||
+       !Number.isSafeInteger(maxEntries)||maxEntries<0||maxEntries>CLASSIC_ZIP32_MAX_ENTRIES)
+      throw new BackupError('invalid classic ZIP budget');
+    this.maxBytes=maxBytes;this.maxEntries=maxEntries;this.bytes=0;
+  }
+  checkEntries(entryCount){
+    if(!Number.isSafeInteger(entryCount)||entryCount>this.maxEntries||entryCount<0)
+      throw new BackupError('fflate@0.8.3 cannot emit ZIP64 entry counts');
+  }
+  reserve(chunkSize){
+    if(!Number.isSafeInteger(chunkSize)||chunkSize<0)throw new BackupError('invalid ZIP chunk length');
+    if(chunkSize>this.maxBytes-this.bytes)
+      throw new BackupError('fflate@0.8.3 classic ZIP overflow: ZIP64 writer unavailable');
+    this.bytes+=chunkSize;
+  }
+}
+
 function statsReadable(stream,name){
   const source=stream.getReader(),sha=new Sha256();let size=0,resolve,reject;
   const done=new Promise((a,b)=>{resolve=a;reject=b;});
@@ -42,13 +69,20 @@ export async function exportWithClientZip(source,sink){
   if(!completedManifest)throw Error('client-zip did not complete generator');
   return {manifest:completedManifest,archive:{candidate:'client-zip',entries:files.length+1}};
 }
-export async function exportWithFflate(source,sink){
-  const fflate=await import('fflate');
+export async function exportWithFflate(source,sink,{fflateModule,classicBudget}={}){
+  validateContract(source.meeting,source.note,source.audio);
+  const quota=classicBudget??new ClassicZip32Budget();
+  quota.checkEntries(source.audio.segments.length+4); // Meeting, note, audio manifest, audio files, root manifest
+  // Dependency injection is used ONLY by a deterministic adapter test;
+  // production loads the exact pinned npm package dynamically.
+  const fflate=fflateModule??await import('fflate');
   let output,chain=Promise.resolve(),pendingBytes=0,peakPendingBytes=0,problem=null;
   const writer=sink.getWriter();
   const zip=new fflate.Zip((error,bytes)=>{
     if(error){problem=error;return;}
-    if(bytes?.length){pendingBytes+=bytes.length;peakPendingBytes=Math.max(pendingBytes,peakPendingBytes);
+    if(bytes?.length){
+      try{quota.reserve(bytes.length)}catch(e){problem=e;return;}
+      pendingBytes+=bytes.length;peakPendingBytes=Math.max(pendingBytes,peakPendingBytes);
       chain=chain.then(()=>writer.write(bytes)).then(()=>{pendingBytes-=bytes.length;});}
   });
   output={

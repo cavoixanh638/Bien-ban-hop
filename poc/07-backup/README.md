@@ -13,7 +13,7 @@ Các adapter thật nằm trong `candidates.mjs`, dùng **đúng package** `ffla
 
 ```sh
 cd poc/07-backup
-npm test                       # 26 Node tests + 14 Python tests + 2 kiểm tra đọc chéo runtime
+npm test                       # 26 ZIP core + 5 adapter-guard mock Node, 14 Python, 2 đọc chéo
 node bench.mjs --bytes 536870912 --output logs/bench-node-512MiB.json
 node bench.mjs --bytes 2147483648 --output logs/bench-node-2GiB.json
 node bench.mjs --zip64-count 65536 --output logs/bench-zip64-65536.json
@@ -33,6 +33,8 @@ node bench-candidates.mjs --candidate client-zip --bytes 536870912 --output logs
 node bench-candidates.mjs --candidate zip.js --bytes 536870912 --output logs/zipjs-512MiB.json
 # Lặp lại từng ứng viên với --bytes 2147483648
 ```
+
+**Fail-closed ZIP32 guard cho fflate 0.8.3:** đối chiếu [mã nguồn đúng tag](https://github.com/101arrowz/fflate/blob/v0.8.3/src/index.ts) thấy `Zip` ghi kích thước/offset bằng các trường 32-bit và số entry bằng 16-bit, không xuất footer ZIP64. `candidates.mjs` đã chặn trước nếu có >=65.535 entry và abort sink khi tổng bytes ZIP chạm sentinel 0xffffffff, để không báo thành công đối với bản ZIP không thể phục hồi. Guard được kiểm với **mock producer**, KHÔNG phải test chạy `fflate` thật. Đối với archive cần ZIP64 (>4 GiB hoặc >=65.535 entry), chỉ dùng ZIP64-capable engine sau khi benchmark thực; không ép `fflate` vượt giới hạn bằng cách cắt file âm thanh để che lỗi. Các số 0,5/2GiB từ native reference vẫn không phải số của `fflate`.
 
 `bench-candidates.mjs` dùng exporter tương ứng và **zip.js importer chung** để so sánh đối xứng, không giả vờ client-zip có unzip. Cần bổ sung benchmark fflate `Unzip` chuyên biệt, phạt chậm I/O, quota/worker và thử ZIP64 >4GiB. Chưa có `package-lock.json` do registry không thể truy cập; các bản đã pin theo số phiên bản chứ chưa ghi integrity hash. Không được chốt thư viện production từ khả năng trên giấy.
 
