@@ -1,0 +1,21 @@
+<!doctype html><meta charset="utf-8"><title>OPFS browser smoke</title><pre id="result">RUNNING</pre>
+<script type="module">
+import {chunkFixture} from './core.mjs';
+const report=document.getElementById('result');let worker,seq=0,pending=new Map();
+function launch(){worker=new Worker('./worker.mjs',{type:'module'});worker.onmessage=({data})=>{const q=pending.get(data.id);if(!q)return;pending.delete(data.id);data.ok?q.resolve(data.result):q.reject(Error(data.error.name+': '+data.error.message));};}
+function send(action,payload={},transfer=[]){return new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});worker.postMessage({id,action,payload},transfer);});}
+const id='smoke-'+Math.floor(Math.random()*1e9);
+try{
+ launch();await send('init',{recordingId:id,sampleRate:48000,channels:1,segmentSeconds:5});
+ const chunk=chunkFixture({recordingId:id,sequenceNo:0,firstSample:0,sampleCount:4096});
+ const a=await send('append',chunk,[chunk.pcm]);if(a.committed)throw Error('false committed ACK');
+ const b=await send('flush');if(b.committedThroughSampleExclusive!==4096)throw Error('bad commit');
+ await send('close');worker.terminate();launch();
+ const opened=await send('init',{recordingId:id,reopen:true});
+ if(opened.recovery.unavailable.length)throw Error('missing samples on reopen');
+ const seek=await send('seek',{sample:1024,count:2});
+ if(seek.status!=='valid'||seek.pcm.byteLength!==8)throw Error('bad seek');
+ await send('close');worker.terminate();
+ report.textContent=JSON.stringify({status:'PASS',browser:navigator.userAgent,committedSamples:4096,seek:seek.status});
+}catch(e){report.textContent=JSON.stringify({status:'FAIL',error:String(e),stack:e.stack});worker?.terminate();}
+</script>
