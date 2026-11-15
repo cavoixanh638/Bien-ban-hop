@@ -160,6 +160,11 @@ async function startRecording(){
     run.queue.edit(); // Persist meeting note/sidecar after recording reference has been committed.
     show('Đang thu micro. Tiếp tục gõ bình thường, mốc được gắn tự động.');
   }catch(e){
+    // If the microphone/OPFS started but the Meeting reference failed to commit,
+    // never leave an orphan live capture while the UI says "not started".
+    if(['starting','capturing','paused','stopping'].includes(capture.state)){
+      try{await capture.stop();}catch(cleanupError){show('Lỗi dọn phiên thu: '+cleanupError.message,'error');}
+    }
     show('Không bắt đầu ghi âm: '+e.message,'error');
     // Permission still open is explicitly NOT claimed released.
     if(capture.permissionPendingCleanup)show('Yêu cầu quyền micro chưa kết thúc; không khởi tạo phiên mới khi quyền còn treo.','error');
