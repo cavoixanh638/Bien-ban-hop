@@ -1,21 +1,39 @@
-<!doctype html><meta charset="utf-8"><title>OPFS browser smoke</title><pre id="result">RUNNING</pre>
+<!doctype html><html lang="en"><meta charset="utf-8"><title>G03 OPFS browser smoke</title>
+<body><h1>G03 — Browser OPFS + IndexedDB durability smoke</h1><pre id="result">RUNNING</pre>
 <script type="module">
 import {chunkFixture} from './core.mjs';
-const report=document.getElementById('result');let worker,seq=0,pending=new Map();
-function launch(){worker=new Worker('./worker.mjs',{type:'module'});worker.onmessage=({data})=>{const q=pending.get(data.id);if(!q)return;pending.delete(data.id);data.ok?q.resolve(data.result):q.reject(Error(data.error.name+': '+data.error.message));};}
-function send(action,payload={},transfer=[]){return new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});worker.postMessage({id,action,payload},transfer);});}
-const id='smoke-'+Math.floor(Math.random()*1e9);
+const output=document.getElementById('result');let worker,pending=new Map(),requestId=0;
+function launch(){
+ worker=new Worker('./worker.mjs',{type:'module'});
+ worker.onmessage=({data})=>{const q=pending.get(data.id);if(!q)return;pending.delete(data.id);data.ok?q.resolve(data.result):q.reject(Error(data.error.name+': '+data.error.message));};
+ worker.onerror=e=>{for(const p of pending.values())p.reject(Error('Worker error: '+e.message));pending.clear();};
+}
+function send(action,payload={},transfer=[]){return new Promise((resolve,reject)=>{const id=++requestId;pending.set(id,{resolve,reject});worker.postMessage({id,action,payload},transfer);});}
+const recordingId='opfs-poc-'+Math.random().toString(36).slice(2),report={status:'RUNNING',browser:navigator.userAgent,opfs:typeof navigator.storage?.getDirectory,indexedDB:typeof indexedDB,recordingId};
 try{
- launch();await send('init',{recordingId:id,sampleRate:48000,channels:1,segmentSeconds:5});
- const chunk=chunkFixture({recordingId:id,sequenceNo:0,firstSample:0,sampleCount:4096});
- const a=await send('append',chunk,[chunk.pcm]);if(a.committed)throw Error('false committed ACK');
- const b=await send('flush');if(b.committedThroughSampleExclusive!==4096)throw Error('bad commit');
- await send('close');worker.terminate();launch();
- const opened=await send('init',{recordingId:id,reopen:true});
- if(opened.recovery.unavailable.length)throw Error('missing samples on reopen');
- const seek=await send('seek',{sample:1024,count:2});
- if(seek.status!=='valid'||seek.pcm.byteLength!==8)throw Error('bad seek');
+ if(typeof navigator.storage?.getDirectory!=='function'||typeof indexedDB==='undefined')throw Error('OPFS/IndexedDB unavailable: use localhost/HTTPS Chrome/Edge');
+ launch();await send('init',{recordingId,sampleRate:48000,channels:1,segmentSeconds:5});
+ const first=chunkFixture({recordingId,sequenceNo:0,firstSample:0,sampleCount:4096});
+ if((await send('append',first,[first.pcm])).committed!==false)throw Error('buffer recycle ack claimed durable');
+ const ack=await send('flush');if(ack.committedThroughSampleExclusive!==4096)throw Error('bad flush/journal ACK');
+ const tail=chunkFixture({recordingId,sequenceNo:1,firstSample:4096,sampleCount:4096});
+ await send('append',tail,[tail.pcm]);
+ let fault=false;try{await send('flush',{faultAt:'afterOpfsFlush'});}catch(e){fault=e.message.includes('simulated crash');}
+ if(!fault)throw Error('crash injection did not fail');
+ worker.terminate();launch();const reopened=await send('init',{reopen:true,recordingId});
+ if(reopened.recovery.committedRanges.length!==1||reopened.recovery.uncommittedBytes!==16384)throw Error('uncommitted tail promoted or not reconciled');
+ if((await send('seek',{sample:2048,count:2})).status!=='valid')throw Error('confirmed audio lost');
+ if((await send('seek',{sample:4096,count:1})).status!=='missing')throw Error('uncommitted tail falsely valid');
+ const resumed=chunkFixture({recordingId,sequenceNo:1,firstSample:4096,sampleCount:4096});
+ await send('append',resumed,[resumed.pcm]);const done=await send('flush');
+ if(done.committedThroughSampleExclusive!==8192)throw Error('reopen and append failed');
+ const manifest=await send('manifest');if(!manifest.intervals.some(i=>i.kind==='recorded'))throw Error('recorded interval absent');
+ report.status='PASS';Object.assign(report,{committedThroughSampleExclusive:done.committedThroughSampleExclusive,discardedBeforeJournalBytes:reopened.recovery.uncommittedBytes,seekAfterCrash:'valid',recoveredIntervals:manifest.intervals.length});
  await send('close');worker.terminate();
- report.textContent=JSON.stringify({status:'PASS',browser:navigator.userAgent,committedSamples:4096,seek:seek.status});
-}catch(e){report.textContent=JSON.stringify({status:'FAIL',error:String(e),stack:e.stack});worker?.terminate();}
-</script>
+ // Clean up only this synthetic recording, never arbitrary origin data.
+ const root=await navigator.storage.getDirectory();await root.removeEntry(recordingId,{recursive:true});
+ const req=indexedDB.open('mochop-opfs-poc-v1',1);await new Promise((resolve,reject)=>{req.onsuccess=()=>resolve();req.onerror=()=>reject(req.error);});
+ const db=req.result;await new Promise((resolve,reject)=>{const tx=db.transaction('audioManifest','readwrite');tx.objectStore('audioManifest').delete(recordingId);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});db.close();
+}catch(e){report.status='FAIL';report.error=String(e);worker?.terminate();}
+output.textContent=JSON.stringify(report,null,2);
+</script></body></html>
