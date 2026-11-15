@@ -38,3 +38,11 @@ Kỳ vọng: 17 test, 0 FAIL. Chỉ khi chạy và xác nhận trên file từ c
 - **Chặn DONE độc lập:** chưa chạy đúng file vừa push từ fresh checkout bằng Node. Không có block kỹ thuật từ worker cho fixture. Không kế thừa V8/mock PASS thành production PASS.
 
 WIP/chưa push: không (mọi artifact được push qua GitHub connector). **Checkpoint này cần commit làm HEAD**, kiểm lại git tree sau ghi; mã source không thêm bất cứ file nào ngoài phạm vi 00.
+
+## Rà soát các worker (tiếp nối 15/11/2026)
+
+- Đã duyệt Git-tree/HEAD của 10 nhánh, không ghi đè mã worker. Mục `TRACKER.md` được nâng cấp tại commit [`31acdb99`](https://github.com/cavoixanh638/Bien-ban-hop/commit/31acdb999ab4d7e9cb5be2a1e26731de50072ad5).
+- **05-player** có lỗi logic tái hiện từ blob Git `15ef45b5abf5712b90cdd81d04820d7f60c9f8f6`: `resolve(ID,1805000)` trả `gap/pause`, song `seg-006` hợp lệ. Nguyên nhân: dùng `meetingStartMs` để kiểm `audioOffsetMs`; recorded intervals thiếu `mediaStartMs/mediaEndMs/segmentRefs`. Đã giao chính xác file, kết quả và bước hồi quy cho owner 05 trong TRACKER. Không tự sửa nhánh worker.
+- **04-timeline** READY_FOR_REVIEW ở phạm vi fixture (16/16 local), chưa có clean checkout/livedata. **01/03/05/06/07/08** đã push PoC, còn các cổng runtime hoặc exact SHA. **02** chưa có code trên nhánh khi quan sát.
+- **09-pwa** cập nhật checkpoint trong lúc rà soát: mock Node 10/10, mã PoC vẫn **LOCAL_ONLY**, Git-tree HEAD `ea60179c` chưa có `poc/09-pwa/`. Chưa đánh dấu bàn giao.
+- Không chốt production C1/C2, không PASS Gói 1.1–1.6 và không merge/deploy. Lượt sau kiểm lại HEAD trước nhận bằng chứng mới, đặc biệt 09 đang push.
