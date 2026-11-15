@@ -89,33 +89,53 @@ export function shouldRetainWordAnchor(action) {
 }
 
 export function isAllowedMeetingMark(mark, allowedRecordingIds) {
-  if (!mark || mark.schemaVersion !== 1 || !SOURCE_SET.has(mark.source)) return false;
-  if (mark.recordingId === null && mark.audioOffsetMs === null) return true;
-  return Boolean(mark.recordingId && allowedRecordingIds.has(mark.recordingId)
-    && Number.isSafeInteger(mark.audioOffsetMs) && mark.audioOffsetMs >= 0);
+  // A surviving mark is a provenance assertion, not merely a link-shaped object.
+  // Reject partially populated/forged metadata before it can be read or copied.
+  if (!mark || mark.schemaVersion !== 1 || !SOURCE_SET.has(mark.source)
+    || typeof mark.anchorId !== 'string' || !mark.anchorId.trim()
+    || !Number.isSafeInteger(mark.typedAt) || mark.typedAt < 0) return false;
+  if (mark.recordingId === null && mark.audioOffsetMs === null) {
+    return mark.source === 'unlinked' || mark.source === 'paste';
+  }
+  return (mark.source === 'live_recording' || mark.source === 'imported_playback'
+    || mark.source === 'playback_paused')
+    && typeof mark.recordingId === 'string' && mark.recordingId.trim().length > 0
+    && allowedRecordingIds instanceof Set && allowedRecordingIds.has(mark.recordingId)
+    && Number.isSafeInteger(mark.audioOffsetMs) && mark.audioOffsetMs >= 0;
 }
 
 export function getJsonMetrics(doc) {
   let textNodes = 0, markedTextNodes = 0, timeSpanRuns = 0;
-  let characters = 0, unlinkedChars = 0;
+  let characters = 0, unlinkedChars = 0, totalMarkInstances = 0;
   const anchors = new Set();
   const traverse = (node) => {
     if (!node || typeof node !== 'object') return;
     if (node.type === 'text') {
       textNodes += 1;
       characters += (node.text || '').length;
+      totalMarkInstances += (node.marks || []).length;
       const mark = (node.marks || []).find(m => m.type === 'timeSpan');
       if (mark) {
         markedTextNodes += 1;
-        timeSpanRuns += 1;
         anchors.add(mark.attrs?.anchorId);
         if (!mark.attrs?.recordingId) unlinkedChars += (node.text || '').length;
       } else unlinkedChars += (node.text || '').length;
     }
+    // Count model timeSpan runs independently of formatting-caused TextNode
+    // splits. A run cannot cross a non-text node or a paragraph boundary.
+    if (node.content?.length && node.content.some(child => child.type === 'text')) {
+      let previous = null;
+      for (const child of node.content) {
+        const mark = child.type === 'text'
+          ? (child.marks || []).find(m => m.type === 'timeSpan')?.attrs || null : null;
+        if (mark && !sameAnchor(previous, mark)) timeSpanRuns++;
+        previous = mark;
+      }
+    }
     (node.content || []).forEach(traverse);
   };
   traverse(doc);
-  return { textNodes, markedTextNodes, timeSpanRuns, uniqueAnchors: anchors.size,
+  return { textNodes, markedTextNodes, totalMarkInstances, timeSpanRuns, uniqueAnchors: anchors.size,
     characters, unlinkedChars, jsonBytes: new TextEncoder().encode(JSON.stringify(doc)).byteLength };
 }
 

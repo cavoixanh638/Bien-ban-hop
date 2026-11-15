@@ -40,12 +40,12 @@
         <pre id="metrics"></pre>
         <button id="metrics-refresh">Đo lại</button>
         <h2>Thu trace Windows thực</h2>
-        <label for="os">Windows</label><input id="os" value="Windows 11 (điền build)" spellcheck="false">
-        <label for="browser">Chrome / Edge phiên bản</label><input id="browser" value="Ghi số phiên bản thực" spellcheck="false">
+        <label for="os">Windows + build thực</label><input id="os" placeholder="VD: Windows 11 25H2 build ..." spellcheck="false">
+        <label for="browser">Chrome / Edge phiên bản</label><input id="browser" placeholder="VD: Chrome 144.0...." spellcheck="false">
         <label for="ime">Bộ gõ</label><select id="ime"><option>UniKey</option><option>EVKey</option><option>Không dùng IME</option></select>
         <label for="ime-version">Phiên bản IME</label><input id="ime-version" placeholder="VD: 4.6 RC2" spellcheck="false">
         <label for="input-mode">Kiểu gõ</label><select id="input-mode"><option>Telex</option><option>VNI</option></select>
-        <label for="scenario">Kịch bản</label><select id="scenario"><option>trường / tiếng</option><option>Backspace+Insert không composition</option><option>Đổi dấu muộn</option><option>Gõ nhanh / chậm</option><option>Giữa hai mốc</option><option>Bold/italic</option><option>Cut/paste/Undo/Redo</option><option>CPU tải nặng</option></select>
+        <label for="scenario">Kịch bản</label><select id="scenario"><option>trường / tiếng</option><option>120 giây một đoạn không Enter</option><option>Backspace+Insert không composition</option><option>Đổi dấu muộn</option><option>Gõ nhanh / chậm</option><option>Giữa hai mốc</option><option>Bold/italic</option><option>Cut/paste/Undo/Redo</option><option>CPU tải nặng</option></select>
         <div class="actions">
           <button id="start-load">Giả lập máy tải nặng 15 s</button>
           <small id="load-state">no load</small>

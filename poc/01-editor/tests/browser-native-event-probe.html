@@ -1,0 +1,21 @@
+<!doctype html><html lang="vi"><head><meta charset="UTF-8"><title>Editor IME event probe (no Tiptap)</title></head>
+<body><main>
+<p>Independent native contenteditable event probe. Synthetic keyboard only. Do not paste meeting notes.</p>
+<div id="probe" contenteditable="true" spellcheck="false" aria-label="Synthetic keyboard probe"></div>
+</main>
+<script type="module">
+import { safeKeyboardKey } from '../src/policy.mjs';
+const target = document.querySelector('#probe');
+const events = [];
+for (const kind of ['keydown','beforeinput','input','keyup','compositionstart','compositionupdate','compositionend']) {
+  target.addEventListener(kind, (ev) => {
+    // Deliberately no event.data, target.innerText, clipboard, or printed key.
+    events.push({ kind, timeMs: Math.round(performance.now() * 100) / 100,
+      key: kind === 'keydown' || kind === 'keyup' ? safeKeyboardKey(ev.key) : undefined,
+      inputType: ev.inputType || undefined,
+      dataLength: typeof ev.data === 'string' ? ev.data.length : undefined,
+      isComposing: Boolean(ev.isComposing) });
+  });
+}
+window.__probe = { events, length: () => target.textContent.length };
+</script></body></html>

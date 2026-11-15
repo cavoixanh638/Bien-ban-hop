@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1 --port 5173",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
-    "test:unit": "node --test tests/policy.test.mjs",
+    "test:unit": "node --test tests/*.test.mjs",
     "test:e2e": "playwright test",
     "test:all": "npm run test:unit && npm run build && npm run test:e2e",
     "trace:check": "node scripts/check-trace.mjs"

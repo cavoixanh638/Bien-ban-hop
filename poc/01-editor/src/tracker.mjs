@@ -5,10 +5,20 @@ import {
   getJsonMetrics, hasWordBoundary, isAllowedMeetingMark, isWordChar,
   makeAnchor, normalizeContext, p95, safeKeyboardKey, sameAnchor, shouldCoalesce, shouldRetainWordAnchor, wordRange,
 } from './policy.mjs';
+import { collectTextChanges } from './step-changes.mjs';
 
 const trackerKey = new PluginKey('mochop-input-tracker');
 const TRACE_LIMIT = 10000;
 const CUSTOM_CLIPBOARD = 'application/x-mochop-slice+json';
+function newClipboardToken() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  // Fail closed: a predictable token must not authorize copied audio provenance.
+  return null;
+}
+function equalClipboardText(a, b) {
+  return typeof a === 'string' && typeof b === 'string'
+    && a.replace(/\r\n/g, '\n') === b.replace(/\r\n/g, '\n');
+}
 const attrsFromElement = {
   anchorId: 'data-time-anchor-id', recordingId: 'data-time-recording-id',
   audioOffsetMs: 'data-time-offset-ms', typedAt: 'data-time-typed-at',
@@ -44,16 +54,22 @@ export const TimeSpan = Mark.create({
 function markAt(node) { return node?.marks?.find(mark => mark.type.name === 'timeSpan')?.attrs ?? null; }
 function nearMark(doc, pos) {
   const $pos = doc.resolve(Math.max(0, Math.min(doc.content.size, pos)));
-  return markAt($pos.nodeBefore) || markAt($pos.nodeAfter);
+  const left = markAt($pos.nodeBefore), right = markAt($pos.nodeAfter);
+  // A boundary shared by distinct anchors cannot safely inherit either one.
+  return left && right && !sameAnchor(left, right) ? null : left || right;
 }
 function markFromRange(doc, from, to) {
-  let result = null;
-  if (from < to) {
-    doc.nodesBetween(Math.max(0, from), Math.min(to, doc.content.size), node => {
-      if (!result && node.isText) result = markAt(node);
-    });
-  }
-  return result || nearMark(doc, from);
+  if (from >= to) return nearMark(doc, from);
+  let result = null, hasText = false, uniform = true;
+  doc.nodesBetween(Math.max(0, from), Math.min(to, doc.content.size), node => {
+    if (!node.isText) return;
+    hasText = true;
+    const anchor = markAt(node);
+    if (!anchor || (result && !sameAnchor(result, anchor))) uniform = false;
+    else result = anchor;
+  });
+  // A selection crossing two marks or linked + unlinked text is ambiguous.
+  return hasText && uniform ? result : null;
 }
 function textBlockAt(doc, pos) {
   const $pos = doc.resolve(Math.max(0, Math.min(doc.content.size, pos)));
@@ -92,14 +108,22 @@ function plainTextSelected(view) {
 }
 
 // Mark inspection must not silently choose between two different time sources.
-export function readAnchorAtCursor(state) {
+export function readAnchorAtCursor(state, allowedRecordingIds = null) {
+  const vetted = node => {
+    const anchor = markAt(node);
+    if (!anchor) return null;
+    // Integrations should pass the current meeting's recording ID allow-list.
+    // Without one only structural validation is possible, never foreign-link proof.
+    const allowed = allowedRecordingIds || new Set(anchor.recordingId ? [anchor.recordingId] : []);
+    return isAllowedMeetingMark(anchor, allowed) ? anchor : null;
+  };
   const { selection } = state;
   if (!selection.empty) {
     const seen = new Map();
     let hasUnlinked = false;
     state.doc.nodesBetween(selection.from, selection.to, node => {
       if (!node.isText) return;
-      const a = markAt(node);
+      const a = vetted(node);
       if (a) seen.set(JSON.stringify(a), a);
       else hasUnlinked = true;
     });
@@ -108,36 +132,10 @@ export function readAnchorAtCursor(state) {
     return { status: 'unlinked', anchor: null };
   }
   const $pos = selection.$from;
-  const left = markAt($pos.nodeBefore), right = markAt($pos.nodeAfter);
+  const left = vetted($pos.nodeBefore), right = vetted($pos.nodeAfter);
   if (left && right && !sameAnchor(left, right)) return { status: 'ambiguous', left, right };
   const anchor = left || right;
   return anchor ? { status: anchor.recordingId ? 'linked' : 'unlinked', anchor } : { status: 'unlinked', anchor: null };
-}
-
-// StepMap range collection; excludes marks/formatting, maps ranges to final post-transaction positions.
-function collectChanges(transactions) {
-  const changes = [];
-  for (let ti = 0; ti < transactions.length; ti++) {
-    const tr = transactions[ti];
-    if (!tr.docChanged || tr.getMeta('mochop:mark-applied') || tr.getMeta('history$')) continue;
-    for (let si = 0; si < tr.steps.length; si++) {
-      const step = tr.steps[si];
-      // Only ReplaceStep / ReplaceAroundStep have slice/insert information; mark steps map no changes.
-      if (!('slice' in step) && !('insert' in step)) continue;
-      step.getMap().forEach((oldFrom, oldTo, newFrom, newTo) => {
-        if (newTo <= newFrom && oldTo <= oldFrom) return;
-        const following = tr.mapping.slice(si + 1);
-        let from = following.map(newFrom, -1), to = following.map(newTo, 1);
-        for (let j = ti + 1; j < transactions.length; j++) {
-          from = transactions[j].mapping.map(from, -1);
-          to = transactions[j].mapping.map(to, 1);
-        }
-        changes.push({ from: Math.min(from, to), to: Math.max(from, to), oldFrom, oldTo,
-          inputType: tr.getMeta('uiEvent'), tr, transactionIndex: ti });
-      });
-    }
-  }
-  return changes;
 }
 
 export class InputTracker {
@@ -159,7 +157,7 @@ export class InputTracker {
     this.composing = false;
     this.compositionBase = null;
     this.pendingPaste = null;
-    this.clipboardTokens = new Set();
+    this.clipboardTokens = new Map();
     this.view = null;
   }
 
@@ -185,9 +183,11 @@ export class InputTracker {
   }
   event(name, view, event) {
     if (name === 'beforeinput') {
+      if (this.pendingPaste && event.inputType !== 'insertFromPaste'
+        && event.inputType !== 'insertFromPasteAsQuotation') this.pendingPaste = null;
       this.lastIntent = { type: event.inputType || 'unknown',
         selectionFrom: view.state.selection.from, selectionTo: view.state.selection.to,
-        mono: this.clock.mono() };
+        mono: this.clock.mono(), epoch: this.clock.epoch() };
     }
     if (name === 'compositionstart') {
       this.composing = true;
@@ -230,18 +230,27 @@ export class InputTracker {
   clipboard(view, event, cut = false) {
     const data = event.clipboardData;
     if (!data || view.state.selection.empty) return false;
-    const token = `slice-${this.meetingId}-${++this.nextId}-${Math.round(this.clock.mono())}`;
-    this.clipboardTokens.add(token);
+    const token = newClipboardToken();
+    const saved = { slice: view.state.selection.content(), text: plainTextSelected(view) };
+    if (token) this.clipboardTokens.set(token, saved);
     // Bounded lifetime: avoid turning copied arbitrary external text into trusted provenance.
-    if (this.clipboardTokens.size > 30) this.clipboardTokens.delete(this.clipboardTokens.values().next().value);
-    const selection = view.state.selection.content().content;
+    if (this.clipboardTokens.size > 30) this.clipboardTokens.delete(this.clipboardTokens.keys().next().value);
+    const selection = saved.slice.content;
     const holder = document.createElement('div');
     holder.appendChild(DOMSerializer.fromSchema(view.state.schema).serializeFragment(selection));
-    data.setData('text/html', holder.innerHTML);
-    data.setData('text/plain', plainTextSelected(view));
-    data.setData(CUSTOM_CLIPBOARD, JSON.stringify({ meetingId: this.meetingId, token, schemaVersion: 1 }));
+    try {
+      data.setData('text/html', holder.innerHTML);
+      data.setData('text/plain', saved.text);
+      if (token) data.setData(CUSTOM_CLIPBOARD, JSON.stringify({ meetingId: this.meetingId, token, schemaVersion: 1 }));
+    } catch {
+      // Clipboard restrictions vary. Let ProseMirror's default copy path run;
+      // any subsequent paste without our trusted MIME becomes unlinked.
+      if (token) this.clipboardTokens.delete(token);
+      return false;
+    }
     event.preventDefault();
-    this.log(cut ? 'cut' : 'copy', { from: view.state.selection.from, to: view.state.selection.to, token });
+    this.log(cut ? 'cut' : 'copy', { from: view.state.selection.from, to: view.state.selection.to,
+      trustedTokenStored: Boolean(token) });
     if (cut) {
       const tr = view.state.tr.deleteSelection().setMeta('uiEvent', 'cut').scrollIntoView();
       view.dispatch(tr);
@@ -250,28 +259,34 @@ export class InputTracker {
     return true;
   }
   paste(view, event) {
-    let trusted = false;
+    let trusted = false, savedSlice = null;
     const raw = event.clipboardData?.getData(CUSTOM_CLIPBOARD);
     if (raw) {
       try {
         const data = JSON.parse(raw);
+        const saved = this.clipboardTokens.get(data.token);
         trusted = data.meetingId === this.meetingId && data.schemaVersion === 1
-          && this.clipboardTokens.has(data.token);
+          && Boolean(saved) && equalClipboardText(saved.text, event.clipboardData?.getData('text/plain'));
+        if (trusted) savedSlice = saved.slice;
       } catch { /* malformed external clipboard is untrusted */ }
     }
-    this.pendingPaste = { trusted, mono: this.clock.mono() };
+    // Even when an HTML fragment is altered, trusted paste uses the original
+    // exact ProseMirror Slice stored by THIS editor, never injected HTML marks.
+    this.pendingPaste = { trusted, savedSlice, mono: this.clock.mono() };
     this.active = null;
     this.log('paste', { trusted, from: view.state.selection.from, to: view.state.selection.to,
       hasHtml: Boolean(event.clipboardData?.getData('text/html')), textLength: event.clipboardData?.getData('text/plain')?.length ?? 0 });
     return false;
   }
   transformPasted(slice) {
-    return sanitizeSlice(slice, this.allowed, Boolean(this.pendingPaste?.trusted));
+    return this.pendingPaste?.trusted && this.pendingPaste.savedSlice
+      ? sanitizeSlice(this.pendingPaste.savedSlice, this.allowed, true)
+      : sanitizeSlice(slice, this.allowed, false);
   }
   append(transactions, oldState, newState) {
     if (this.composing) return null;
     const now = this.now();
-    const changes = collectChanges(transactions);
+    const changes = collectTextChanges(transactions);
     if (!changes.length) return null;
     const isHistory = transactions.some(tr => Boolean(tr.getMeta('history$')));
     if (isHistory) {
@@ -288,9 +303,16 @@ export class InputTracker {
       const { from, to, oldFrom, oldTo } = change;
       const insertedText = newState.doc.textBetween(Math.max(0, from), Math.min(newState.doc.content.size, to), '\n');
       const deletedText = oldState.doc.textBetween(Math.max(0, oldFrom), Math.min(oldState.doc.content.size, oldTo), '\n');
-      const oldAnchor = safeSource(markFromRange(oldState.doc, oldFrom, oldTo), this.allowed);
-      const context = this.getContext(now.mono);
-      const type = this.lastIntent && now.mono - this.lastIntent.mono < 1000 ? this.lastIntent.type : change.inputType || 'unknown';
+      const oldWord = wordBoundsInDoc(oldState.doc, oldFrom);
+      const oldRangeAnchor = safeSource(markFromRange(oldState.doc, oldFrom, oldTo), this.allowed);
+      const oldWordAnchor = oldWord && oldWord.word.length
+        ? safeSource(markFromRange(oldState.doc, oldWord.from, oldWord.to), this.allowed) : null;
+      const oldAnchor = oldWordAnchor && oldRangeAnchor && sameAnchor(oldWordAnchor, oldRangeAnchor)
+        ? oldRangeAnchor : null;
+      const currentIntent = this.lastIntent && now.mono - this.lastIntent.mono < 1000 ? this.lastIntent : null;
+      const context = this.getContext(currentIntent?.mono ?? now.mono);
+      const anchorEpoch = currentIntent?.epoch ?? now.epoch;
+      const type = currentIntent?.type || change.inputType || 'unknown';
       if (!insertedText.length) {
         if (deletedText.length > 0 && deletedText.length <= 3 && !hasWordBoundary(deletedText) && oldAnchor) {
           this.pendingDeletion = { pos: from, oldAnchor, at: now.mono, deletedText };
@@ -303,7 +325,6 @@ export class InputTracker {
         this.log('paste-preserved', { from, to, length: insertedText.length });
         continue;
       }
-      const oldWord = wordBoundsInDoc(oldState.doc, oldFrom);
       const isSameWord = Boolean(oldWord && oldWord.word.length &&
         oldFrom >= oldWord.from && oldTo <= oldWord.to && !hasWordBoundary(insertedText));
       const recentBurst = Boolean(this.pendingDeletion && now.mono - this.pendingDeletion.at < 850
@@ -318,12 +339,12 @@ export class InputTracker {
         recordingId: context.recordingId, source: context.source, contextState: context.coverage,
         isPaste, isHistory, isNewIdea: false });
       let anchor;
-      if (isPaste) anchor = this.newAnchor({ source: 'paste' }, now.epoch);
+      if (isPaste) anchor = this.newAnchor({ source: 'paste' }, anchorEpoch);
       else if (keepOld) anchor = stable;
       else if (canGroup) anchor = this.active.anchor;
-      else anchor = this.newAnchor(context, now.epoch);
+      else anchor = this.newAnchor(context, anchorEpoch);
       // A valid source must match the explicitly allowed meeting recordings.
-      const safe = safeSource(anchor, this.allowed) || this.newAnchor({ source: 'unlinked' }, now.epoch);
+      const safe = safeSource(anchor, this.allowed) || this.newAnchor({ source: 'unlinked' }, anchorEpoch);
       tr.addMark(from, to, newState.schema.marks.timeSpan.create(safe));
       this.log('insert-anchored', { from, to, insertedLength: insertedText.length,
         deletedLength: deletedText.length, type, anchorId: safe.anchorId, source: safe.source,
@@ -374,11 +395,22 @@ export class InputTracker {
     return metrics;
   }
   exportTrace() {
+    const inserts = this.trace.filter(event => event.kind === 'insert-anchored');
     return { schemaVersion: 1, kind: 'ime-event-trace',
       // Trace deliberately does NOT export typed text, browser clipboard HTML or audio bytes.
       privacy: 'lengths-and-types-only',
       userAgent: typeof navigator === 'undefined' ? 'node' : navigator.userAgent,
       meetingId: this.meetingId, sampleCount: this.trace.length,
+      // Allows a reviewer to compare the first/last marks in one paragraph
+      // without exporting the characters typed into the editor.
+      summary: {
+        inputSpanMs: inserts.length > 1 ? inserts.at(-1).monoMs - inserts[0].monoMs : 0,
+        uniqueAnchorCount: new Set(inserts.map(event => event.anchorId)).size,
+        firstAnchorId: inserts[0]?.anchorId ?? null,
+        lastAnchorId: inserts.at(-1)?.anchorId ?? null,
+        hasCompositionEvents: this.trace.some(event => event.kind.startsWith('composition')),
+        hasBackspace: this.trace.some(event => event.kind === 'keydown' && event.key === 'Backspace'),
+      },
       metrics: this.snapshot(), events: this.trace };
   }
 }

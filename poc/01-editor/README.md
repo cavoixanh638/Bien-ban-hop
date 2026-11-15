@@ -16,7 +16,16 @@ npm run test:e2e
 npm run build
 ```
 
-`npm run test:unit` dùng Node built-in và có thể chạy trước `npm install`. Browser e2e chỉ là chuỗi nhập **synthetic**. Khi cài không được gói do mạng, **không ghi test build/browser PASS**. Các phụ thuộc được ghim phiên bản trong `package.json`; lockfile chưa sinh trong môi trường offline. Tạo/commit lockfile ở bước chạy được npm registry trên Windows trước khi chốt gate.
+`npm run test:unit` chạy **toàn bộ** `tests/*.test.mjs` với Node built-in, không cần cài dependency. Bốn nhóm gồm: pure policy, StepMap inverse mapping, `InputTracker` thực với ProseMirror-* **mock** (không phải thư viện Tiptap), và validator trace. Browser e2e chỉ là chuỗi nhập **synthetic**. Khi cài không được gói do mạng, **không ghi test build/browser PASS**. Các phụ thuộc được ghim phiên bản trong `package.json`; lockfile chưa sinh trong môi trường offline. Tạo/commit lockfile ở bước chạy được npm registry trên Windows trước khi chốt gate.
+
+Phép thử HTML `contenteditable` độc lập (không khởi chạy Tiptap) có thể chạy trong Python Playwright + Chromium đã cài:
+
+```sh
+python3 scripts/browser-native-event-probe.py
+# ghi kết quả event đã lược ký tự vào evidence/linux-chromium-native-input.json
+```
+
+Phép thử này chỉ xác nhận **trình duyệt Linux nhận beforeinput/input/Backspace không cần composition với phím giả lập**; không chứng minh behavior của Tiptap, UniKey hay EVKey và không được dùng làm PASS TC03.
 
 ## Interface cho tích hợp
 
@@ -25,7 +34,8 @@ npm run build
   - `TimeSpan` — MarkSpec `{ inclusive:false, excludes:'timeSpan', spanning:true }` và attrs đầy đủ `{anchorId, recordingId, audioOffsetMs, typedAt, source, schemaVersion:1}`.
   - `new InputTracker({ meetingId, recordingIds, getAudioContext(monotonicMs), clock? })`: audio adapter trả `{source, recordingId?, audioOffsetMs?, coverage?, epoch?}`. Context thật do luồng Timeline/Audio tích hợp sau, không import code luồng khác.
   - `createTrackingExtension(tracker)` — plugin ProseMirror theo dõi selection, beforeinput/input/composition, StepMap, history, clipboard.
-  - `readAnchorAtCursor(editor.state)` → `{status:'linked'|'unlinked'|'mixed'|'ambiguous', anchor?, candidates?, left?, right?}`. Ở biên hai nguồn trả `ambiguous` (không tự phát nhầm đoạn).
+  - `readAnchorAtCursor(editor.state, allowedRecordingIds?)` → `{status:'linked'|'unlinked'|'mixed'|'ambiguous', anchor?, candidates?, left?, right?}`. **Khuyến nghị truyền `Set` recordingId của cuộc họp**; lúc đó foreign/invalid mark bị loại, không phát nhầm nguồn. Không truyền allow-list thì chỉ kiểm tra cấu trúc Mark chứ không thể chứng minh cùng meeting. Ở biên hai nguồn trả `ambiguous`.
+- `src/step-changes.mjs`: pure StepMap adapter chuẩn hóa tọa độ OldState/FinalState cho transaction nhiều bước và nhiều transaction. Không lấy `oldFrom` step-local nhầm làm vị trí trên tài liệu gốc.
 - `editor.getJSON()` trả **native ProseMirror NoteDocument**; demo xuất fixture `{noteDocumentId, revision, schemaVersion, content}`.
 - `window.__mochop` chỉ là **harness của PoC**, không phải API production.
 
@@ -33,11 +43,11 @@ npm run build
 
 1. Gõ mới có recording hợp lệ → timeSpan theo audio context giả. Không có coverage, gap/missing hoặc nguồn không được phép → `source:'unlinked'`, `recordingId` và `audioOffsetMs` null. Text nhập ngoài → `source:'paste'` nhưng không tạo thời điểm phát ngôn.
 2. Cùng cụm được gộp khi các điều kiện khoảng cách, word boundary, vị trí con trỏ, recording/source, epoch/gap khớp. Tất cả sáu attrs khi gộp **phải** giống nhau. `typedAt` ghi ở đầu cụm, không cập nhật cho mỗi chữ. Cấu hình mặc định: ≤1.2 s giữa input, ≤1.8 s từ đầu cụm, ≤24 ký tự.
-3. `Backspace + Insert` nhanh trong cùng vùng từ, thay dấu ở cùng từ, sửa ký tự ngắn trong chữ cũ ưu tiên giữ anchor cũ. Không chặn input (`filterTransaction` không sử dụng). Composition có thể tạm bỏ mark và xử lý ở `compositionend`; phải xác minh Windows thực.
-4. Định dạng bold/italic, sửa và Undo/Redo dựa transaction ProseMirror; dán nội bộ có custom clipboard MIME và token cùng session giữ nguồn hợp lệ. Dán ngoài/cross-meeting không được tin `timeSpan` trong HTML, rơi về paste-unlinked. Nếu browser làm mất MIME/token, **fallback không liên kết** thay vì đoán nguồn.
+3. `Backspace + Insert` nhanh trong cùng vùng từ, thay dấu ở cùng từ, sửa ký tự ngắn trong chữ cũ ưu tiên giữ anchor cũ **chỉ khi vùng từ có provenance đồng nhất**. Vùng chọn giao nhiều Mark không được kế thừa Mark đầu tiên. Không chặn input (`filterTransaction` không sử dụng). Composition có thể tạm bỏ mark và xử lý ở `compositionend`; phải xác minh Windows thực.
+4. Định dạng bold/italic, sửa và Undo/Redo dựa transaction ProseMirror; dán nội bộ có custom clipboard MIME và token khó đoán cùng session, so khớp plain text, lấy lại **Slice gốc bất biến trong bộ nhớ editor** chứ không tin HTML có thể bị thay đổi. Dán ngoài/cross-meeting không được tin `timeSpan` trong HTML, rơi về paste-unlinked. Nếu browser làm mất MIME/token, **fallback không liên kết** thay vì đoán nguồn. Paste pending bị xóa khi người dùng thực hiện trước-input khác.
 5. `timeSpan` không chứa `valid/pending/missing` động. Nếu audio bị xóa sau khi gõ, resolver ở luồng Timeline sẽ suy trạng thái; editor không tự đổi Mark.
 
-**Giới hạn cần kiểm thực tế:** Heuristic không chứng minh được ý mới so với sửa từ ở mọi tình huống. Backspace burst rất nhanh có thể là thao tác người dùng (false-positive); việc không có composition, dán Word, undo history, clipboard MIME và đặc tính Chromium phải thử với máy Windows thật. Không tuyên bố 100% bảo toàn nếu chưa có trace/diff nguồn. DOM `spanning:true` không đồng nghĩa hai TextNode tự gộp trong JSON.
+**Giới hạn cần kiểm thực tế:** Heuristic không chứng minh được ý mới so với sửa từ ở mọi tình huống. Backspace burst rất nhanh có thể là thao tác người dùng (false-positive); việc không có composition, dán Word, undo history, clipboard MIME và đặc tính Chromium phải thử với máy Windows thật. Không tuyên bố 100% bảo toàn nếu chưa có trace/diff nguồn. DOM `spanning:true` không đồng nghĩa hai TextNode tự gộp trong JSON. Bộ đếm `timeSpanRuns` tính cụm theo toàn bộ attrs, phân biệt `markedTextNodes` và `domTimeSpanWrappers`; bảng metrics được cập nhật tối đa khoảng 1 lần/giây (hoặc khi bấm đo lại) để tránh lặp serialization dài theo mỗi lần gõ.
 
 ## Thu evidence Windows thật — điều kiện gate bắt buộc
 
@@ -45,7 +55,7 @@ npm run build
 2. Chạy đủ **4 tổ hợp UniKey×Telex, UniKey×VNI, EVKey×Telex, EVKey×VNI**; ở mỗi tổ hợp gõ `trường`, `tiếng`, sửa dấu muộn (`truo...` rồi đổi), gõ nhanh/chậm, chữ cũ, giữa hai Mark, bold/italic, cut/paste, Undo/Redo. Thu cả tình huống input thực **không có** `compositionstart/end` và chứa chuỗi `Backspace+Insert`. Ghi kết quả đúng/sai của ký tự và anchor trước/sau.
 3. Gõ liên tục **120 giây không Enter** trong một đoạn. Đồng thời giữ audio fixture chạy và nhiều khoảng dừng ngắn, xác minh có nhiều anchor trong cùng paragraph; so mốc đầu/giữa/cuối với thời điểm fixture. Không dùng nút nhập dữ liệu tổng hợp thay thế thao tác gõ.
 4. Bật nút giả lập tải nặng 15 giây trong PoC, tiếp tục gõ sửa; thử thêm với ứng dụng thực chạy nền và ghi rõ cấu hình tải. Xem lỗi gõ, mốc sai, lag. Thu metric JSON/TextNode/DOM wrapper, P95 `beforeinput→requestAnimationFrame` (proxy đo UI), P95 append và kích thước JSON trên đoạn dài; **ngưỡng mong muốn P95 <100 ms** trên máy đo, chưa chứng minh.
-5. Điền toàn bộ metadata ở panel bên phải rồi bấm **Tải trace đã lược nội dung gõ** và **Xuất NoteDocument JSON**. Trace đã lược `event.data` và text nhập, nhưng vẫn **tự kiểm trước khi chia sẻ**. Chạy `npm run trace:check -- path/to/trace.json`. Tạo bảng so sánh các anchorId/source/audioOffsetMs trước-sau edit/Undo/Redo. Chỉ reviewer xác nhận log có nguồn IME thực và không mất dữ liệu mới có quyền chuyển trạng thái gate.
+5. Điền **Windows build thực, Chrome/Edge phiên bản và phiên bản IME** (không có giá trị mặc định) ở panel bên phải rồi bấm **Tải trace đã lược nội dung gõ** và **Xuất NoteDocument JSON**. Trace có `summary` đầu/cuối, số mốc, khoảng thời gian, trạng thái composition/backspace; đã lược `event.data` và text nhập, nhưng vẫn **tự kiểm trước khi chia sẻ**. Chạy `npm run trace:check -- path/to/trace.json`, công cụ sẽ từ chối trường sự kiện lạ/có ký tự thô hoặc summary không khớp. Tạo bảng so sánh các anchorId/source/audioOffsetMs trước-sau edit/Undo/Redo. **Không commit NoteDocument họp thật hoặc trace chưa kiểm nhạy cảm**. Chỉ reviewer xác nhận log có nguồn IME thực và không mất dữ liệu mới có quyền chuyển trạng thái gate.
 
 Các phím in được (kể cả ký tự Việt) được lược thành `[printable]`; chỉ các phím điều khiển (Backspace, Delete, mũi tên...) còn tên để phân tích IME.
 

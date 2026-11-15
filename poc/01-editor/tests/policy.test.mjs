@@ -109,6 +109,22 @@ test('TC09: timeSpan attrs do not depend on bold/italic text marks', () => {
   const m = getJsonMetrics(doc);
   assert.equal(m.uniqueAnchors, 1);
   assert.equal(m.markedTextNodes, 2);
+  assert.equal(m.timeSpanRuns, 1); // same attrs across bold split
+  assert.equal(m.totalMarkInstances, 3); // 2 timeSpan + 1 bold
+});
+test('TC11: model runs split when ANY timeSpan attribute changes, not merely the time offset', () => {
+  const doc = { type: 'doc', content: [{ type: 'paragraph', content: [
+    { type: 'text', text: 'a', marks: [{ type: 'timeSpan', attrs: linked }] },
+    { type: 'text', text: 'b', marks: [{ type: 'timeSpan', attrs: linked }, { type: 'italic' }] },
+    { type: 'text', text: 'c', marks: [{ type: 'timeSpan', attrs: { ...linked, typedAt: linked.typedAt + 5 } }] },
+    { type: 'text', text: 'd', marks: [{ type: 'timeSpan', attrs: { ...linked, typedAt: linked.typedAt + 5 } }, { type: 'bold' }] },
+    { type: 'text', text: 'e' },
+    { type: 'text', text: 'f', marks: [{ type: 'timeSpan', attrs: linked }] },
+  ] }, { type: 'paragraph', content: [{ type: 'text', text: 'g', marks: [{ type: 'timeSpan', attrs: linked }] }] }] };
+  const metrics = getJsonMetrics(doc);
+  assert.equal(metrics.timeSpanRuns, 4);
+  assert.equal(metrics.textNodes, 7);
+  assert.equal(metrics.markedTextNodes, 6);
 });
 test('TC10: paste unlinked allowed, never assigns source audio', () => {
   const a = makeAnchor({ source: 'paste', recordingId: 'rec-01', audioOffsetMs: 100 },
@@ -121,6 +137,24 @@ test('TC10: malformed or unknown provenance cannot link', () => {
   assert.equal(isAllowedMeetingMark({ ...linked, schemaVersion: 77 }, new Set(['rec-01'])), false);
   assert.equal(isAllowedMeetingMark({ ...linked, source: 'made_up' }, new Set(['rec-01'])), false);
   assert.equal(isAllowedMeetingMark({ ...linked, audioOffsetMs: -10 }, new Set(['rec-01'])), false);
+});
+test('TC07/TC10: malformed partial timeSpan and inconsistent source are rejected', () => {
+  const allowed = new Set(['rec-01']);
+  for (const attr of ['anchorId', 'typedAt', 'schemaVersion', 'source']) {
+    const invalid = { ...linked };
+    delete invalid[attr];
+    assert.equal(isAllowedMeetingMark(invalid, allowed), false, attr);
+  }
+  assert.equal(isAllowedMeetingMark({ ...linked, anchorId: '' }, allowed), false);
+  assert.equal(isAllowedMeetingMark({ ...linked, typedAt: '1731670000000' }, allowed), false);
+  assert.equal(isAllowedMeetingMark({ ...linked, typedAt: Number.NaN }, allowed), false);
+  assert.equal(isAllowedMeetingMark({ ...linked, source: 'paste' }, allowed), false);
+  assert.equal(isAllowedMeetingMark({ ...linked, source: 'unlinked' }, allowed), false);
+  assert.equal(isAllowedMeetingMark({ ...linked, recordingId: null, audioOffsetMs: null }, allowed), false);
+  assert.equal(isAllowedMeetingMark({ ...linked, recordingId: null }, allowed), false);
+  assert.equal(isAllowedMeetingMark({ ...linked, recordingId: 'rec-01', audioOffsetMs: 125000.2 }, allowed), false);
+  assert.equal(isAllowedMeetingMark({ ...linked, recordingId: null, audioOffsetMs: null,
+    source: 'paste' }, allowed), true);
 });
 test('TC11: no incorrect coalescing across changes in any identity dimension', () => {
   for (const op of [ { ...next, contextEpoch: 1 }, { ...next, source: 'paste' },

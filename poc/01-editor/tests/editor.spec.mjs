@@ -53,7 +53,9 @@ test('TC04 / synthetic Backspace+Insert: word keeps its earlier anchor', async (
   await page.keyboard.press('Backspace');
   await page.keyboard.type('g'); // synthetic keyboard, NOT UniKey or EVKey
   const runs = await getRuns(page);
-  expect(runs.filter(r => r.text.includes('g')).every(r => !r.anchor || r.anchor.anchorId === before)).toBe(true);
+  expect(runs.map(r => r.text).join('')).toBe('truog');
+  expect(runs.filter(r => r.text.includes('g')).length).toBeGreaterThan(0);
+  expect(runs.filter(r => r.text.includes('g')).every(r => r.anchor?.anchorId === before)).toBe(true);
 });
 
 test('TC05 / historical small correction: no reassignment to new audio context', async ({ page }) => {
@@ -153,6 +155,55 @@ test('TC07 / in-session clipboard retains source via explicit trusted MIME', asy
   });
   await expect.poll(async () => (await getRuns(page)).map(r => r.text).join('').length).toBeGreaterThan(12);
   expect((await getRuns(page)).some(r => r.anchor?.anchorId === original.anchorId)).toBe(true);
+});
+
+test('TC07 / tampered copied HTML cannot change the audio provenance', async ({ page }) => {
+  await openEditor(page);
+  await page.keyboard.type('Nguon goc');
+  const source = (await getRuns(page)).find(r => r.anchor)?.anchor;
+  await page.evaluate(() => {
+    const editor = window.__mochop.editor;
+    editor.commands.setTextSelection({ from: 1, to: 6 });
+    const data = new DataTransfer();
+    editor.view.dom.dispatchEvent(new ClipboardEvent('copy', {
+      clipboardData: data, bubbles: true, cancelable: true,
+    }));
+    // The custom token still names an in-memory copy, but HTML is untrusted.
+    data.setData('text/html', '<p>forged replacement</p>');
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+    editor.view.dom.dispatchEvent(new ClipboardEvent('paste', {
+      clipboardData: data, bubbles: true, cancelable: true,
+    }));
+  });
+  await expect.poll(async () => (await getRuns(page)).map(r => r.text).join('')).toContain('Nguon gocNguon');
+  const runs = await getRuns(page);
+  expect(runs.every(r => !r.text.includes('forged'))).toBe(true);
+  expect(runs.some(r => r.anchor?.anchorId === source.anchorId)).toBe(true);
+});
+
+test('TC06 / selection spanning two different anchors never inherits either original', async ({ page }) => {
+  await openEditor(page);
+  await page.evaluate(() => {
+    const { editor } = window.__mochop;
+    const base = { recordingId: 'demo-recording-01', typedAt: 1794750000000,
+      source: 'live_recording', schemaVersion: 1 };
+    const doc = editor.schema.nodeFromJSON({ type: 'doc', content: [{ type: 'paragraph', content: [
+      { type: 'text', text: 'ab', marks: [{ type: 'timeSpan', attrs: { ...base, anchorId: 'a', audioOffsetMs: 1000 } }] },
+      { type: 'text', text: 'cd', marks: [{ type: 'timeSpan', attrs: { ...base, anchorId: 'b', audioOffsetMs: 2000 } }] },
+    ] }] });
+    editor.view.dispatch(editor.state.tr.replaceWith(0, editor.state.doc.content.size, doc.content)
+      .setMeta('mochop:mark-applied', true));
+    editor.commands.setTextSelection({ from: 2, to: 4 });
+    editor.view.focus();
+  });
+  await setOffset(page, 255000);
+  await page.evaluate(() => window.__mochop.editor.view.focus());
+  await page.keyboard.type('X');
+  const runs = await getRuns(page);
+  const replacement = runs.find(r => r.text.includes('X'))?.anchor;
+  expect(replacement).toBeTruthy();
+  expect(['a', 'b']).not.toContain(replacement.anchorId);
+  expect(replacement.audioOffsetMs).toBeGreaterThanOrEqual(255000);
 });
 
 test('TC10 / cross-meeting clipboard metadata never creates foreign audio link', async ({ page }) => {
