@@ -1,37 +1,42 @@
-# 04 — Timeline and anchor resolver PoC
+# G04 · Timeline and immutable anchor resolver (Gói 1.3 fixture PoC)
 
-Standalone TypeScript fixture PoC for **Gói 1.3** (not integrated product evidence).
+Self-contained TypeScript with Node 22+ (no package install, external worker, browser or fixtures required). This is an independently tested **math/contract PoC**, not an integrated or released app.
 
-## Run from a clean checkout
+## Reproduce
 
 ```sh
 cd poc/04-timeline
-npm test
+npm run verify
 ```
 
-Uses Node >=22.6 (verified locally on Node 22.16.0), no dependencies; tests run via Node's experimental type-stripping. `npm install` is not necessary. Synthetic fixtures are generated inside `timeline.test.ts`.
+`verify` runs 33 unit/regression cases via `node --experimental-strip-types --test timeline.test.ts timeline.extended.test.ts`, then writes `evidence/synthetic-measurement.json` with exact expected/actual positions. Re-running the generator replaces that deterministic JSON. `npm test` only runs cases; `npm run measure` only generates 2 synthetic clock traces. Type check in an environment with TypeScript installed: `tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext timeline.ts`.
 
-## API and contract
+## Handoff API
 
-- `validateManifest(m)`: reject ambiguous/invalid source timeline.
-- `inputToSample(m, inputMonoMs)`: interpolation between measured monotonic-clock↔sample points; no wall clock extrapolation; configurable drift ceiling (default 5000ppm).
-- `sampleToMedia(m, sampleIndex)`: media offset from segment's counted samples.
-- `meetingToMedia(m, meetingMs)`: mapping via half-open recorded intervals; explicit paused/unavailable/gap statuses.
-- `resolve(manifests, recordingId, audioOffsetMs)`: `valid` with `segmentId`, `filePath`, `localOffsetMs`, or `pending|missing|gap|unsupported|unlinked` with explanation. **No fallback to adjacent media or another recording**.
-- `createLiveAnchor`: independent meeting/sample-clock cross-check and original typedAt/source; failure leaves `audioOffsetMs=null`.
-- `createPlaybackAnchor`: use selected recording's current player position, including paused or post-seek; never Date.now for media mapping.
-- `playbackTarget`: pre-roll only at play time, never change original anchor.
+- `validateManifest(m)` detects invalid/ambiguous segments, media/meeting interval overlaps, sample-range overlaps, wrong references and invalid clock metadata. Paused clocks may have *identical* sample counters across successive monotonic points, but timestamps must increase.
+- `inputToSample(m, inputMonoMs)` maps between measured clock→sample calibration points (not `Date.now()`). If outside coverage: `pending`; no sample progress: `gap`; absurd drift or broken manifest: `unsupported`.
+- `sampleToMedia(m, sampleIndex)` uses `sampleStart`, `sampleCount`, and `sampleRate` rather than a wall-time guess. All intervals are half-open `[start,end)`.
+- `meetingToMedia(m, meetingMs)` explicitly treats `paused`, `gap` and `unavailable`. **Never** pass `audioOffsetMs` to this function: meeting timeline and media timeline are different coordinates.
+- `resolve(manifests, recordingId, audioOffsetMs)` requires a matching *recorded media interval* with the right `segmentRefs` and a uniquely covered segment. `valid` returns `segmentId`, `filePath`, `localOffsetMs`, and stable source metadata. Otherwise `pending|missing|gap|unsupported|unlinked` includes a human-readable reason. No nearby-file/other-source fallback, and a complete orphan segment alone is not playable.
+- `createLiveAnchor` derives an integer-ms `timeSpan` Mark from clock samples and checks it against meeting time; a not-yet-allocated segment may yield a provisional **pending** media offset, never `valid`. A later manifest can change resolver status without changing the Mark.
+- `createPlaybackAnchor` uses the currently selected recording + player head (including pause/seek); no wall-time estimation. Quantization to integer milliseconds selects an offset **inside the same physical source interval and segment**. Extremely short segments with no representable integer-ms point yield `unsupported` rather than pointing to a neighbor.
+- `playbackTarget` leaves the original Mark unchanged and returns `playStartMs`, `preRollStatus`, `preRollReason`, `preRollAppliedMs`. Pre-roll crossing unavailable/pending/corrupt media or a meeting gap refuses to jump over the hole; `blocked` starts at the original anchor with a reason. An intentional pause may be crossed when media remains contiguous. Range: 0–30000ms.
 
-The committed fixture follows COMMON.md manifest/Mark fields and adds segment completion states for fake storage. Sample/segment state is synthetic, not proof of audio commit. Production storage must supply actual durable committed boundaries and metadata.
+## Measured scope
 
-## Test evidence
+**Fixture results (Linux, Node v22.16.0):** 33 PASS / 0 FAIL. Original 16 tests unchanged and kept passing. 17 additions cover post-pause sample-clock plateau, pre-roll through gaps or an internally corrupt/pending segment, wrong-source cases, missing interval authorization, pending→valid, cross-source imports, 05-player false-gap reproducer (`audioOffsetMs=1805000` valid while the same number as `meetingMs` lies in pause), fractional 44.1kHz boundary, sub-ms impossible Mark, and a 3-hour **virtual-only** 36-segment index.
 
-Local command `npm test`, Node 22.16.0 Linux, 16/16 PASS, 0 FAIL. Tests cover first/end boundaries, pause/gap, bad segment, multiple sources, playback seek/pause, drift and out-of-calibration, pending→valid, wrong-source rejection, manifest conflicts, orphan-segment-without-recorded-interval rejection, immutable pre-roll.
+Synthetic sample-clock measurement (no real waveform/decoder): two separate 20s recorded spans, 3s pause, 1,082 impulses each, two sample rates and injected drift. Target max offset error ≤1000ms; observed:
 
-Synthetic impulse **clock calculation**: 271 deterministic positions at 37ms steps with synthetic +100ppm clock drift and 48kHz sample counter; expected≤1000ms, observed **maximum 0.508ms** (rounded millisecond output). This measures numerical mapping only, **not real microphone/input event/audio device latency**.
+| Hz / synthetic drift | Max absolute error | P95 absolute error | Result |
+|---|---:|---:|---|
+| 48,000 / +100 ppm | 0.5207 ms | 0.4746 ms | PASS fixture |
+| 44,100 / -80 ppm | 0.609977 ms | 0.473575 ms | PASS fixture |
 
-Reproduce on real capture during integration: inject timestamped sample impulses at known monotonic instants, collect `inputMonoMs` and committed `sampleIndex`, verify WAV/segment sample boundaries and media decoder positions; compute absolute (resolved offset - ground-truth impulse offset), max/P95 and any missing sample intervals. Record Windows build, Chrome/Edge version, audio device/sample rate, clock source, exact commit SHA and logs. Real-device measurement is **NOT_RUN**.
+Committed evidence: [`evidence/synthetic-measurement.json`](evidence/synthetic-measurement.json) (expected/actual sample points, segment IDs, error distributions) and [`evidence/TEST_LOG.md`](evidence/TEST_LOG.md) (commands, environment, SHA, PASS/NOT_RUN).
 
-## Integration limitations
+## Live adapter reproduction (NOT_RUN in this PoC)
 
-PoC has no live capture, OPFS, media decoding, Windows browser traces or integration with editor/player. The current fixture models a single monotonic epoch and assumes exact meeting-origin mapping; deliberate clock reset or suspend requires separate clock epochs and explicit gap metadata. The dynamic storage manifest must be refreshed to transition pending→valid. This package is not a claim that TC13–TC18 or Gói 1.3 has passed on the integrated application.
+On actual Windows Chrome/Edge and the intended microphone, collect `(inputMonoMs, sampleIndex)` in one monotonic clock epoch, inject/observe time-stamped impulses or claps with separately calibrated ground truth, log actual `sampleRate`, captured frame counts, `firstSample` / `sampleCount` / sample discontinuities, pause and stop/resume. Build a manifest only from **durably committed** sink ACK + journal state (a transferred or queued PCM buffer is not saved audio); include missing/undecodable intervals, segment file paths and per-recording IDs. Seek/open the actual decoder at first, last and post-gap positions and compare marked offset with known impulse position; report maximum and P95 error, sample loss, OS/browser versions, microphone/latency setup and tested commit SHA. Exercise disconnect/quota/crash and never treat missing audio as `valid`.
+
+**NOT_RUN:** physical capture, Windows IME/editor, OPFS durable flush and crash, real decoder seek, audio-device clock drift under suspend, and integrated TC13–TC18/22/24/27/28. Those belong to integration and cannot be inferred from fixture math. This PoC should be reviewed before wiring 02-capture/03-opfs/05-player; it neither imports nor waits for their code. No COMMON.md changes, merge or deployment.
