@@ -233,3 +233,49 @@ test('44.1kHz fractional segment start quantizes inside the correct post-pause f
   const justBefore = live(m, 19999.99);
   assert.equal(justBefore.resolution.segmentId, 'before-pause');
 });
+
+test('sub-millisecond segment with no integer-ms anchor is unsupported, not adjacent valid file', () => {
+  const edge = 4810 * 1000 / 48000;
+  const m: Manifest = {
+    recordingId: 'tiny', sampleRate: 48000, mappingPoints: [{inputMonoMs:0,sampleIndex:0},{inputMonoMs:100.7,sampleIndex:4834}],
+    segments: [
+      {segmentId:'first',filePath:'first.wav',mediaStartMs:0,mediaDurationMs:edge,
+        sampleStart:0,sampleCount:4810,completionState:'complete'},
+      {segmentId:'tiny',filePath:'tiny.wav',mediaStartMs:edge,mediaDurationMs:0.5,
+        sampleStart:4810,sampleCount:24,completionState:'complete'},
+    ],
+    intervals: [
+      {meetingStartMs:0,meetingEndMs:100.208333,kind:'recorded',mediaStartMs:0,mediaEndMs:edge,segmentRefs:['first']},
+      {meetingStartMs:100.208333,meetingEndMs:100.708333,kind:'recorded',mediaStartMs:edge,mediaEndMs:edge+0.5,segmentRefs:['tiny']},
+    ],
+  };
+  assert.deepEqual(validateManifest(m), []);
+  assert.equal(resolve([m], 'tiny', edge + 0.1).segmentId, 'tiny');
+  assert.equal(resolve([m], 'tiny', Math.floor(edge + 0.1)).segmentId, 'first');
+  const note = createPlaybackAnchor([m], {recordingId:'tiny',currentMediaMs:edge+0.1,
+    paused:true,anchorId:'new',typedAt:100});
+  assert.equal(note.resolution.status, 'unsupported');
+  assert.equal(note.anchor.audioOffsetMs, null);
+});
+
+test('three-hour virtual timeline: 36 segments at 48kHz resolve all boundaries', () => {
+  const SEGMENTS = 36, DURATION = 300000, RATE = 48000;
+  const manifest: Manifest = {recordingId:'3h',sampleRate:RATE,
+    mappingPoints:[{inputMonoMs:0,sampleIndex:0},{inputMonoMs:3*3600000,sampleIndex:3*3600*RATE}],
+    segments:[],intervals:[]};
+  for(let i=0;i<SEGMENTS;i++) {
+    manifest.segments.push({segmentId:`s-${i}`,filePath:`synthetic-${i}.wav`,mediaStartMs:i*DURATION,
+      mediaDurationMs:DURATION,sampleStart:i*DURATION*RATE/1000,sampleCount:DURATION*RATE/1000,completionState:'complete'});
+    manifest.intervals.push({kind:'recorded',meetingStartMs:i*DURATION,meetingEndMs:(i+1)*DURATION,
+      mediaStartMs:i*DURATION,mediaEndMs:(i+1)*DURATION,segmentRefs:[`s-${i}`]});
+  }
+  assert.deepEqual(validateManifest(manifest), []);
+  for(let i=0;i<SEGMENTS;i++) {
+    const atStart=resolve([manifest],'3h',i*DURATION);
+    assert.equal(atStart.segmentId,`s-${i}`);
+    assert.equal(atStart.localOffsetMs,0);
+  }
+  assert.equal(resolve([manifest],'3h',3*3600000-1).segmentId,'s-35');
+  assert.equal(resolve([manifest],'3h',3*3600000).status,'gap');
+  assert.equal(meetingToMedia(manifest,90*60000).audioOffsetMs,90*60000);
+});
