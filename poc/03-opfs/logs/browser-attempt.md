@@ -1,0 +1,3 @@
+# Browser attempted 2026-11-15 — NOT_RUN
+
+Host: Debian GNU/Linux 13 container, Chromium 144.0.7559.96, Python Playwright. Attempts to navigate localhost `http://127.0.0.1:8765/browser-test.html`, `file:///mnt/data/opfs-poc/browser-test.html` and a `data:text/html,...` page all failed before page script execution with `net::ERR_BLOCKED_BY_ADMINISTRATOR`. A Playwright `about:blank` page reported `{secure:false, origin:'null', opfs:'undefined', indexedDB:'object'}`. Therefore OPFS/IndexedDB smoke **NOT_RUN**, no fake PASS. Run `browser-test.html` from a real secure origin on Windows Chrome and Edge.
