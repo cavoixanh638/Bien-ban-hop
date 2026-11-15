@@ -4,9 +4,10 @@ import {createMemoryDB} from '../../poc/06-notes/notes.mjs';
 import {CaptureClockMapper} from '../../poc/02-capture/src/clock-mapper.mjs';
 import {MeetingStore,SaveQueue} from '../src/meeting-store.mjs';
 import {verifiedClickedAnchor} from '../src/anchor-bridge.mjs';
+import {resolvePlaybackStart} from '../src/playback-start.mjs';
 import {contextFor,resolvePending,intervalFor} from '../src/clock-bridge.mjs';
 import {fixture as audioFixture} from '../../poc/05-player/player.js';
-import {resolveMedia,meetingToMedia} from '../../poc/05-player/timeline.js';
+import {resolveMedia,meetingToMedia,choosePreRoll} from '../../poc/05-player/timeline.js';
 
 const doc=(text='Ghi chú tiếng Việt')=>({type:'doc',content:[{type:'paragraph',content:[{type:'text',text}]}]});
 const setup=async()=>{const db=createMemoryDB(),store=new MeetingStore(db),meeting=await store.create('Họp thử');
@@ -120,4 +121,16 @@ test('G10: duplicate anchor with conflicting provenance cannot be played',()=>{
   const b={...a,recordingId:'other'};
   const model={descendants(fn){fn({isText:true,marks:[{type:'timeSpan',attrs:a}]});fn({isText:true,marks:[{type:'timeSpan',attrs:b}]});}};
   assert.equal(verifiedClickedAnchor(model,'same',new Set(['rec-x','other'])),null);
+});
+
+test('G10 playback: unavailable pre-roll falls back only to exact valid anchor, with notice',()=>{
+  const m={recordingId:'rec-a',segments:[{segmentId:'s',mediaStartMs:100,mediaDurationMs:2000,completionState:'complete'}],
+    intervals:[{kind:'recorded',mediaStartMs:100,mediaEndMs:2100,segmentRefs:['s']}]};
+  const fallback=resolvePlaybackStart(m,'rec-a',500,5000,resolveMedia,choosePreRoll);
+  assert.equal(fallback.status,'valid');assert.equal(fallback.startMs,500);
+  assert.equal(fallback.preRollLimited,true);assert.equal(fallback.originalMs,500);
+  const normal=resolvePlaybackStart(m,'rec-a',500,0,resolveMedia,choosePreRoll);
+  assert.equal(normal.status,'valid');assert.equal(normal.startMs,500);assert.equal(normal.preRollLimited,false);
+  assert.notEqual(resolvePlaybackStart(m,'other',500,5000,resolveMedia,choosePreRoll).status,'valid');
+  assert.notEqual(resolvePlaybackStart(m,'rec-a',50,5000,resolveMedia,choosePreRoll).status,'valid');
 });
