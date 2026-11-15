@@ -1,0 +1,210 @@
+{
+  "kind": "synthetic_silence_impulse_clock_sample_mapping",
+  "schemaVersion": 1,
+  "note": "Math/fixture sample-clock model, not physical microphone or browser decoder measurements.",
+  "timeBasis": "monotonic ms (not wall-clock UTC); pause retains meeting time but consumes no media",
+  "scenarios": [
+    {
+      "sampleRate": 48000,
+      "injectedClockDriftPpm": 100,
+      "recordedDurationMs": 20000,
+      "pauseDurationMs": 3000,
+      "mediaDurationMsPerSegment": 20002,
+      "impulseCount": 1082,
+      "sampleCountPerSegment": 960096,
+      "targetMaxErrorMs": 1000,
+      "maxAbsErrorMs": 0.5207,
+      "p95AbsErrorMs": 0.4746,
+      "result": "PASS",
+      "nonplayableCase": {
+        "inputMonoMs": 20100,
+        "expectedStatus": "unlinked",
+        "actualStatus": "unlinked"
+      },
+      "expectedActualCases": [
+        {
+          "inputMonoMs": 0,
+          "expectedAudioOffsetMs": 0,
+          "actualAudioOffsetMs": 0,
+          "absoluteErrorMs": 0,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "first"
+        },
+        {
+          "inputMonoMs": 37,
+          "expectedAudioOffsetMs": 37.0037,
+          "actualAudioOffsetMs": 37,
+          "absoluteErrorMs": 0.0037,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "first"
+        },
+        {
+          "inputMonoMs": 74,
+          "expectedAudioOffsetMs": 74.0074,
+          "actualAudioOffsetMs": 74,
+          "absoluteErrorMs": 0.0074,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "first"
+        },
+        {
+          "inputMonoMs": 111,
+          "expectedAudioOffsetMs": 111.0111,
+          "actualAudioOffsetMs": 111,
+          "absoluteErrorMs": 0.0111,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "first"
+        },
+        {
+          "inputMonoMs": 148,
+          "expectedAudioOffsetMs": 148.0148,
+          "actualAudioOffsetMs": 148,
+          "absoluteErrorMs": 0.0148,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "first"
+        },
+        {
+          "inputMonoMs": 23000,
+          "expectedAudioOffsetMs": 20002,
+          "actualAudioOffsetMs": 20002,
+          "absoluteErrorMs": 0,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "second"
+        },
+        {
+          "inputMonoMs": 42906,
+          "expectedAudioOffsetMs": 39909.9906,
+          "actualAudioOffsetMs": 39910,
+          "absoluteErrorMs": 0.0094,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "second"
+        },
+        {
+          "inputMonoMs": 42943,
+          "expectedAudioOffsetMs": 39946.9943,
+          "actualAudioOffsetMs": 39947,
+          "absoluteErrorMs": 0.0057,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "second"
+        },
+        {
+          "inputMonoMs": 42980,
+          "expectedAudioOffsetMs": 39983.998,
+          "actualAudioOffsetMs": 39984,
+          "absoluteErrorMs": 0.002,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "second"
+        }
+      ]
+    },
+    {
+      "sampleRate": 44100,
+      "injectedClockDriftPpm": -80,
+      "recordedDurationMs": 20000,
+      "pauseDurationMs": 3000,
+      "mediaDurationMsPerSegment": 19998.390023,
+      "impulseCount": 1082,
+      "sampleCountPerSegment": 881929,
+      "targetMaxErrorMs": 1000,
+      "maxAbsErrorMs": 0.609977,
+      "p95AbsErrorMs": 0.473575,
+      "result": "PASS",
+      "nonplayableCase": {
+        "inputMonoMs": 20100,
+        "expectedStatus": "unlinked",
+        "actualStatus": "unlinked"
+      },
+      "expectedActualCases": [
+        {
+          "inputMonoMs": 0,
+          "expectedAudioOffsetMs": 0,
+          "actualAudioOffsetMs": 0,
+          "absoluteErrorMs": 0,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "first"
+        },
+        {
+          "inputMonoMs": 37,
+          "expectedAudioOffsetMs": 36.997022,
+          "actualAudioOffsetMs": 37,
+          "absoluteErrorMs": 0.002978,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "first"
+        },
+        {
+          "inputMonoMs": 74,
+          "expectedAudioOffsetMs": 73.994043,
+          "actualAudioOffsetMs": 74,
+          "absoluteErrorMs": 0.005957,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "first"
+        },
+        {
+          "inputMonoMs": 111,
+          "expectedAudioOffsetMs": 110.991065,
+          "actualAudioOffsetMs": 111,
+          "absoluteErrorMs": 0.008935,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "first"
+        },
+        {
+          "inputMonoMs": 148,
+          "expectedAudioOffsetMs": 147.988086,
+          "actualAudioOffsetMs": 148,
+          "absoluteErrorMs": 0.011914,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "first"
+        },
+        {
+          "inputMonoMs": 23000,
+          "expectedAudioOffsetMs": 19998.390023,
+          "actualAudioOffsetMs": 19999,
+          "absoluteErrorMs": 0.609977,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "second"
+        },
+        {
+          "inputMonoMs": 42906,
+          "expectedAudioOffsetMs": 39902.787612,
+          "actualAudioOffsetMs": 39903,
+          "absoluteErrorMs": 0.212388,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "second"
+        },
+        {
+          "inputMonoMs": 42943,
+          "expectedAudioOffsetMs": 39939.784634,
+          "actualAudioOffsetMs": 39940,
+          "absoluteErrorMs": 0.215366,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "second"
+        },
+        {
+          "inputMonoMs": 42980,
+          "expectedAudioOffsetMs": 39976.781655,
+          "actualAudioOffsetMs": 39977,
+          "absoluteErrorMs": 0.218345,
+          "expectedStatus": "valid",
+          "actualStatus": "valid",
+          "segmentId": "second"
+        }
+      ]
+    }
+  ]
+}
