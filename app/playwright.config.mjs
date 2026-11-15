@@ -5,7 +5,7 @@ export default defineConfig({
   testDir:'./e2e',
   timeout:45000,
   expect:{timeout:15000},
-  retries:process.env.CI?1:0,
+  retries:0,
   workers:1,
   reporter:process.env.CI?[['list'],['html',{open:'never',outputFolder:'playwright-report'}]]:'list',
   use:{
