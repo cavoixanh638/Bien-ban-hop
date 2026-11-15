@@ -1,61 +1,52 @@
 # Checkpoint · 05-player — PoC C1/C2
 
-- Chủ sở hữu: ChatGPT, luồng 05-player; một writer, phạm vi chỉ \`poc/05-player/\` và tệp checkpoint này.
-- Nhánh: \`gemini/20261115-05-player\`
-- Baseline: \`6142f56a6efdb27aa9445920c9321f7930c0d5fd\`
-- Code HEAD đã push trước cập nhật checkpoint: \`e672933842fd8e28e539d3607f6eccac0eddc9c8\`
-- Trạng thái: **IMPLEMENTED_WITH_UNVERIFIED_BROWSER / HOLD**. Không được đánh dấu Gói 1.4 DONE.
-- Mã kiểm thử commit trên GitHub: **NOT_RUN tại đúng SHA**; Node 9/9 PASS trên bản local tham chiếu được triển khai cùng hợp đồng, **không phải chứng nhận SHA GitHub**.
-- Browser: **NOT_RUN** (môi trường hạn chế), Windows Chrome/Edge thật: **NOT_RUN**.
-- Chủ trương production: **HOLD**, chưa chọn C1 hay C2.
+- Chủ sở hữu: 05-player (một writer); chỉ ghi `poc/05-player/` và checkpoint này.
+- Nhánh: `gemini/20261115-05-player`; baseline: `6142f56a6efdb27aa9445920c9321f7930c0d5fd`.
+- **Code SHA:** `17e1b6f317b1989b194f90dd00fc687d263debdb` (phiên bản code, README và script benchmark đã kiểm).
+- **Tested SHA:** `17e1b6f317b1989b194f90dd00fc687d263debdb` — từng Git blob của 8 tệp chạy đều khớp GitHub; kiểm lại từ thư mục nguồn độc lập sạch. Không thể `git clone` trực tiếp vì container không phân giải được github.com; **không được mô tả đây là clean Git remote checkout**.
+- Log SHA provenance: `poc/05-player/evidence/exact-source-verification.json`. Sau Tested SHA chỉ commit các tệp evidence và checkpoint, không sửa source/runtime.
+- **Trạng thái:** `STANDALONE_POC_VERIFIED_LINUX / HOLD_WINDOWS_AUDIO_AND_INTEGRATION`. Bản app tích hợp, Gói 1.4 và nghiệm thu sản phẩm **chưa PASS; chưa DONE**.
+- Phiên chạy: 15/11/2026, Linux 6.18.57 x86_64, Node v22.16.0, Chromium Headless 144.0.7559.96; Python 3.13.5. Âm thanh tổng hợp PCM16 mono 16kHz, không sử dụng audio họp thật.
 
-Entrypoint: [05-player](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/05-player.md) · [COMMON](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/COMMON.md)
+## Các việc đã sửa theo TRACKER của G00
 
-## Đã hoàn thành trong phạm vi độc lập
+1. **Đã sửa lỗi sai miền thời gian:** `resolve(ID,1805000)` bây giờ `valid/seg-006`; `meetingToMedia(ID,1805000)` trả `gap/paused`; meeting 1.815.000ms → media 1.805.000ms. Có converter ngược, không trộn `meetingMs` và `audioOffsetMs`.
+2. Manifest fixture 36 đoạn có `mediaStartMs/mediaDurationMs/sampleStart/sampleCount/completionState`; recorded intervals có `mediaStartMs/mediaEndMs/segmentRefs` đầy đủ, non-recorded gap/pause có `segmentRefs:[]`. `validateManifest()` kiểm phạm vi, sample count và refs, không import G04.
+3. Gap meeting 60:10–60:25 không còn tạo false gap trong media. Thêm **audio gap thực** `[7.420.000,7.422.000)` trong cùng seg-024 để kiểm player chặn chính xác; `missing seg-020`, pending, wrong source và khoảng chưa có coverage không fallback.
+4. C1 chỉ sinh WAV clip hợp lệ, hai HTMLAudioElement/preload, `preservesPitch=true`, giải phóng URL không còn gắn với audio; không crossfade. C2 AudioContext lên lịch PCM 160ms với lookahead 750ms, giới hạn tại media gap và log underrun; không decode 3h.
+5. UI play/pause, seek, tốc độ 0,5–2×, A–B qua segment, pre-roll 0/3/5/10 (có 15/30), Alt+Click/Ctrl+Alt+P/▶, click thường giữ editor/cursor, bỏ shortcut khi composition. Pre-roll qua gap/missing trả blocked và **không thay Mark gốc**.
 
-- [player.js](../../../poc/05-player/player.js): 36 segment tổng hợp, 3 giờ, 16 kHz mono, resolver \`valid/pending/missing/gap/unsupported/unlinked\`. Mark fixture theo hợp đồng.
-- **C1:** hai \`HTMLAudioElement\`, WAV Blob chỉ sinh cho những segment được cần, preload nguồn tiếp theo, \`preservesPitch=true\`, revoke Blob URL khi rời phạm vi và destroy. \`play()\` khi qua biên không bảo đảm gapless.
-- **C2:** \`AudioContext\` lập lịch PCM cửa sổ ~160 ms, lookahead 750 ms, \`AudioBufferSourceNode\`, dừng và giải phóng buffer khi seek/pause. Không decode cả bản 3 giờ. \`playbackRate\` không giữ cao độ.
-- [index.html](../../../poc/05-player/index.html): play/pause, timeline, seek 90/170, 0,5–2×, A–B 04:58–05:02, pre-roll 0/3/5/10/15/30, editor giả lập, click thường giữ con trỏ, Alt+click / Ctrl+Alt+P / ▶ mốc; bỏ phím tắt trong IME composition.
-- [player.test.js](../../../poc/05-player/player.test.js), [package.json](../../../poc/05-player/package.json), [browser_smoke.py](../../../poc/05-player/browser_smoke.py) và [README.md](../../../poc/05-player/README.md) độc lập, có lệnh tái hiện. Không phụ thuộc artefact từ worker khác.
-- Kiểm tra lại blob SHA/đường dẫn trên GitHub: đủ 6 tệp tính cả README, script Node, browser script. Không thay đổi ngoài thư mục và checkpoint.
+## Ma trận bằng chứng (đúng source SHA)
 
-## Bằng chứng và giới hạn
+| Nhóm | Trạng thái | Actual / bằng chứng |
+|---|---|---|
+| 36 segment/3h PCM, manifest/segmentRefs/meeting↔media, lỗi G00 | **PASS** | `node --test player.test.js` tại source SHA: 10/10, exit 0 |
+| 04:58→05:02; seek 90/170; A–B, click thường và Alt+Click; missing/gap | **PASS (Chromium synthetic)** | `browser_smoke.py` 10/10, không có JS page error, log browser-smoke.json |
+| C1 seek phút 90 / 170 | **PASS (measured, one run)** | ~521,9ms / 534,6ms trong Linux Chromium; phụ thuộc CPU/generate WAV, không cam kết latency production |
+| C1 boundary 300.000ms; tap audio | **PASS (limited resolution)** | Event chuyển đoạn; tap ScriptProcessor 16ms thấy 0 silent block giữa tín hiệu có năng lượng trong run; **không đủ kết luận sample drop/duplicate bằng 0** |
+| C2 boundary, stop ở gap nội bộ | **PASS (synthetic)** | C2 tại 300.000ms; no underrun trong run; không lên lịch qua gap media 7.420.000ms |
+| Cao độ 0,75× và 0,9× (synthetic tone) | **PASS (FFT synthetic)** | C1 220Hz/220Hz; C2 165Hz/198Hz; chỉ phản ánh tone, không phải đánh giá nghe giọng nói |
+| Bộ nhớ, nhiều đoạn và seek xa | **PASS (limited stress)** | 17 seek trên media 3h ảo, C1 max 2 Blob URL; RSS snapshot cao nhất nhóm Chromium PID **293.765.120 byte** (~280,2 MiB), không phải peak của phiên phát 3h |
+| Browser full 3-hour wall-clock peak RAM/quota/tab background/CPU throttle | **NOT_RUN** | Chưa đo phiên nghe thật liên tục 3h |
+| PCM sample-level gap/drop/duplicate qua audio loopback thiết bị ngoài | **NOT_RUN** | Event-level/16ms block không chứng minh mẫu chính xác |
+| Giọng người 0,75×/0,9×, nghe bằng tai và so sánh chủ quan | **NOT_RUN** | Chỉ có sine-tone tổng hợp, không được gọi PASS âm sắc giọng |
+| Windows Chrome/Edge + UniKey/EVKey thực | **NOT_RUN** | Không có Windows/IME trong môi trường chạy |
+| ProseMirror/timeSpan, OPFS thật và ứng dụng tích hợp | **NOT_RUN** | Bàn giao PoC độc lập, chưa kết nối nhánh khác |
 
-| Hạng mục | Trạng thái | Bằng chứng / giải thích |
-| --- | --- | --- |
-| Cấu trúc fixture, 36 đoạn, sample start | PASS_LOCAL | Node.js v22.16.0, 9/9 unit kiểm thử ở local reference |
-| Mapping 04:58→05:02, phút 90/170, A–B | PASS_LOCAL_LOGIC | Unit logic; chưa phải phép đo âm thanh qua trình duyệt |
-| Missing, gap, pause, pending, nguồn sai | PASS_LOCAL_LOGIC | Fixture resolver; hành vi chuyển audio thực cần kiểm lại |
-| Pre-roll 0/3/5/10, Mark gốc bất biến | PASS_LOCAL_LOGIC | Unit so sánh mark trước/sau |
-| C1/C2 runtime tại SHA đã push | NOT_RUN | Chưa chạy được browser smoke trên bản đã push |
-| Browser Chromium trong container | BLOCKED | Chromium local từ Playwright trả \`net::ERR_BLOCKED_BY_ADMINISTRATOR\` với cả \`http://127.0.0.1:8765/index.html\` và \`file:///.../index.html\`; không có phiên demo chạy thực trong môi trường này |
-| C1 gap/drop/lặp ở biên 05:00 | NOT_RUN | Cần audio loopback/sóng âm; thời gian resolve của Promise play không đủ kết luận |
-| C2 scheduling gap/drop/lặp, underrun | NOT_RUN | Cần đo loopback thực, CPU load và chuyển tab |
-| Seek latency phút 90/170 (ms) | NOT_RUN | Logic target đúng, chưa đo runtime/browser |
-| Peak RAM thật, decoder/JS heap | NOT_RUN | Có bộ đếm estimate trong \`stats\`, không có máy đo trình duyệt |
-| Nghe giọng tại 0,75×/0,9× | NOT_RUN | Tín hiệu thử là hình sin, không phải giọng người; C2 làm đổi pitch theo thiết kế |
-| Click thường/cursor, IME Telex/VNI, xung đột editor chính | NOT_RUN | Demo đã cài handler; phải chạy thực với editor + Unikey/EVKey Windows |
+Không có FAIL còn mở trong bộ Node/browser synthetic cuối. **Lượt benchmark chạy gộp đầu tiên timeout (NOT_RUN cho lượt đó), chạy riêng lại PASS** cùng source SHA; ghi đúng trong `exact-source-verification.json`.
 
-**Ước lượng không phải benchmark:** Một segment WAV mono PCM16 16kHz × 300s ≈ 9,6 MB; 3 Blob URL ≈ 28,8 MB nguồn; một cửa sổ PCM C2 ~10,24 KB (chưa tính overhead, decoder/RSS). Không ghi các số này là peak RAM đo được.
+## File bàn giao, môi trường và cách tái hiện
 
-## Rủi ro cần xử lý trước DONE
+- Mã và hướng dẫn: https://github.com/cavoixanh638/Bien-ban-hop/tree/gemini/20261115-05-player/poc/05-player
+- Fixture/manifest/resolver: `player.js`, `timeline.js`; test: `player.test.js`; demo: `index.html`; automation: `browser_smoke.py`, `browser_benchmark.py`; không phụ thuộc code/fixture G04.
+- Bằng chứng: `evidence/node-test.tap`, `evidence/browser-smoke.json`, `evidence/synthetic-benchmark.json`, `evidence/exact-source-verification.json`.
+- Lệnh: `cd poc/05-player && npm test` (Node 22) và `python3 browser_smoke.py && python3 browser_benchmark.py` (Linux Playwright/Chromium, numpy, psutil). Test browser dùng `about:blank + data:` ES module để tránh DNS/localhost chặn, vẫn chạy trên engine Chromium thật.
+- Các blob đã đối chiếu nằm trong `exact-source-verification.json`; không có credential hay audio cá nhân.
 
-1. **Media continuity:** hai thẻ C1 chuyển bằng \`ended\` có thể khựng; C2 Web Audio thay đổi pitch khi giảm tốc; cần nghe thử và đo sample drop/duplicate trên Windows.
-2. **Gap nằm giữa segment:** fixture có paused/gap interval nhưng WAV giả lập chứa tone liên tục; demo hiện polling để dừng quanh gap, không thể gọi là sample-accurate. Cần để media timeline/segment thực phản ánh lỗ hổng và giới hạn scheduler ở ranh giới interval. C2 lookahead có \`pending-stop\` và cần chính sách xử lý tại chính timestamp.
-3. **Bộ nhớ nguồn:** C1 cần thực đo giải phóng Blob URL, decoder cache và các tình huống seek xa/loop dài; C2 cần đo max pending buffer và underrun.
-4. **Tích hợp:** chưa được thử với ProseMirror, timeSpan và IME thật; không gắn chặt phím tắt vào input đang composition.
+## Quyết định kỹ thuật và bước còn thiếu
 
-## Lệnh kiểm
+**Chưa chốt production adapter.** Đề nghị C1 là ứng viên *thử giọng thật trên Windows trước*, vì giữ cao độ tone ở 0,75/0,9×; C2 là đối chứng cho đồng hồ nối mẫu nhưng thay pitch khi giảm tốc. C1 dùng `ended` để chuyển có thể khựng; C2 giữ lịch PCM nhưng phải đo underrun và giới hạn decoder trong ứng dụng thật. Không dùng crossfade vô điều kiện.
 
-\`\`\`bash
-cd poc/05-player
-npm test
-python3 -m http.server 8765
-# Tùy chọn: pip install playwright && playwright install chromium
-python3 browser_smoke.py
-\`\`\`
+Để đạt điều kiện hoàn tất cuối của entrypoint: chạy Windows Chrome/Edge thực, nghe và đo lời nói ở 0,75×/0,9×, audio loopback nguyên bản qua 04:58→05:02 và A–B, xác minh sample-level drop/lặp/gap, peak RAM phiên dài, thao tác click thường/Alt+Click/bàn phím với ProseMirror+IME Windows. Không đổi NOT_RUN thành PASS chỉ vì synthetic fixture đạt.
 
-Fixture tổng hợp, không có âm thanh họp cá nhân. Không sử dụng API, credential hay dịch vụ worker khác.
-
-**Tiếp theo:** chạy \`npm test\` ở checkout sạch đúng HEAD, chạy \`browser_smoke.py\` trên Windows Chrome/Edge được cấp quyền, đo audio loopback & peak RAM, kiểm chất lượng giọng 0,75×/0,9×, sửa lỗi được xác minh rồi cập nhật chính checkpoint này với Tested SHA và vật chứng. Chỉ quyết định chọn adapter sau các bài đo.
+**Không sửa COMMON.md, không merge main, không deploy.**
