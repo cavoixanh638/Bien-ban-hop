@@ -1,0 +1,19 @@
+{
+  "environment": {
+    "os": "linux",
+    "arch": "x64",
+    "node": "v22.16.0",
+    "chrome": "Chromium 144.0.7559.96 built on Debian GNU/Linux 13 (trixie)",
+    "mode": "Chromium headless, Linux container, fake device for mic, no physical unplug",
+    "origin": "http://127.0.0.1:34491",
+    "date": "2026-11-15T11:46:53.411Z"
+  },
+  "cases": [],
+  "errors": [
+    {
+      "name": "harness",
+      "status": "NOT_RUN",
+      "error": "Error: BLOCKED_ENV: Chromium managed URLBlocklist blocks localhost; browser tests NOT_RUN"
+    }
+  ]
+}

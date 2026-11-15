@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mốc Họp · 06-notes PoC</title>
+<style>
+:root{font-family:system-ui,"Segoe UI",sans-serif;color:#162333;background:#f5f7fa}
+*{box-sizing:border-box}body{margin:0}.shell{display:grid;grid-template-columns:300px minmax(0,1fr);height:100dvh}
+aside{background:white;border-right:1px solid #d6dee7;padding:18px;overflow:auto}
+main{padding:28px 5vw;overflow:auto;max-width:1200px;width:100%;margin:auto}
+button,input,textarea{font:inherit}button{cursor:pointer;border:1px solid #c5d0db;border-radius:7px;background:white;padding:8px 12px;color:#1b324d}
+button:hover{background:#eef4fa}button.primary{background:#164d89;border-color:#164d89;color:white}
+input{width:100%;padding:10px;border:1px solid #aebdca;border-radius:7px}
+h1{font-size:1.5rem}h2{font-size:1.1rem}h3{font-size:1rem}.stack{display:grid;gap:9px}
+.mtg{display:block;text-align:left;width:100%;margin:6px 0;word-break:break-word}
+.mtg[aria-current="true"]{border-color:#164d89;background:#eaf2ff}
+.small{color:#566576;font-size:.85rem}#editor{width:100%;min-height:54vh;padding:22px;line-height:1.65;border:1px solid #cdd7e0;border-radius:10px;background:#fff;resize:vertical}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:20px}.toolbar input{max-width:480px}
+#status[data-state=error],#status[data-state=conflict]{color:#b02626}#status[data-state=saved]{color:#1c7045}
+.result{border:0;border-bottom:1px solid #edf0f5;width:100%;border-radius:0;text-align:left;padding:12px 6px}
+@media(max-width:720px){.shell{grid-template-columns:1fr;display:block;height:auto}aside{border-right:0;border-bottom:1px solid #d6dee7}main{padding:18px}#editor{min-height:45vh}}
+</style></head><body>
+<div class="shell"><aside>
+  <h2>Cuộc họp</h2><button id="newMeeting" class="primary">+ Cuộc họp mới</button>
+  <p><input id="search" placeholder="Tìm cuộc họp hoặc nội dung…"></p>
+  <section id="results" aria-live="polite"></section>
+  <h3>Danh sách</h3><div id="meetings" class="stack"></div>
+</aside><main>
+  <h1>Mốc Họp — Bản thử dữ liệu 06</h1>
+  <p class="small">PoC quản lý văn bản và tự lưu cục bộ. Không ghi âm. Dùng trình duyệt có IndexedDB; dữ liệu riêng cho origin hiện tại.</p>
+  <div class="toolbar">
+    <input id="title" aria-label="Tên cuộc họp" placeholder="Chọn cuộc họp" disabled>
+    <button id="rename" disabled>Đổi tên</button>
+    <button id="remove" disabled>Xóa</button>
+    <button id="retry" disabled>Thử lưu lại</button>
+    <span id="status" role="status">Chưa mở cuộc họp</span>
+  </div>
+  <textarea id="editor" placeholder="Gõ ghi chú cuộc họp tại đây..." disabled></textarea>
+  <p class="small">Demo chuyển văn bản thuần thành ProseMirror JSON; phần kho lưu trữ giữ nguyên JSON, marks và timeSpan do editor bên ngoài cung cấp. Không dùng textarea này để sửa tài liệu có timeSpan vì nó không phải ProseMirror editor.</p>
+</main></div>
+<script type="module">
+import {openIndexedDB,NotesRepository,Autosave,createMockLease} from "./notes.mjs";
+const $=id=>document.getElementById(id),leaseManager=createMockLease();
+let repo,meeting,auto,guard=false;
+const toDoc=text=>({type:"doc",content:text.split("\n").map(line=>({type:"paragraph",content:line?[{type:"text",text:line}]:[]}))});
+const toText=doc=>(doc.content||[]).map(p=>(p.content||[]).map(n=>n.text||"").join("")).join("\n");
+const editablePlainText=doc=>doc?.type==="doc" && (doc.content||[]).every(p=>
+  p.type==="paragraph" && Object.keys(p).every(k=>["type","content"].includes(k)) &&
+  (p.content||[]).every(n=>n.type==="text" && typeof n.text==="string" && Object.keys(n).every(k=>["type","text"].includes(k))));
+function displayStatus(state,revision,error){$("status").dataset.state=state;$("status").textContent=({saved:"Đã lưu",dirty:"Chưa lưu",saving:"Đang lưu…",conflict:"Xung đột phiên bản",error:"Lỗi lưu",readonly:"Chỉ xem: văn bản có định dạng/mốc",loading:"Đang mở…" }[state]||state)+(revision==null?"":" · rev "+revision)+(error?" — "+error.message:"");$("retry").disabled=state!=="error"&&state!=="conflict";}
+async function list(){
+  const items=await repo.listMeetings();$("meetings").replaceChildren();
+  for(const m of items){const button=document.createElement("button");button.className="mtg";button.textContent=m.title;button.setAttribute("aria-current",String(meeting?.meetingId===m.meetingId));button.onclick=()=>open(m.meetingId);$("meetings").append(button);}
+}
+async function open(id) {
+  if(meeting?.meetingId===id && auto && !auto.disposed)return;
+  const m=await repo.getMeeting(id);if(!m)return;
+  const lease=await leaseManager.acquire(id);if(!lease){alert("Cuộc họp đang có writer khác trong demo.");return;}
+  if(auto){try{await auto.flush();await auto.dispose();}catch(e){lease.release();alert("Ghi chú chưa được lưu: "+e.message+". Hãy thử lưu lại trước khi chuyển.");return;}}
+  meeting=m;auto=new Autosave(repo,m.noteDocumentId,lease,{onStatus:displayStatus});
+  const note=await auto.load();
+  $("title").disabled=$("rename").disabled=$("remove").disabled=false;$("title").value=m.title;
+  const readonly=!editablePlainText(note.content);
+  $("editor").disabled=readonly;
+  $("editor").title=readonly?"Chỉ xem: bản demo không thể chỉnh sửa ProseMirror rich text":"";
+  guard=true;$("editor").value=toText(note.content);guard=false;
+  if(readonly)displayStatus("readonly",note.revision);
+  await list();
+}
+$("newMeeting").onclick=async()=>{if(auto){try{await auto.flush();}catch(e){alert("Không thể tạo cuộc họp mới khi ghi chú chưa lưu: "+e.message);return;}}const m=await repo.createMeeting("Cuộc họp "+new Date().toLocaleString("vi-VN"));await open(m.meetingId);};
+$("rename").onclick=async()=>{if(!meeting)return;meeting=await repo.renameMeeting(meeting.meetingId,$("title").value);await list();};
+$("remove").onclick=async()=>{if(!meeting||!confirm("Xóa cuộc họp này? Văn bản và lịch sử thay đổi của cuộc họp cũng sẽ bị xóa."))return;
+ const id=meeting.meetingId;
+ if(auto){try{await auto.flush();await auto.dispose();}catch(e){alert("Không thể xóa khi ghi chú chưa lưu: "+e.message);return;}}
+ auto=null;meeting=null;
+ try{await repo.deleteMeeting(id);}catch(e){alert(e.message);}
+ if(await repo.getMeeting(id)){await open(id);return;}
+ $("editor").value="";$("editor").disabled=$("title").disabled=$("rename").disabled=$("remove").disabled=true;displayStatus("idle");await list();
+};
+$("editor").addEventListener("input",()=>{if(auto&&!guard)auto.edit(toDoc($("editor").value));});
+$("retry").onclick=async()=>{try{await auto?.flush();}catch(e){alert(e.message);}};
+$("search").addEventListener("input",async()=>{
+ const q=$("search").value.trim(),results=q?await repo.search(q):[];$("results").replaceChildren();
+ for(const hit of results){const b=document.createElement("button");b.className="result";b.textContent=hit.title+" — "+hit.snippet;b.onclick=async()=>{await open(hit.meetingId);if(hit.location!==null){$("editor").focus();$("editor").setSelectionRange(hit.location,Math.min(hit.location+(hit.length??q.length),$("editor").value.length));}};$("results").append(b);}
+});
+window.addEventListener("beforeunload",e=>{if(auto && auto.seq!==auto.savedSeq){e.preventDefault();e.returnValue="";}});
+try{repo=new NotesRepository(await openIndexedDB());await list();}catch(e){displayStatus("error",null,e);$("newMeeting").disabled=true;}
+</script></body></html>

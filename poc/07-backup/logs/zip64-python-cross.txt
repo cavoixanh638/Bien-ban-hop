@@ -1,0 +1,1 @@
+{"status": "PASS", "implementation": "Python 3.13 zipfile", "entries": 65536, "size": 12451938, "zip64_record": true}

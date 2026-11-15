@@ -1,0 +1,203 @@
+{
+  "environment": {
+    "platform": "Linux",
+    "note": "about:blank + in-memory data ES modules, no network",
+    "chromiumVersion": "144.0.7559.96",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/144.0.0.0 Safari/537.36",
+    "JSHeapUsedSize": 10000000
+  },
+  "cases": {
+    "C1 seek 90/170": {
+      "status": "PASS",
+      "data": {
+        "seek90": {
+          "at": "2026-11-15T11:35:18.423Z",
+          "type": "seek",
+          "engine": "C1",
+          "ms": 5400000,
+          "latencyMs": 521.9000000001397,
+          "status": "valid"
+        },
+        "seek170": {
+          "at": "2026-11-15T11:35:19.004Z",
+          "type": "seek",
+          "engine": "C1",
+          "ms": 10200000,
+          "latencyMs": 534.5999999998603,
+          "status": "valid"
+        }
+      },
+      "elapsedMs": 1158.2
+    },
+    "C1 missing no fallback": {
+      "status": "PASS",
+      "data": {
+        "status": "missing",
+        "playing": false
+      },
+      "elapsedMs": 38.3
+    },
+    "ordinary editor click no playback": {
+      "status": "PASS",
+      "data": {
+        "focused": true,
+        "playing": false
+      },
+      "elapsedMs": 33.0
+    },
+    "C1 played 04:58-05:02 browser audio graph": {
+      "status": "PASS",
+      "data": {
+        "boundaries": [
+          {
+            "at": "2026-11-15T11:35:21.895Z",
+            "type": "boundary-C1",
+            "ms": 300000,
+            "delayMs": 242.4000000001397,
+            "notSampleAccurate": true
+          }
+        ],
+        "position": 301293.831,
+        "audio": {
+          "samples": 210,
+          "active": 207,
+          "bufferDurationMs": 16,
+          "maxMidstreamSilenceMs": 0,
+          "zeroBlocksBetweenActive": 0,
+          "firstActiveSec": 0.072,
+          "lastActiveSec": 3.36
+        }
+      },
+      "elapsedMs": 3911.8
+    },
+    "C1 preservesPitch 0.75/0.9 property": {
+      "status": "PASS",
+      "data": {
+        "rate075": [
+          {
+            "rate": 0.75,
+            "preserve": true
+          },
+          {
+            "rate": 0.75,
+            "preserve": true
+          }
+        ],
+        "rate09": [
+          {
+            "rate": 0.9,
+            "preserve": true
+          },
+          {
+            "rate": 0.9,
+            "preserve": true
+          }
+        ],
+        "note": "property verification, NOT human voice quality"
+      },
+      "elapsedMs": 15.2
+    },
+    "C1 A-B crossing 05:00": {
+      "status": "PASS",
+      "data": {
+        "loopSeeks": 1,
+        "position": 299600
+      },
+      "elapsedMs": 4567.0
+    },
+    "Alt+click anchor immutable with 5s preroll": {
+      "status": "PASS",
+      "data": {
+        "at": "2026-11-15T11:35:27.616Z",
+        "type": "anchor",
+        "id": "at90",
+        "original": 5400000,
+        "start": 5395000,
+        "status": "valid",
+        "unchanged": true
+      },
+      "elapsedMs": 608.3
+    },
+    "C2 04:58-05:02 scheduling no underrun": {
+      "status": "PASS",
+      "data": {
+        "boundaries": [
+          {
+            "at": "2026-11-15T11:35:29.815Z",
+            "type": "boundary-C2",
+            "ms": 300000
+          }
+        ],
+        "stats": {
+          "windows": 6,
+          "maxPending": 7,
+          "estimatedWindowBytes": 71680,
+          "boundaries": [
+            {
+              "ms": 300000,
+              "scheduledStartSec": 2.04,
+              "continuityByClock": true
+            }
+          ],
+          "pitchPreservation": false,
+          "underruns": 0
+        },
+        "position": 301104
+      },
+      "elapsedMs": 3313.2
+    },
+    "C2 media hole stop before invalid PCM": {
+      "status": "PASS",
+      "data": {
+        "playing": false,
+        "records": [
+          {
+            "at": "2026-11-15T11:35:19.050Z",
+            "type": "unavailable",
+            "ms": 6060000,
+            "status": "missing",
+            "reason": "segment not available",
+            "segmentId": "seg-020"
+          },
+          {
+            "at": "2026-11-15T11:35:32.040Z",
+            "type": "unavailable",
+            "ms": 7420000,
+            "status": "gap",
+            "reason": "known corrupt media samples (reserved range)",
+            "intervalKind": "gap"
+          }
+        ],
+        "stats": {
+          "windows": 0,
+          "maxPending": 7,
+          "estimatedWindowBytes": 71680,
+          "boundaries": [
+            {
+              "ms": 300000,
+              "scheduledStartSec": 2.04,
+              "continuityByClock": true
+            }
+          ],
+          "pitchPreservation": false,
+          "underruns": 0
+        }
+      },
+      "elapsedMs": 1240.9
+    },
+    "C2 rate .75/.9 no pitch preservation": {
+      "status": "PASS",
+      "data": {
+        "rate": 0.9,
+        "pitchPreservation": false,
+        "pending": 5
+      },
+      "elapsedMs": 490.6
+    }
+  },
+  "errors": [],
+  "summary": {
+    "passed": 10,
+    "failed": 0
+  }
+}

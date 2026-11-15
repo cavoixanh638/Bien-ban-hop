@@ -1,0 +1,20 @@
+{
+  "kind": "node-ZIP64-store",
+  "bytes": 2147483648,
+  "zipBytes": 2147486105,
+  "exportSeconds": 51.348616623000005,
+  "importSeconds": 50.074245002999994,
+  "files": 4,
+  "missingAudio": [],
+  "exportedBytesObserved": 2147486105,
+  "restoredBytesObserved": 2147484552,
+  "peakChunk": 262144,
+  "shaSample": "b0eaaa24b9a3a42275e30f9284de575d2d5e3378da7ef428de8c667508697a9f",
+  "peakRSSbytes": 99033088,
+  "peakHeapBytes": 20680512,
+  "node": "v22.16.0",
+  "platform": "linux",
+  "arch": "x64",
+  "date": "2026-11-15T11:36:36.174Z",
+  "status": "PASS"
+}

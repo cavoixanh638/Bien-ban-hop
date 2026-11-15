@@ -1,0 +1,6 @@
+Chromium Playwright run attempted; 10 scenarios NOT_RUN because a managed browser policy blocks all localhost navigation.
+$ python -m pytest -q tests/test_pwa.py --maxfail=1 --tb=short
+Observed: Page.goto net::ERR_BLOCKED_BY_ADMINISTRATOR (http://127.0.0.1:<ephemeral>/Bien-ban-hop/poc/09-pwa/)
+Policy: /etc/chromium/policies/managed/000_policy_merge.json includes URLBlocklist.
+No test scenario reached application JavaScript; do not count as product FAIL or PASS. No policy bypass attempted.
+Windows Chrome/Edge, GitHub Pages HTTPS/origin and real microphone test remain NOT_RUN.

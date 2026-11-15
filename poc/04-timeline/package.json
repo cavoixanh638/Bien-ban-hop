@@ -1,0 +1,13 @@
+{
+  "name": "mochop-timeline-fixture-poc",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-strip-types --test timeline.test.ts timeline.extended.test.ts",
+    "measure": "node --experimental-strip-types measure-fixture.mjs",
+    "verify": "npm test && npm run measure"
+  },
+  "engines": {
+    "node": ">=22.6.0"
+  }
+}

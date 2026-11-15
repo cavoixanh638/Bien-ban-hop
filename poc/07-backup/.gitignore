@@ -1,0 +1,11 @@
+node_modules/
+__pycache__/
+*.pyc
+*.mochop
+*.pcm
+*.tmp
+*.zip
+coverage/
+.DS_Store
+logs/*.stdout
+logs/*.stderr.bak

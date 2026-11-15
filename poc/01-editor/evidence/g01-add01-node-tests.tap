@@ -1,0 +1,464 @@
+
+> mochop-poc-01-editor@0.1.0 test:unit
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: G01-ADD-01 exact last-point clock is valid, no extrapolation after it
+ok 1 - G01-ADD-01 exact last-point clock is valid, no extrapolation after it
+  ---
+  duration_ms: 2.993861
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 out-of-band pending record leaves six-attribute Mark safely unlinked
+ok 2 - G01-ADD-01 out-of-band pending record leaves six-attribute Mark safely unlinked
+  ---
+  duration_ms: 0.596741
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 confirmed clock changes ONLY audio attrs, preserves anchorId and typedAt
+ok 3 - G01-ADD-01 confirmed clock changes ONLY audio attrs, preserves anchorId and typedAt
+  ---
+  duration_ms: 1.166532
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 no pending source if unknown generation, interval, or foreign recording
+ok 4 - G01-ADD-01 no pending source if unknown generation, interval, or foreign recording
+  ---
+  duration_ms: 0.369968
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 mixed-mark format split may still finalize one contiguous group
+ok 5 - G01-ADD-01 mixed-mark format split may still finalize one contiguous group
+  ---
+  duration_ms: 0.550431
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 IME Telex/VNI mutation can retain initial provenance with adjusted length
+ok 6 - G01-ADD-01 IME Telex/VNI mutation can retain initial provenance with adjusted length
+  ---
+  duration_ms: 0.53001
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 delete prior to finalize never creates phantom audio link
+ok 7 - G01-ADD-01 delete prior to finalize never creates phantom audio link
+  ---
+  duration_ms: 0.45054
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 copied same-session marked text in two places must not finalize
+ok 8 - G01-ADD-01 copied same-session marked text in two places must not finalize
+  ---
+  duration_ms: 1.50338
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 pending mark copied adjacent to itself fails expected length guard
+ok 9 - G01-ADD-01 pending mark copied adjacent to itself fails expected length guard
+  ---
+  duration_ms: 0.650682
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 other meeting cannot import pending sidecar, even if text was copied
+ok 10 - G01-ADD-01 other meeting cannot import pending sidecar, even if text was copied
+  ---
+  duration_ms: 0.786708
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 pending sidecar survives offline/reopen safely with matching note
+ok 11 - G01-ADD-01 pending sidecar survives offline/reopen safely with matching note
+  ---
+  duration_ms: 0.658855
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 reopen missing note/changed mark invalidates pending source
+ok 12 - G01-ADD-01 reopen missing note/changed mark invalidates pending source
+  ---
+  duration_ms: 0.188495
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 no current audio offset may resolve from different recording or generation
+ok 13 - G01-ADD-01 no current audio offset may resolve from different recording or generation
+  ---
+  duration_ms: 0.373184
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 pause before next point forbids interpolating across suspended interval
+ok 14 - G01-ADD-01 pause before next point forbids interpolating across suspended interval
+  ---
+  duration_ms: 0.268185
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 gap fails closed and keeps unlinked text
+ok 15 - G01-ADD-01 gap fails closed and keeps unlinked text
+  ---
+  duration_ms: 0.151779
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 missing fails closed and keeps unlinked text
+ok 16 - G01-ADD-01 missing fails closed and keeps unlinked text
+  ---
+  duration_ms: 0.081934
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 stopped fails closed and keeps unlinked text
+ok 17 - G01-ADD-01 stopped fails closed and keeps unlinked text
+  ---
+  duration_ms: 0.159311
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 unavailable fails closed and keeps unlinked text
+ok 18 - G01-ADD-01 unavailable fails closed and keeps unlinked text
+  ---
+  duration_ms: 0.083756
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 small drift is resolved only after both calibrated points arrive
+ok 19 - G01-ADD-01 small drift is resolved only after both calibrated points arrive
+  ---
+  duration_ms: 0.29178
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 provider exception or transient missing callback never invents link
+ok 20 - G01-ADD-01 provider exception or transient missing callback never invents link
+  ---
+  duration_ms: 0.191209
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 cannot duplicate pending ID or fill unbounded journal
+ok 21 - G01-ADD-01 cannot duplicate pending ID or fill unbounded journal
+  ---
+  duration_ms: 0.112029
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 hostile foreign sidecar does not erase existing local pending journal
+ok 22 - G01-ADD-01 hostile foreign sidecar does not erase existing local pending journal
+  ---
+  duration_ms: 0.11256
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 revoke recording allow-list before finalization fails closed
+ok 23 - G01-ADD-01 revoke recording allow-list before finalization fails closed
+  ---
+  duration_ms: 0.179181
+  type: 'test'
+  ...
+# Subtest: TC01: mark contract includes all six immutable attributes
+ok 24 - TC01: mark contract includes all six immutable attributes
+  ---
+  duration_ms: 1.925558
+  type: 'test'
+  ...
+# Subtest: TC01: all six source values explicitly recognized
+ok 25 - TC01: all six source values explicitly recognized
+  ---
+  duration_ms: 0.246352
+  type: 'test'
+  ...
+# Subtest: TC01: gap never gets an invented audio offset
+ok 26 - TC01: gap never gets an invented audio offset
+  ---
+  duration_ms: 0.260263
+  type: 'test'
+  ...
+# Subtest: TC01: missing never gets an invented audio offset
+ok 27 - TC01: missing never gets an invented audio offset
+  ---
+  duration_ms: 0.136746
+  type: 'test'
+  ...
+# Subtest: TC01: unavailable never gets an invented audio offset
+ok 28 - TC01: unavailable never gets an invented audio offset
+  ---
+  duration_ms: 0.212131
+  type: 'test'
+  ...
+# Subtest: TC01: pending never gets an invented audio offset
+ok 29 - TC01: pending never gets an invented audio offset
+  ---
+  duration_ms: 0.123577
+  type: 'test'
+  ...
+# Subtest: TC01: missing source, negative, NaN and undefined offset cannot link
+ok 30 - TC01: missing source, negative, NaN and undefined offset cannot link
+  ---
+  duration_ms: 0.270158
+  type: 'test'
+  ...
+# Subtest: TC02: fast typing within same word coalesces across repeated inserts
+ok 31 - TC02: fast typing within same word coalesces across repeated inserts
+  ---
+  duration_ms: 1.283788
+  type: 'test'
+  ...
+# Subtest: TC02: 2-minute no-Enter synthetic word/cadence creates many anchors
+ok 32 - TC02: 2-minute no-Enter synthetic word/cadence creates many anchors
+  ---
+  duration_ms: 1.044036
+  type: 'test'
+  ...
+# Subtest: TC02: group closed on punctuation/space and after max age
+ok 33 - TC02: group closed on punctuation/space and after max age
+  ---
+  duration_ms: 0.528848
+  type: 'test'
+  ...
+# Subtest: TC04: Unicode Vietnamese combining marks are in word
+ok 34 - TC04: Unicode Vietnamese combining marks are in word
+  ---
+  duration_ms: 0.667228
+  type: 'test'
+  ...
+# Subtest: TC04: short same-word accent replacement keeps original anchor
+ok 35 - TC04: short same-word accent replacement keeps original anchor
+  ---
+  duration_ms: 0.234284
+  type: 'test'
+  ...
+# Subtest: TC04: Backspace+Insert without composition can keep anchor
+ok 36 - TC04: Backspace+Insert without composition can keep anchor
+  ---
+  duration_ms: 1.248696
+  type: 'test'
+  ...
+# Subtest: TC04: paste and punctuation cannot look like accent mutation
+ok 37 - TC04: paste and punctuation cannot look like accent mutation
+  ---
+  duration_ms: 0.129916
+  type: 'test'
+  ...
+# Subtest: TC05: historical correction inherits only when local word revision
+ok 38 - TC05: historical correction inherits only when local word revision
+  ---
+  duration_ms: 0.111108
+  type: 'test'
+  ...
+# Subtest: TC06: insertion from unrelated cursor/context does not group
+ok 39 - TC06: insertion from unrelated cursor/context does not group
+  ---
+  duration_ms: 0.070326
+  type: 'test'
+  ...
+# Subtest: TC06: playback pause and seek cause new grouping boundary
+ok 40 - TC06: playback pause and seek cause new grouping boundary
+  ---
+  duration_ms: 0.054552
+  type: 'test'
+  ...
+# Subtest: TC07: same-meeting valid source retained, foreign recording rejected
+ok 41 - TC07: same-meeting valid source retained, foreign recording rejected
+  ---
+  duration_ms: 0.116075
+  type: 'test'
+  ...
+# Subtest: TC08: group matches ALL attributes, not only offset
+ok 42 - TC08: group matches ALL attributes, not only offset
+  ---
+  duration_ms: 0.111939
+  type: 'test'
+  ...
+# Subtest: TC09: timeSpan attrs do not depend on bold/italic text marks
+ok 43 - TC09: timeSpan attrs do not depend on bold/italic text marks
+  ---
+  duration_ms: 0.335957
+  type: 'test'
+  ...
+# Subtest: TC11: model runs split when ANY timeSpan attribute changes, not merely the time offset
+ok 44 - TC11: model runs split when ANY timeSpan attribute changes, not merely the time offset
+  ---
+  duration_ms: 0.197468
+  type: 'test'
+  ...
+# Subtest: TC10: paste unlinked allowed, never assigns source audio
+ok 45 - TC10: paste unlinked allowed, never assigns source audio
+  ---
+  duration_ms: 0.095214
+  type: 'test'
+  ...
+# Subtest: TC10: malformed or unknown provenance cannot link
+ok 46 - TC10: malformed or unknown provenance cannot link
+  ---
+  duration_ms: 0.125529
+  type: 'test'
+  ...
+# Subtest: TC07/TC10: malformed partial timeSpan and inconsistent source are rejected
+ok 47 - TC07/TC10: malformed partial timeSpan and inconsistent source are rejected
+  ---
+  duration_ms: 0.229046
+  type: 'test'
+  ...
+# Subtest: TC11: no incorrect coalescing across changes in any identity dimension
+ok 48 - TC11: no incorrect coalescing across changes in any identity dimension
+  ---
+  duration_ms: 0.106231
+  type: 'test'
+  ...
+# Subtest: TC11: metrics and P95 counted from JSON not DOM assumptions
+ok 49 - TC11: metrics and P95 counted from JSON not DOM assumptions
+  ---
+  duration_ms: 0.187763
+  type: 'test'
+  ...
+# Subtest: TC03 trace privacy: printable keys are redacted while IME control signals remain
+ok 50 - TC03 trace privacy: printable keys are redacted while IME control signals remain
+  ---
+  duration_ms: 0.238821
+  type: 'test'
+  ...
+# Subtest: TC05/TC06 step mapping: single insert keeps oldState base position
+ok 51 - TC05/TC06 step mapping: single insert keeps oldState base position
+  ---
+  duration_ms: 2.485534
+  type: 'test'
+  ...
+# Subtest: TC05/TC06 step mapping: second step old coordinates invert previous step
+ok 52 - TC05/TC06 step mapping: second step old coordinates invert previous step
+  ---
+  duration_ms: 0.413495
+  type: 'test'
+  ...
+# Subtest: TC05/TC06 step mapping: invert preceding transactions, not just StepMap
+ok 53 - TC05/TC06 step mapping: invert preceding transactions, not just StepMap
+  ---
+  duration_ms: 3.042314
+  type: 'test'
+  ...
+# Subtest: TC08/TC09: history and mark-only steps are not treated as new input
+ok 54 - TC08/TC09: history and mark-only steps are not treated as new input
+  ---
+  duration_ms: 0.441857
+  type: 'test'
+  ...
+# Subtest: TC04: delete-and-insert both retain original selection coordinates
+ok 55 - TC04: delete-and-insert both retain original selection coordinates
+  ---
+  duration_ms: 0.312552
+  type: 'test'
+  ...
+# Subtest: TC03 trace validator: accepts structural fixture WITHOUT certifying Windows IME
+ok 56 - TC03 trace validator: accepts structural fixture WITHOUT certifying Windows IME
+  ---
+  duration_ms: 36.041944
+  type: 'test'
+  ...
+# Subtest: TC03 trace validator: rejects raw key and invented event payload
+ok 57 - TC03 trace validator: rejects raw key and invented event payload
+  ---
+  duration_ms: 80.904679
+  type: 'test'
+  ...
+# Subtest: TC03 trace validator: rejects faked anchor count, stale sample count
+ok 58 - TC03 trace validator: rejects faked anchor count, stale sample count
+  ---
+  duration_ms: 77.926623
+  type: 'test'
+  ...
+# Subtest: TC04/TC05 adapter: same-word correction retains original 12 s, not current 95 s
+ok 59 - TC04/TC05 adapter: same-word correction retains original 12 s, not current 95 s
+  ---
+  duration_ms: 5.92008
+  type: 'test'
+  ...
+# Subtest: TC06 adapter: insertion within one lexical word but across two marks gets a new anchor
+ok 60 - TC06 adapter: insertion within one lexical word but across two marks gets a new anchor
+  ---
+  duration_ms: 0.431
+  type: 'test'
+  ...
+# Subtest: TC06 adapter: replacement of a selection across two anchors never steals first provenance
+ok 61 - TC06 adapter: replacement of a selection across two anchors never steals first provenance
+  ---
+  duration_ms: 0.543892
+  type: 'test'
+  ...
+# Subtest: TC07 adapter: same-session clipboard uses immutable local Slice, not modified HTML
+ok 62 - TC07 adapter: same-session clipboard uses immutable local Slice, not modified HTML
+  ---
+  duration_ms: 0.969283
+  type: 'test'
+  ...
+# Subtest: TC10 adapter: changed plain text fails trust and strips injected timeSpan
+ok 63 - TC10 adapter: changed plain text fails trust and strips injected timeSpan
+  ---
+  duration_ms: 0.956564
+  type: 'test'
+  ...
+# Subtest: TC07/TC10 adapter: cursor reading refuses foreign/invalid source when allow-list supplied
+ok 64 - TC07/TC10 adapter: cursor reading refuses foreign/invalid source when allow-list supplied
+  ---
+  duration_ms: 0.621869
+  type: 'test'
+  ...
+# Subtest: TC10 adapter: paste pending state cannot relabel a subsequent non-paste keystroke
+ok 65 - TC10 adapter: paste pending state cannot relabel a subsequent non-paste keystroke
+  ---
+  duration_ms: 0.671794
+  type: 'test'
+  ...
+# Subtest: TC22/TC10: caret exactly at linked/unlinked boundary never plays adjacent audio
+ok 66 - TC22/TC10: caret exactly at linked/unlinked boundary never plays adjacent audio
+  ---
+  duration_ms: 0.166892
+  type: 'test'
+  ...
+# Subtest: TC22: caret at unlinked/linked boundary or foreign-invalid source is ambiguous
+ok 67 - TC22: caret at unlinked/linked boundary or foreign-invalid source is ambiguous
+  ---
+  duration_ms: 0.628769
+  type: 'test'
+  ...
+# Subtest: TC07: OS clipboard HTML strips audio metadata while in-session move retains immutable Slice
+ok 68 - TC07: OS clipboard HTML strips audio metadata while in-session move retains immutable Slice
+  ---
+  duration_ms: 3.669101
+  type: 'test'
+  ...
+# Subtest: TC08: Undo/Redo metadata does not cause automatic re-anchoring
+ok 69 - TC08: Undo/Redo metadata does not cause automatic re-anchoring
+  ---
+  duration_ms: 0.659746
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 InputTracker creates out-of-band pending record rather than guessing audioOffset
+ok 70 - G01-ADD-01 InputTracker creates out-of-band pending record rather than guessing audioOffset
+  ---
+  duration_ms: 0.868672
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 InputTracker finalizes original mark after later confirmed clock point
+ok 71 - G01-ADD-01 InputTracker finalizes original mark after later confirmed clock point
+  ---
+  duration_ms: 1.131839
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 failed dispatch does not acknowledge applied clock mapping
+ok 72 - G01-ADD-01 failed dispatch does not acknowledge applied clock mapping
+  ---
+  duration_ms: 0.656461
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 history/delete before finalize never emits a ghost linked mark
+ok 73 - G01-ADD-01 history/delete before finalize never emits a ghost linked mark
+  ---
+  duration_ms: 0.382508
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 pending record is adjusted across same-word IME replacement
+ok 74 - G01-ADD-01 pending record is adjusted across same-word IME replacement
+  ---
+  duration_ms: 0.736402
+  type: 'test'
+  ...
+# Subtest: G01-ADD-01 changed editor meeting cannot finalize previous pending source
+ok 75 - G01-ADD-01 changed editor meeting cannot finalize previous pending source
+  ---
+  duration_ms: 0.230909
+  type: 'test'
+  ...
+1..75
+# tests 75
+# suites 0
+# pass 75
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 371.385719

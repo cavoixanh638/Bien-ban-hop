@@ -1,0 +1,175 @@
+
+> moc-hop-capture-poc@0.1.0 test:virtual3h
+> node tests/virtual-3h.mjs
+
+{
+  "environment": "Node v22.16.0",
+  "results": [
+    {
+      "test": "virtual-three-hour-frame-index",
+      "isRealTimeCapture": false,
+      "batchFrames": 2048,
+      "sampleRate": 48000,
+      "durationSeconds": 10800,
+      "expectedFrames": 518400000,
+      "blocks": 253125,
+      "first": [
+        0,
+        0,
+        0
+      ],
+      "atMiddle": [
+        259200000,
+        0.17589447231658306,
+        0
+      ],
+      "last": [
+        518399999,
+        0.35175794472616584,
+        47999
+      ],
+      "elapsedWallMs": 61.97,
+      "summary": {
+        "recordingId": "virtual-3h-2048",
+        "sampleRate": 48000,
+        "channels": 1,
+        "blocks": 253125,
+        "receivedFrames": 518400000,
+        "highWaterSample": 518400000,
+        "missingFrames": 0,
+        "overlappedFrames": 0,
+        "gapCount": 0,
+        "overlapCount": 0,
+        "sequenceErrorCount": 0,
+        "gapExamples": [],
+        "overlapExamples": [],
+        "sequenceExamples": []
+      },
+      "injectedFault": {
+        "recordingId": "virtual-3h-2048",
+        "sampleRate": 48000,
+        "channels": 1,
+        "blocks": 3,
+        "receivedFrames": 6144,
+        "highWaterSample": 6144,
+        "missingFrames": 2048,
+        "overlappedFrames": 2048,
+        "gapCount": 1,
+        "overlapCount": 1,
+        "sequenceErrorCount": 2,
+        "gapExamples": [
+          {
+            "start": 2048,
+            "end": 4096,
+            "count": 2048
+          },
+          {
+            "start": 2048,
+            "end": 4096,
+            "count": 2048
+          }
+        ],
+        "overlapExamples": [
+          {
+            "start": 4096,
+            "end": 6144
+          }
+        ],
+        "sequenceExamples": [
+          {
+            "expected": 1,
+            "actual": 2
+          },
+          {
+            "expected": 3,
+            "actual": 2
+          }
+        ]
+      },
+      "result": "PASS_METADATA_ONLY"
+    },
+    {
+      "test": "virtual-three-hour-frame-index",
+      "isRealTimeCapture": false,
+      "batchFrames": 4096,
+      "sampleRate": 48000,
+      "durationSeconds": 10800,
+      "expectedFrames": 518400000,
+      "blocks": 126563,
+      "first": [
+        0,
+        0,
+        0
+      ],
+      "atMiddle": [
+        259200000,
+        0.17589447231658306,
+        0
+      ],
+      "last": [
+        518399999,
+        0.35175794472616584,
+        47999
+      ],
+      "elapsedWallMs": 35.5,
+      "summary": {
+        "recordingId": "virtual-3h-4096",
+        "sampleRate": 48000,
+        "channels": 1,
+        "blocks": 126563,
+        "receivedFrames": 518400000,
+        "highWaterSample": 518400000,
+        "missingFrames": 0,
+        "overlappedFrames": 0,
+        "gapCount": 0,
+        "overlapCount": 0,
+        "sequenceErrorCount": 0,
+        "gapExamples": [],
+        "overlapExamples": [],
+        "sequenceExamples": []
+      },
+      "injectedFault": {
+        "recordingId": "virtual-3h-4096",
+        "sampleRate": 48000,
+        "channels": 1,
+        "blocks": 3,
+        "receivedFrames": 12288,
+        "highWaterSample": 12288,
+        "missingFrames": 4096,
+        "overlappedFrames": 4096,
+        "gapCount": 1,
+        "overlapCount": 1,
+        "sequenceErrorCount": 2,
+        "gapExamples": [
+          {
+            "start": 4096,
+            "end": 8192,
+            "count": 4096
+          },
+          {
+            "start": 4096,
+            "end": 8192,
+            "count": 4096
+          }
+        ],
+        "overlapExamples": [
+          {
+            "start": 8192,
+            "end": 12288
+          }
+        ],
+        "sequenceExamples": [
+          {
+            "expected": 1,
+            "actual": 2
+          },
+          {
+            "expected": 3,
+            "actual": 2
+          }
+        ]
+      },
+      "result": "PASS_METADATA_ONLY"
+    }
+  ]
+}

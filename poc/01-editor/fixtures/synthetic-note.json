@@ -1,0 +1,16 @@
+{
+  "noteDocumentId": "fixture-note-01",
+  "revision": 0,
+  "schemaVersion": 1,
+  "content": {
+    "type": "doc",
+    "content": [{
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "Cuộc họp ", "marks": [{ "type": "timeSpan", "attrs": { "anchorId": "a-1", "recordingId": "fixture-rec-01", "audioOffsetMs": 40000, "typedAt": 1794750000000, "source": "live_recording", "schemaVersion": 1 } }] },
+        { "type": "text", "text": "bắt đầu", "marks": [{ "type": "timeSpan", "attrs": { "anchorId": "a-2", "recordingId": "fixture-rec-01", "audioOffsetMs": 73000, "typedAt": 1794750033000, "source": "live_recording", "schemaVersion": 1 } }, { "type": "bold" }] },
+        { "type": "text", "text": ", nội dung ngoài.", "marks": [{ "type": "timeSpan", "attrs": { "anchorId": "a-3", "recordingId": null, "audioOffsetMs": null, "typedAt": 1794750040000, "source": "paste", "schemaVersion": 1 } }] }
+      ]
+    }]
+  }
+}

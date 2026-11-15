@@ -1,0 +1,184 @@
+Linux x86_64 / Node v22.16.0 / npm 10.9.2 / synthetic standalone PoC
+$ cd poc/09-pwa && npm test
+
+> test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: TC33: every SW precache shell asset exists under package base path
+ok 1 - TC33: every SW precache shell asset exists under package base path
+  ---
+  duration_ms: 1.517575
+  type: 'test'
+  ...
+# Subtest: TC33: PWA scope and start_url are relative; no origin-root assumption
+ok 2 - TC33: PWA scope and start_url are relative; no origin-root assumption
+  ---
+  duration_ms: 1.92719
+  type: 'test'
+  ...
+# Subtest: TC34: SW and app upgrade markers agree in both v1 and v2 fixture versions
+ok 3 - TC34: SW and app upgrade markers agree in both v1 and v2 fixture versions
+  ---
+  duration_ms: 0.494651
+  type: 'test'
+  ...
+# Subtest: TC32: only one writer per meeting; lease can be recovered after release
+ok 4 - TC32: only one writer per meeting; lease can be recovered after release
+  ---
+  duration_ms: 4.164423
+  type: 'test'
+  ...
+# Subtest: TC32/TC34: maintenance denied during any editing/recording lease, granted after release
+ok 5 - TC32/TC34: maintenance denied during any editing/recording lease, granted after release
+  ---
+  duration_ms: 0.99418
+  type: 'test'
+  ...
+# Subtest: TC32: refuse unsafe fallback when Web Locks missing
+ok 6 - TC32: refuse unsafe fallback when Web Locks missing
+  ---
+  duration_ms: 0.741432
+  type: 'test'
+  ...
+# Subtest: G09-ADD-01: stale release callback cannot unlock a newly acquired writer
+ok 7 - G09-ADD-01: stale release callback cannot unlock a newly acquired writer
+  ---
+  duration_ms: 0.518968
+  type: 'test'
+  ...
+# Subtest: G09-ADD-03: meeting B release event notifies A for origin-global maintenance retry
+ok 8 - G09-ADD-03: meeting B release event notifies A for origin-global maintenance retry
+  ---
+  duration_ms: 1.311426
+  type: 'test'
+  ...
+# Subtest: G09-ADD-03: migration A retries despite B global writer releasing after first failed attempt
+ok 9 - G09-ADD-03: migration A retries despite B global writer releasing after first failed attempt
+  ---
+  duration_ms: 5.057071
+  type: 'test'
+  ...
+# Subtest: G09-ADD-03: bounded retry after 4 blocked attempts, manual Retry remains possible
+ok 10 - G09-ADD-03: bounded retry after 4 blocked attempts, manual Retry remains possible
+  ---
+  duration_ms: 0.405368
+  type: 'test'
+  ...
+# Subtest: TC35: migration preserves every timeSpan attr, recording reference, note text, and revision
+ok 11 - TC35: migration preserves every timeSpan attr, recording reference, note text, and revision
+  ---
+  duration_ms: 2.19425
+  type: 'test'
+  ...
+# Subtest: TC35: idempotent v2, reject mixed/newer schema instead of downgrade
+ok 12 - TC35: idempotent v2, reject mixed/newer schema instead of downgrade
+  ---
+  duration_ms: 0.782143
+  type: 'test'
+  ...
+# Subtest: TC35 negative: tampered link or missing paragraph cannot produce migration plan
+ok 13 - TC35 negative: tampered link or missing paragraph cannot produce migration plan
+  ---
+  duration_ms: 1.648602
+  type: 'test'
+  ...
+# Subtest: G09-ADD-01: release requested before first Worker ACK holds exclusive lock; no late recording/ticker
+ok 14 - G09-ADD-01: release requested before first Worker ACK holds exclusive lock; no late recording/ticker
+  ---
+  duration_ms: 2.555681
+  type: 'test'
+  ...
+# Subtest: G09-ADD-01: stop during start, then ACK; epoch refuses late timer
+ok 15 - G09-ADD-01: stop during start, then ACK; epoch refuses late timer
+  ---
+  duration_ms: 0.669865
+  type: 'test'
+  ...
+# Subtest: G09-ADD-01: stop awaits an in-flight periodic ACK; timeout is fail-closed
+ok 16 - G09-ADD-01: stop awaits an in-flight periodic ACK; timeout is fail-closed
+  ---
+  duration_ms: 1.459809
+  type: 'test'
+  ...
+# Subtest: G09-ADD-02: delayed save A then edit B and release; B is committed before lock release
+ok 17 - G09-ADD-02: delayed save A then edit B and release; B is committed before lock release
+  ---
+  duration_ms: 1.666409
+  type: 'test'
+  ...
+# Subtest: G09-ADD-02: quota/transaction abort during pending save preserves B and writer; retry can commit
+ok 18 - G09-ADD-02: quota/transaction abort during pending save preserves B and writer; retry can commit
+  ---
+  duration_ms: 0.831327
+  type: 'test'
+  ...
+# Subtest: G09-ADD-02: CAS conflict does not announce Saved or release, dirty edit survives
+ok 19 - G09-ADD-02: CAS conflict does not announce Saved or release, dirty edit survives
+  ---
+  duration_ms: 1.821801
+  type: 'test'
+  ...
+# Subtest: G09-ADD-01: FIRST append timeout is indeterminate and cannot release the writer
+ok 20 - G09-ADD-01: FIRST append timeout is indeterminate and cannot release the writer
+  ---
+  duration_ms: 0.577586
+  type: 'test'
+  ...
+# Subtest: G09-ADD-01: acknowledged rollback failure does not start timer, permits safe stop
+ok 21 - G09-ADD-01: acknowledged rollback failure does not start timer, permits safe stop
+  ---
+  duration_ms: 0.509654
+  type: 'test'
+  ...
+# Subtest: TC33: offline shell is scoped; OPFS and IndexedDB never enter CacheStorage
+ok 22 - TC33: offline shell is scoped; OPFS and IndexedDB never enter CacheStorage
+  ---
+  duration_ms: 4.838774
+  type: 'test'
+  ...
+# Subtest: G09-ADD-04: direct SW activate message during another meeting writer is denied
+ok 23 - G09-ADD-04: direct SW activate message during another meeting writer is denied
+  ---
+  duration_ms: 3.133057
+  type: 'test'
+  ...
+# Subtest: G09-ADD-04: outside-scope sender and absent Worker Web Locks cannot activate SW
+ok 24 - G09-ADD-04: outside-scope sender and absent Worker Web Locks cannot activate SW
+  ---
+  duration_ms: 1.771176
+  type: 'test'
+  ...
+# Subtest: G09-ADD-04: HTML/JS/CSS remain same shell version even after online v2 is published
+ok 25 - G09-ADD-04: HTML/JS/CSS remain same shell version even after online v2 is published
+  ---
+  duration_ms: 4.004663
+  type: 'test'
+  ...
+# Subtest: Worker/OPFS: ACK only after complete append and flush, restore byte count
+ok 26 - Worker/OPFS: ACK only after complete append and flush, restore byte count
+  ---
+  duration_ms: 6.480976
+  type: 'test'
+  ...
+# Subtest: Worker/OPFS negative: short write yields NO committed ACK
+ok 27 - Worker/OPFS negative: short write yields NO committed ACK
+  ---
+  duration_ms: 1.459338
+  type: 'test'
+  ...
+# Subtest: Worker/OPFS negative: failed rollback is indeterminate and must hold writer lease
+ok 28 - Worker/OPFS negative: failed rollback is indeterminate and must hold writer lease
+  ---
+  duration_ms: 1.509703
+  type: 'test'
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 226.438534

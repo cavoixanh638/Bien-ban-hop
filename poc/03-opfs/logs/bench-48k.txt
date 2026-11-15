@@ -1,0 +1,72 @@
+
+> bench
+> node bench.mjs --sample-rate=48000 --duration=10800
+
+{
+  "status": "PASS",
+  "environment": {
+    "node": "v22.16.0",
+    "platform": "linux",
+    "arch": "x64",
+    "backend": "Node filesystem fsync + in-memory journal (NOT browser OPFS/IndexedDB)"
+  },
+  "fixture": {
+    "sampleRate": 48000,
+    "channels": 1,
+    "format": "f32le",
+    "durationSeconds": 10800,
+    "chunkSeconds": 5,
+    "segmentSeconds": 300,
+    "signal": "deterministic cyclic 440Hz f32le"
+  },
+  "runtimeWallSeconds": 31.395,
+  "recoveryVerifyMs": 9847.394,
+  "segments": 36,
+  "committedSamples": 518400000,
+  "committedPcmBytes": 2073600000,
+  "committedRanges": 2160,
+  "unavailableRanges": 0,
+  "gapRanges": 0,
+  "maxUnconfirmedSeconds": 5,
+  "metrics": {
+    "writeMs": 1326.3484669999368,
+    "flushMs": 2087.2394909999985,
+    "journalMs": 2408.164070000024,
+    "bytesWritten": 2073600000,
+    "flushCount": 2160,
+    "maxPendingBytes": 960000
+  },
+  "latencyMs": {
+    "writeP50": 5.321,
+    "writeP95": 8.102,
+    "writeMax": 25.551,
+    "flushP50": 3.223,
+    "flushP95": 5.539,
+    "flushMax": 20.678,
+    "seekP95": 4.868
+  },
+  "peakRssMiB": 89.7,
+  "seekResults": [
+    {
+      "sample": 0,
+      "status": "valid",
+      "latencyMs": 4.545
+    },
+    {
+      "sample": 259200000,
+      "status": "valid",
+      "latencyMs": 4.339
+    },
+    {
+      "sample": 518352000,
+      "status": "valid",
+      "latencyMs": 4.868
+    },
+    {
+      "sample": 518399999,
+      "status": "valid",
+      "latencyMs": 4.029
+    }
+  ],
+  "validRecordedIntervals": 2160
+}

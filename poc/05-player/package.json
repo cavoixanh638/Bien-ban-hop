@@ -1,0 +1,1 @@
+{"name":"moc-hop-player-poc","version":"0.2.0","type":"module","private":true,"scripts":{"test":"node --test player.test.js","serve":"python3 -m http.server 8765"}}
