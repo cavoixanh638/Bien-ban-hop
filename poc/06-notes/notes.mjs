@@ -4,8 +4,23 @@ export class RevisionConflict extends Error { constructor(){super("Revision conf
 export class StorageFailure extends Error { constructor(message){super(message);this.name="StorageFailure";} }
 export const clone = x => JSON.parse(JSON.stringify(x));
 const uuid = () => globalThis.crypto?.randomUUID?.() || "id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
-const textOf = n => typeof n?.text==="string" ? n.text : (Array.isArray(n?.content) ? n.content.map(textOf).join(" ") : "");
+const textOf = n => {
+  if(typeof n?.text === "string") return n.text;
+  if(n?.type === "hardBreak") return "\n";
+  if(!Array.isArray(n?.content)) return "";
+  const separator = ["doc","bulletList","orderedList"].includes(n.type) ? "\n" : "";
+  return n.content.map(textOf).join(separator);
+};
 export const normalize = v => String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d").replace(/Đ/g,"D").toLocaleLowerCase("vi");
+export function normalizeWithPositions(text) {
+  let folded=""; const starts=[],ends=[];
+  for(let i=0;i<text.length;){
+    const c=String.fromCodePoint(text.codePointAt(i)),n=normalize(c);
+    for(let j=0;j<n.length;j++){starts.push(i);ends.push(i+c.length);}
+    folded+=n;i+=c.length;
+  }
+  return {folded,starts,ends};
+}
 export function migrateNote(input) {
   if(!input || typeof input!=="object") throw new StorageFailure("Invalid note");
   if((input.schemaVersion??0)>SCHEMA_VERSION) throw new StorageFailure("Newer note schema is unsupported");
@@ -21,29 +36,44 @@ const request = req => new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(
 export function openIndexedDB(name="moc-hop-notes-v1", indexedDBImpl=globalThis.indexedDB) {
   if(!indexedDBImpl) return Promise.reject(new StorageFailure("IndexedDB unavailable"));
   return new Promise((resolve,reject)=>{
+    let finished=false;
     const q=indexedDBImpl.open(name,1);
     q.onupgradeneeded=()=>{
       const db=q.result;
-      for(const store of ["meetings","notes","journals"]) if(!db.objectStoreNames.contains(store)) db.createObjectStore(store,{keyPath:store==="meetings"?"meetingId":store==="notes"?"noteDocumentId":"journalId"});
+      for(const store of ["meetings","notes","journals"])
+        if(!db.objectStoreNames.contains(store))
+          db.createObjectStore(store,{keyPath:store==="meetings"?"meetingId":store==="notes"?"noteDocumentId":"journalId"});
     };
-    q.onerror=()=>reject(q.error);
+    q.onblocked=()=>{if(!finished){finished=true;reject(new StorageFailure("IndexedDB upgrade blocked by another tab"));}};
+    q.onerror=()=>{if(!finished){finished=true;reject(q.error);}};
     q.onsuccess=()=>{
       const db=q.result;
+      if(finished){db.close();return;}
+      finished=true;
+      db.onversionchange=()=>db.close();
       resolve({
-        async run(stores,mode,fn) {
+        run(stores,mode,fn){
           return new Promise((res,rej)=>{
-            let settled=false, value;
-            const tx=db.transaction(stores,mode);
+            let settled=false,completed=false,value,callbackDone=false,cause;
+            let tx;
+            try {tx=db.transaction(stores,mode);} catch(e){rej(e);return;}
+            const finish=(ok,v)=>{if(settled)return;settled=true;ok?res(v):rej(v);};
             const api={
               get:(s,k)=>request(tx.objectStore(s).get(k)),
               all:s=>request(tx.objectStore(s).getAll()),
               put:(s,x)=>request(tx.objectStore(s).put(clone(x))),
               del:(s,k)=>request(tx.objectStore(s).delete(k))
             };
-            tx.oncomplete=()=>{settled=true;res(value);};
-            tx.onerror=()=>{settled=true;rej(tx.error||new StorageFailure("IndexedDB transaction error"));};
-            tx.onabort=()=>{settled=true;rej(tx.error||new StorageFailure("IndexedDB transaction aborted"));};
-            Promise.resolve().then(()=>fn(api)).then(v=>{value=v;},e=>{if(!settled){try{tx.abort();}catch{}rej(e);settled=true;}});
+            tx.oncomplete=()=>{completed=true;
+              if(callbackDone)finish(true,value);
+              else finish(false,new StorageFailure("IndexedDB transaction completed before callback"));
+            };
+            tx.onabort=()=>finish(false,cause||tx.error||new StorageFailure("IndexedDB transaction aborted"));
+            tx.onerror=()=>{}; // allow abort event to deliver the definitive error
+            Promise.resolve().then(()=>fn(api)).then(
+              result=>{callbackDone=true;value=result;},
+              error=>{cause=error;try{tx.abort();}catch{finish(false,error);}}
+            );
           });
         },
         close:()=>db.close()
@@ -76,11 +106,14 @@ export function createMemoryDB(initial={}) {
   };
 }
 export function createMockLease(){
-  const held=new Set();
-  return {async acquire(meetingId) {
+  const held=new Map();
+  return {async acquire(meetingId){
     if(held.has(meetingId))return null;
-    held.add(meetingId);let active=true;
-    return {get held(){return active;},release(){if(active){held.delete(meetingId);active=false;}}};
+    const token=Symbol(meetingId);held.set(meetingId,token);
+    return {
+      get held(){return held.get(meetingId)===token;},
+      release(){if(held.get(meetingId)===token)held.delete(meetingId);}
+    };
   }};
 }
 export class NotesRepository {
@@ -110,6 +143,7 @@ export class NotesRepository {
     return this.db.run(["notes","journals","meetings"],"readwrite",async tx=>{
       const old=await tx.get("notes",noteDocumentId);
       if(!old)throw new StorageFailure("Note missing");
+      if(lease && !lease.held)throw new StorageFailure("Writer lease lost before write");
       if((old.revision??0)!==expectedRevision)throw new RevisionConflict();
       if((old.schemaVersion??0)>SCHEMA_VERSION)throw new StorageFailure("Cannot downgrade schema");
       const next={noteDocumentId,revision:expectedRevision+1,schemaVersion:1,content:safeContent};
@@ -139,11 +173,18 @@ export class NotesRepository {
     return this.db.run(["meetings","notes"],"readonly",async tx=>{
       const notes=new Map((await tx.all("notes")).map(n=>[n.noteDocumentId,n]));
       const results=[];
-      for(const m of await tx.all("meetings")){
+      for(const m of (await tx.all("meetings")).sort((a,b)=>b.updatedAt-a.updatedAt)){
         const note=notes.get(m.noteDocumentId),plain=note?textOf(note.content):"";
         const titleMatch=normalize(m.title).includes(needle);
-        const i=normalize(plain).indexOf(needle);
-        if(titleMatch||i>=0)results.push({meetingId:m.meetingId,noteDocumentId:m.noteDocumentId,title:m.title,snippet:plain.slice(Math.max(0,i-25),Math.max(0,i-25)+100),location:i>=0?i:null,matchedIn:titleMatch?"title":"text"});
+        const {folded,starts,ends}=normalizeWithPositions(plain);
+        const i=folded.indexOf(needle);
+        if(titleMatch||i>=0){
+          const location=i>=0?starts[i]:null;
+          const end=i>=0?ends[i+needle.length-1]:null;
+          results.push({meetingId:m.meetingId,noteDocumentId:m.noteDocumentId,title:m.title,
+            snippet:location===null?"":plain.slice(Math.max(0,location-25),Math.max(0,location-25)+100),
+            location,length:location===null?null:end-location,matchedIn:titleMatch?"title":"text"});
+        }
       }
       return results;
     });
@@ -151,31 +192,58 @@ export class NotesRepository {
 }
 export class Autosave {
   constructor(repo,noteDocumentId,lease,{debounceMs=350,maxWaitMs=1500,onStatus=()=>{}}={}){
-    this.repo=repo;this.noteDocumentId=noteDocumentId;this.lease=lease;this.debounceMs=debounceMs;this.maxWaitMs=maxWaitMs;this.onStatus=onStatus;
-    this.revision=null;this.draft=null;this.seq=0;this.savedSeq=0;this.pending=null;this.timer=null;this.maxTimer=null;this.status="loading";this.disposed=false;
+    this.repo=repo;this.noteDocumentId=noteDocumentId;this.lease=lease;
+    this.debounceMs=debounceMs;this.maxWaitMs=maxWaitMs;this.onStatus=onStatus;
+    this.revision=null;this.draft=null;this.seq=0;this.savedSeq=0;
+    this.flight=null;this.timer=null;this.maxTimer=null;this.status="loading";this.disposed=false;
   }
-  async load(){const note=await this.repo.getNote(this.noteDocumentId);if(!note)throw new StorageFailure("Note missing");this.revision=note.revision;this.draft=note.content;this.status="saved";this.onStatus(this.status,this.revision);return clone(note);}
+  async load(){
+    if(this.revision!==null)throw new StorageFailure("Autosave already loaded");
+    const note=await this.repo.getNote(this.noteDocumentId);
+    if(!note)throw new StorageFailure("Note missing");
+    this.revision=note.revision;this.draft=note.content;
+    this.status="saved";this.onStatus(this.status,this.revision);return clone(note);
+  }
+  _clearTimers(){clearTimeout(this.timer);clearTimeout(this.maxTimer);this.timer=this.maxTimer=null;}
   edit(doc){
     if(this.disposed)throw new StorageFailure("Autosave disposed");
     if(this.revision===null)throw new StorageFailure("Autosave not loaded");
+    if(doc?.type!=="doc"||!Array.isArray(doc.content))throw new StorageFailure("Invalid ProseMirror JSON");
     this.draft=clone(doc);this.seq++;this.status="dirty";this.onStatus("dirty",this.revision);
-    clearTimeout(this.timer);this.timer=setTimeout(()=>this.flush().catch(()=>{}),this.debounceMs);
-    if(!this.maxTimer)this.maxTimer=setTimeout(()=>this.flush().catch(()=>{}),this.maxWaitMs);
+    if(!this.flight){
+      clearTimeout(this.timer);
+      this.timer=setTimeout(()=>this.flush().catch(()=>{}),this.debounceMs);
+      if(!this.maxTimer)this.maxTimer=setTimeout(()=>this.flush().catch(()=>{}),this.maxWaitMs);
+    }
   }
-  async flush(){
-    clearTimeout(this.timer);clearTimeout(this.maxTimer);this.timer=this.maxTimer=null;
-    if(this.pending)return this.pending.then(()=>this.seq!==this.savedSeq?this.flush():this.revision);
-    if(this.seq===this.savedSeq)return this.revision;
-    const captured=this.seq,doc=clone(this.draft);
-    this.status="saving";this.onStatus("saving",this.revision);
-    const pending=this.repo.saveNote(this.noteDocumentId,doc,this.revision,this.lease);
-    this.pending=pending;
-    try{
-      const next=await pending;this.revision=next;this.savedSeq=captured;
-      this.status=this.seq===captured?"saved":"dirty";this.onStatus(this.status,this.revision);
-      return next;
-    }catch(e){this.status=e instanceof RevisionConflict?"conflict":"error";this.onStatus(this.status,this.revision,e);throw e;}
-    finally{this.pending=null;}
+  async _drain(){
+    this._clearTimers();
+    while(this.savedSeq<this.seq){
+      const captured=this.seq,doc=clone(this.draft);
+      this.status="saving";this.onStatus("saving",this.revision);
+      try{
+        const next=await this.repo.saveNote(this.noteDocumentId,doc,this.revision,this.lease);
+        this.revision=next;this.savedSeq=captured;
+        this.status=this.seq===captured?"saved":"dirty";
+        this.onStatus(this.status,this.revision);
+      }catch(e){
+        this.status=e instanceof RevisionConflict?"conflict":"error";
+        this.onStatus(this.status,this.revision,e);this._clearTimers();throw e;
+      }
+    }
+    this._clearTimers();
+    return this.revision;
   }
-  async dispose(){clearTimeout(this.timer);clearTimeout(this.maxTimer);this.disposed=true;this.lease?.release();}
+  flush(){
+    if(this.disposed)return Promise.reject(new StorageFailure("Autosave disposed"));
+    if(this.revision===null)return Promise.reject(new StorageFailure("Autosave not loaded"));
+    if(this.flight)return this.flight;
+    this.flight=this._drain().finally(()=>{this.flight=null;});
+    return this.flight;
+  }
+  async dispose(){
+    if(this.flight||this.seq!==this.savedSeq)
+      throw new StorageFailure("Cannot release writer with unconfirmed notes; flush first");
+    this._clearTimers();this.disposed=true;this.lease?.release();
+  }
 }
