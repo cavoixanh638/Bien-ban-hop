@@ -1,0 +1,158 @@
+{
+  "noteDocumentId": "note-synthetic-08",
+  "revision": 1,
+  "schemaVersion": 1,
+  "content": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "I. Tình hình triển khai"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Chủ trì: "
+          },
+          {
+            "type": "text",
+            "text": "đồng chí Nguyễn Văn A",
+            "marks": [
+              {
+                "type": "bold"
+              },
+              {
+                "type": "timeSpan",
+                "attrs": {
+                  "anchorId": "a1",
+                  "recordingId": "rec-01",
+                  "audioOffsetMs": 3723456,
+                  "typedAt": 1794756000000,
+                  "source": "live_recording",
+                  "schemaVersion": 1
+                }
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": "; báo cáo kết quả.",
+            "marks": [
+              {
+                "type": "timeSpan",
+                "attrs": {
+                  "anchorId": "a2",
+                  "recordingId": "rec-01",
+                  "audioOffsetMs": 3724000,
+                  "typedAt": 1794756000544,
+                  "source": "live_recording",
+                  "schemaVersion": 1
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Cụm dán từ Word: \"A,B\", dấu & < > và xuống dòng"
+          },
+          {
+            "type": "hardBreak"
+          },
+          {
+            "type": "text",
+            "text": "Tiếng Việt: trường, tiếng, Hải Phòng",
+            "marks": [
+              {
+                "type": "italic"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": []
+      },
+      {
+        "type": "bulletList",
+        "content": [
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Rà soát tiến độ & trách nhiệm"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Nội dung chưa liên kết",
+                    "marks": [
+                      {
+                        "type": "timeSpan",
+                        "attrs": {
+                          "anchorId": "unlinked-01",
+                          "recordingId": null,
+                          "audioOffsetMs": null,
+                          "typedAt": 1794756200000,
+                          "source": "unlinked",
+                          "schemaVersion": 1
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "orderedList",
+        "content": [
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Kết luận \"giai đoạn 1\""
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
