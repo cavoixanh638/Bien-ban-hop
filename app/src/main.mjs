@@ -4,6 +4,7 @@ import StarterKit from '@tiptap/starter-kit';
 import {InputTracker,TimeSpan,createTrackingExtension,readAnchorAtCursor} from '../../poc/01-editor/src/tracker.mjs';
 import {MeetingLease} from '../../poc/09-pwa/lease.js';
 import {MeetingStore,SaveQueue} from './meeting-store.mjs';
+import {verifiedClickedAnchor} from './anchor-bridge.mjs';
 import {CaptureSession,AudioPlayer,AudioRPC} from './audio.mjs';
 import {exportDOCX,exportTXT,exportMarkdown,exportCSV,mime} from '../../poc/08-export/exporter.mjs';
 import {exportMochop} from '../../poc/07-backup/mochop-web.mjs';
@@ -191,11 +192,12 @@ async function stopRecording(){
   }catch(e){show('Dừng ghi/lưu chưa hoàn tất: '+e.message,'error');}
   finally{setRecordingUI();}
 }
-async function listenAtCursor(){
+async function listenAtCursor(clickedAnchor=null){
   const run=state.run;if(!run?.editor)return;
-  const cursor=readAnchorAtCursor(run.editor.state,run.tracker.allowed),anchor=cursor.anchor;
-  if(cursor.status!=='linked'||!anchor?.recordingId||!Number.isInteger(anchor.audioOffsetMs)){
-    show(cursor.status==='ambiguous'||cursor.status==='mixed'?'Mốc có nhiều nguồn; hãy đặt con trỏ bên trong đoạn chữ.':'Đoạn này chưa có âm thanh hợp lệ.','error');return;
+  const cursor=clickedAnchor?null:readAnchorAtCursor(run.editor.state,run.tracker.allowed),
+    anchor=clickedAnchor??cursor?.anchor;
+  if((!clickedAnchor && cursor?.status!=='linked')||!anchor?.recordingId||!Number.isInteger(anchor.audioOffsetMs)){
+    show(cursor?.status==='ambiguous'||cursor?.status==='mixed'?'Mốc có nhiều nguồn; hãy đặt con trỏ bên trong đoạn chữ.':'Đoạn này chưa có âm thanh hợp lệ.','error');return;
   }
   if(run.capture&&['starting','capturing','paused','stopping'].includes(run.capture.state)){
     show('Bản tích hợp đầu tiên chỉ nghe lại sau khi dừng ghi để tránh tranh chấp OPFS.','error');return;
@@ -276,7 +278,12 @@ function wire(){
     if(editor&&state.run.releaseLease)editor.chain().focus()[cmd]().run();
   });
   $('editor').addEventListener('click',e=>{
-    if(e.target.closest('[data-time-anchor-id]')&&!state.run?.capture?.state?.includes('capturing'))listenAtCursor();
+    const element=e.target.closest?.('[data-time-anchor-id]'),run=state.run;
+    if(!element||!run?.editor)return;
+    const verified=verifiedClickedAnchor(run.editor.state.doc,element.getAttribute('data-time-anchor-id'),
+      run.tracker.allowed,run.tracker.pendingLinks);
+    if(!verified){show('Không xác minh được nguồn âm thanh của đoạn chữ này.','error');return;}
+    listenAtCursor(verified);
   });
   document.addEventListener('keydown',e=>{
     if(e.altKey&&e.key==='Enter'){e.preventDefault();listenAtCursor();}
