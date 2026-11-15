@@ -1,37 +1,48 @@
-# 09-PWA test evidence - 2026-11-15
+# 09-PWA — continuation test evidence (2026-11-15)
 
-Scope: local standalone PoC, synthetic notes and dummy OPFS bytes only. This file is NOT an acceptance certificate for the integrated V1.2 application.
+**Status:** fixture-based standalone PoC; review pending actual browser runs. G00 `TRACKER.md` ADD-01 to ADD-04 reviewed and addressed in owned source. The 10 existing Node mock tests were expanded to **28/28 PASS** (Node v22.16.0, Linux x86_64, no npm downloads) and real nested-path static HTTP smoke to **9/9 PASS** (Python 3.13.5). This is **not** TC32–TC35 acceptance for Windows/Chrome/Edge or the integrated application.
 
-| Check | Source/environment | Result | Evidence / limitation |
+| Gate | Result | Evidence | Unverified boundary |
 |---|---|---|---|
-| TC32: exclusive meeting writer, second denied, takeover after release | Node 22.16.0, in-memory Web Locks adapter, `npm test` | PASS (unit mock) | `tests/lease.test.mjs` tests 1-3 |
-| TC33: cache only scoped shell; offline navigation fallback | Node 22.16.0, Service Worker event/cache/fetch mocks | PASS (unit mock) | `tests/sw.test.mjs` offline and cache isolation; **not browser offline PASS** |
-| TC34: waiting worker does not activate by itself; maintenance guard denies during writer | Node 22.16.0, mock SW and Web Locks | PASS (unit mock) | `tests/sw.test.mjs`, `tests/lease.test.mjs`; no browser lifecycle verified |
-| TC35: v1-to-v2 fixture preserves timeSpan/recording IDs/revision; corrupt source fails | Node 22.16.0, pure migration planner | PASS (unit mock) | `tests/migration.test.mjs`; IndexedDB transaction integration NOT_RUN |
-| Worker/OPFS ACK and negative short write | Node 22.16.0, mock OPFS sync file handles | PASS (unit mock) | `tests/worker.test.mjs`; real OPFS NOT_RUN |
-| TC32 two tabs and tab close; renderer crash | Chromium Playwright suite against ephemeral localhost fixture | NOT_RUN (browser blocked) | Chromium 144.0.7559.96 policy `URLBlocklist=["*"]` prevents navigating to `127.0.0.1`; `Page.goto net::ERR_BLOCKED_BY_ADMINISTRATOR` |
-| TC33 actual offline reload, OPFS and `crossOriginIsolated=false` | Chromium Playwright suite | NOT_RUN (browser blocked) | Same policy; fixture test is ready |
-| TC34 SW v1 to v2 on active recording, explicit activation/reload | Chromium Playwright suite | NOT_RUN (browser blocked) | Same policy; fixture test is ready |
-| TC35 real IndexedDB migration, atomic rollback, old-client write guard | Chromium Playwright suite | NOT_RUN (browser blocked) | Same policy; fixture test is ready |
-| GitHub Pages HTTPS/base path/live headers | GitHub Pages live environment | NOT_RUN | No authorized Pages deployment or verified URL; do not claim PASS |
-| Windows Chrome/Edge, long recording, crashes/quota | Real Windows device | NOT_RUN | Not available in this run; separate integration gate |
+| G09-ADD-01: start/release, stop-during-first-ACK, late tick, first-timeout, stale release token | **PASS** (deterministic Node mocks) | `session-races.test.mjs`, `lease.test.mjs` | Browser Worker scheduling and renderer crash **NOT_RUN** |
+| G09-ADD-02: save A delayed, type B, drain before release, quota abort, CAS conflict | **PASS** (deterministic Node mocks) | `session-races.test.mjs`; confirmed revisions 1→2→3, B retained; error retains dirty text and lease | Real IndexedDB `transaction.complete` race **NOT_RUN** |
+| G09-ADD-03: meeting B blocks A migration; release event crosses meeting IDs; bounded retry and v1 notes/marks/revision preserved | **PASS** (deterministic Node mocks) | `maintenance-retry.test.mjs`, `lease.test.mjs` | Real BroadcastChannel/Web Locks/IDB multi-meeting flow **NOT_RUN** |
+| G09-ADD-04: SW self-acquires exclusive lock, direct message while B writes denied, outside-scope/unsupported SW locks denied, HTML+JS same shell version | **PASS** (SW event/Web Locks/cache mocks) | `sw.test.mjs` | Real waiting-worker activation and full trust boundary **NOT_RUN** |
+| TC32: single writer and recovery after release, unsafe no-lock fallback | **PASS** (Node mock) | `lease.test.mjs` | Real 2-tab/renderer crash **NOT_RUN** |
+| TC33: app shell precache/base/scope, no fixture bytes in cache | **PASS** (Node SW mock + static HTTP) | `assets.test.mjs`, `sw.test.mjs`, `HTTP_SMOKE_20261115.txt` | Browser offline reload + OPFS + `crossOriginIsolated=false` **NOT_RUN** |
+| TC34: waiting worker no auto `skipWaiting` or reload; guarded explicit activation | **PASS** (SW mock) | `sw.test.mjs`; `app.js` intentionally has no auto reload | Browser SW lifecycle **NOT_RUN** |
+| TC35: old document and every timeSpan attr/revision preserved; mixed schema rejected; no partial migration plan | **PASS** (pure migration mock) | `migration.test.mjs`, `maintenance-retry.test.mjs` | IndexedDB atomic rollback under live browser **NOT_RUN** |
+| OPFS short write / rollback failure | **PASS** (Worker/mock OPFS) | `worker.test.mjs`; NACK; successfully truncate to before size or classify indeterminate | Real browser OPFS quota/corruption **NOT_RUN** |
+| 10 Chromium Playwright scenarios | **NOT_RUN** | `test_pwa.py`, `BROWSER_NOT_RUN_20261115.txt` | Managed browser `Page.goto net::ERR_BLOCKED_BY_ADMINISTRATOR` prevents page navigation |
+| GitHub Pages HTTPS base-path / origin security / headers | **NOT_RUN** | No deployment authorized | Must run on an authorized endpoint before live use |
+| Windows Chrome/Edge and actual device/real audio | **NOT_RUN** | Not available in this runtime | G01, G02/G03, G00 integration gates separate |
 
-## Commands and measured output
+## Reproduction commands
+
+From `poc/09-pwa/`, standalone without downloads:
 
 ```text
 $ node --version
 v22.16.0
 $ npm test
-# tests 10
-# pass 10
+# tests 28
+# pass 28
 # fail 0
-# duration_ms 116.111073
-
-$ CHROMIUM_PATH=/usr/bin/chromium python -m pytest -q tests/test_pwa.py --disable-warnings --maxfail=1
-# FAIL before running scenario: Page.goto net::ERR_BLOCKED_BY_ADMINISTRATOR
-# Policy: /etc/chromium/policies/managed/000_policy_merge.json -> URLBlocklist: ["*"]
+# cancelled 0
+# duration_ms 226.438534
+$ python tests/http_smoke.py
+9/9 nested HTTP static asset checks PASS
 ```
 
-The browser failure is an **environment constraint, not a software PASS or FAIL**. No command was used to bypass managed browser restrictions. The public npm registry was unreachable in this runtime (`EAI_AGAIN`); Node tests use no external dependencies.
+Raw tested logs: [`NODE_TEST_20261115.txt`](NODE_TEST_20261115.txt) · [`HTTP_SMOKE_20261115.txt`](HTTP_SMOKE_20261115.txt) · blocked browser evidence [`BROWSER_NOT_RUN_20261115.txt`](BROWSER_NOT_RUN_20261115.txt). The Playwright test process **exited nonzero** before the first scenario executed; the report labels the scenario suite **NOT_RUN**, not PASS. Chrom(ium) policy `URLBlocklist` was not changed or bypassed.
 
-Tested local source: the full `poc/09-pwa/` text tree delivered in the code commit. Commit SHA is recorded in the branch checkpoint. Before signing off TC32-TC35 on browsers, run the provided Playwright suite on an ordinary authorized Chrome/Edge instance, investigate any failures and attach traces/version; then separately measure a real GitHub Pages deployment (if authorized).
+## Scope, safety, and integration guidance
+
+- All fixtures synthetic; no real meeting/audio data, external API, credentials or network dependency. Worker uses 64-byte dummy chunks, not a 3-hour capture benchmark.
+- `MeetingLease` only grants writer via Web Locks. Lease can only release once recording start/periodic append and autosave acknowledged; unknown Worker completion blocks release. Crash may lose only non-ACKed data; production needs journal reconciliation.
+- `AutosaveSession` loops until current dirty input equals acknowledged IDB revision, freezes editing before releasing, and never refreshes dirty text after save failure.
+- `MaintenanceRetry` retries after **any** meeting releases global maintenance gate; limited delays 250/750/1500/3000ms and manual button, no uncontrolled background polling.
+- SW rejects stale raw activation command and directly acquires origin-wide exclusive lock for explicit activation; no self-activation on install. Cache-first index must match versioned JS; old shell cache deliberately retained.
+- SW `source.url` scope check is **not an origin security boundary** against compromised same-scope scripts. Hosting/dedicated HTTPS origin and live SW Web Locks support must be validated at the release gate.
+
+**Tested SHA methodology:** the full source tree tested locally is the source subsequently uploaded to branch `gemini/20261115-09-pwa`. Final `Code SHA`/`Tested SHA`, remote blob parity and commit hash are recorded in the branch checkpoint after push. No claim that Node/unit mock PASS is a browser or integrated app PASS.

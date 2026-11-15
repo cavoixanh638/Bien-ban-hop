@@ -14,10 +14,25 @@ async function append(meetingId, data) {
     const handle = await file.createSyncAccessHandle();
     try {
       const before = handle.getSize();
-      const written = handle.write(bytes, { at: before });
-      if (written !== bytes.byteLength) throw new Error('Partial OPFS write, no committed ACK');
-      handle.flush();
-      return handle.getSize();
+      try {
+        const written = handle.write(bytes, { at: before });
+        if (written !== bytes.byteLength) throw new Error('Partial OPFS write, no committed ACK');
+        handle.flush();
+        const finalSize = handle.getSize();
+        if (finalSize !== before + bytes.byteLength) throw new Error('OPFS size mismatch after flush');
+        return finalSize;
+      } catch (error) {
+        // If a partial write occurred, restore the previous byte length before
+        // allowing the writer lock to be released. Never ACK a failed append.
+        let rolledBack = false;
+        try {
+          handle.truncate(before);
+          handle.flush();
+          rolledBack = handle.getSize() === before;
+        } catch (_) { /* recovery may be impossible: report indeterminate */ }
+        error.indeterminate = !rolledBack;
+        throw error;
+      }
     } finally { handle.close(); }
   }
   // Fallback remains explicit and commits only after close().
@@ -25,7 +40,9 @@ async function append(meetingId, data) {
   const stream = await file.createWritable({ keepExistingData: true });
   try { await stream.seek(before); await stream.write(bytes); await stream.close(); }
   catch (error) { await stream.abort().catch(() => {}); throw error; }
-  return (await file.getFile()).size;
+  const after = (await file.getFile()).size;
+  if (after !== before + bytes.byteLength) throw new Error('OPFS fallback size mismatch after close');
+  return after;
 }
 async function stat(meetingId) {
   try { return (await (await target(meetingId, false)).getFile()).size; }
@@ -37,6 +54,7 @@ self.onmessage = async event => {
     const bytes = action === 'append' ? await append(meetingId, payload) : action === 'stat' ? await stat(meetingId) : (() => { throw new Error('Unknown action'); })();
     self.postMessage({ requestId, ok: true, bytes });
   } catch (error) {
-    self.postMessage({ requestId, ok: false, error: String(error?.message || error) });
+    self.postMessage({ requestId, ok: false, error: String(error?.message || error),
+      indeterminate: action === 'append' && error?.indeterminate !== false });
   }
 };

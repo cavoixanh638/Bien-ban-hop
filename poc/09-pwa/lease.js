@@ -10,11 +10,13 @@ export class MeetingLease {
     this.run = null;
     this.endHold = null;
     this.pending = false;
+    this.activeToken = null;
   }
   async acquire(meetingId) {
     if (this.held || this.pending) return null;
     if (!navigator.locks) throw new Error('Web Locks unavailable: refusing unsafe fallback');
     this.pending = true;
+    const token = Symbol('writer-lease');
     let finishReady;
     const ready = new Promise(resolve => { finishReady = resolve; });
     let signalled = false;
@@ -25,6 +27,7 @@ export class MeetingLease {
         if (!writer) { signal(false); return; }
         this.held = true;
         this.meetingId = meetingId;
+        this.activeToken = token;
         let resolveHold;
         const hold = new Promise(resolve => { resolveHold = resolve; });
         this.endHold = resolveHold;
@@ -35,6 +38,7 @@ export class MeetingLease {
           this.held = false;
           this.meetingId = null;
           this.endHold = null;
+          if (this.activeToken === token) this.activeToken = null;
           this.onChange('released', meetingId);
         }
       });
@@ -43,11 +47,14 @@ export class MeetingLease {
     if (result instanceof Error) throw result;
     if (!result) { await this.run; return null; }
     this.pending = false;
-    return () => this.release();
+    // Old callbacks must never release a newly acquired lease.
+    return () => this.release(token);
   }
-  async release() {
+  async release(token = this.activeToken) {
+    if (!token || token !== this.activeToken) return false;
     if (this.endHold) this.endHold();
     await this.run;
+    return true;
   }
 }
 
@@ -64,10 +71,12 @@ export async function withMaintenanceLock(work) {
   return { acquired, value, reason: acquired ? undefined : 'Another tab has an active writer' };
 }
 
-export function makeChannel(meetingId, onMessage) {
+export function makeChannel(meetingId, onMessage, onAnyWriterReleased = () => {}) {
   if (!('BroadcastChannel' in globalThis)) return { post: () => {}, close: () => {} };
   const channel = new BroadcastChannel('mochop:poc09:events');
   channel.addEventListener('message', event => {
+    // Maintenance lock spans ALL meetings on the origin, not only this one.
+    if (event.data?.type === 'writer-released') onAnyWriterReleased(event.data);
     if (event.data?.meetingId === meetingId) onMessage(event.data);
   });
   return {

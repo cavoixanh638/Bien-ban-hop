@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 
 const code = readFileSync(new URL('../opfs-worker.js', import.meta.url), 'utf8');
 
-function workerMock(failShortWrite = false) {
+function workerMock(failShortWrite = false, failRollback = false) {
   const files = new Map();
   let lastMessage;
   const directory = {
@@ -24,6 +24,10 @@ function workerMock(failShortWrite = false) {
                   assert.equal(at, files.get(file).length);
                   files.get(file).push(...bytes);
                   return failShortWrite ? bytes.length - 1 : bytes.length;
+                },
+                truncate(size) {
+                  if (failRollback) throw new Error('rollback failure');
+                  files.get(file).splice(size);
                 },
                 flush() {}, close() {}
               };
@@ -64,7 +68,19 @@ test('Worker/OPFS negative: short write yields NO committed ACK', async () => {
   const result = await worker.call('append', 'm02', new Uint8Array([8, 9]).buffer);
   assert.equal(result.ok, false);
   assert.match(result.error, /Partial OPFS write/);
+  assert.equal(result.indeterminate, false, 'successful truncate means no unconfirmed bytes remain');
+  assert.deepEqual(worker.files.get('m02.bin'), [], 'partial bytes rolled back');
   const invalid = await worker.call('append', '../escape', new Uint8Array([1]).buffer);
   assert.equal(invalid.ok, false);
   assert.match(invalid.error, /Invalid meeting ID/);
+});
+
+
+test('Worker/OPFS negative: failed rollback is indeterminate and must hold writer lease', async () => {
+  const worker = workerMock(true, true);
+  const result = await worker.call('append', 'm03', new Uint8Array([7, 8, 9]).buffer);
+  assert.equal(result.ok, false);
+  assert.equal(result.indeterminate, true);
+  assert.match(result.error, /Partial OPFS write/);
+  assert.deepEqual(worker.files.get('m03.bin'), [7, 8, 9], 'partial file is NOT acknowledged');
 });

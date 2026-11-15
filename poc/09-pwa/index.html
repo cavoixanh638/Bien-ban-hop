@@ -30,12 +30,13 @@
       <p data-testid="save-status">Not saved in this tab</p>
       <p class="muted" data-testid="schema-status">Schema: checking</p>
       <button data-testid="migrate">Validate / migrate fixture</button>
+      <button data-testid="retry-migration" hidden>Retry migration (all meetings)</button>
     </section>
     <section class="panel">
       <h2>Controlled PWA update</h2>
       <div class="actions"><button data-testid="check-update">Check for update</button><button data-testid="activate" disabled>Activate when safe</button><button data-testid="reload">Reload intentionally</button></div>
       <p data-testid="update-status">Checking Service Worker</p>
-      <p class="muted">Waiting workers do not call skipWaiting automatically. Activation takes an exclusive maintenance lock; never forces a reload.</p>
+      <p class="muted">Waiting workers do not call skipWaiting automatically. The waiting Service Worker independently takes an exclusive maintenance lock; never forces a reload.</p>
     </section>
     <section class="panel"><h2>Event log</h2><ol data-testid="log" class="log" aria-live="polite"></ol></section>
     <footer>Run on localhost or HTTPS. Do not use real meeting data with a shared GitHub Pages origin.</footer>

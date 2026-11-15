@@ -1,5 +1,8 @@
 import { MeetingLease, makeChannel, withMaintenanceLock } from './lease.js';
 import { ensureFixture, readFixture, editableText, saveEditableText, migrateFixture } from './db.js';
+import { RecordingSession } from './recording-session.js';
+import { AutosaveSession } from './autosave-session.js';
+import { MaintenanceRetry } from './maintenance-retry.js';
 
 const APP_VERSION = 'v1'; // TEST_UPGRADE_MARKER
 const SCHEMA_VERSION = APP_VERSION === 'v2' ? 2 : 1;
@@ -15,24 +18,27 @@ const lease = new MeetingLease((type) => {
 const channel = makeChannel(meetingId, async event => {
   log('Other tab: ' + event.type);
   if (!lease.held && event.type === 'saved') await refreshFixture();
-  if (event.type === 'writer-released' && migrationBlocked && APP_VERSION === 'v2') await migrate();
   if (!lease.held) render();
+}, event => {
+  // Other meetings also share the global maintenance lock.
+  if (migrationBlocked && APP_VERSION === 'v2') scheduleMigrationRetry(event.meetingId);
 });
 
 let fixture = null;
 let releaseLease = null;
 let registration = null;
-let recording = false;
-export function isRecording() { return recording; }
+let recordingSession;
+export function isRecording() { return recordingSession?.busy || false; }
 let bytesWritten = 0;
 let tickNumber = 0;
-let ticker = null;
-let tickPromise = null;
+let releasing = false;
 let worker = null;
 let workerSequence = 0;
 const workerPending = new Map();
 let saveTimer = null;
-let saving = false;
+let saveSession;
+let migrationAttempt = null;
+let migrationRetry;
 let migrationBlocked = false;
 let migrationError = null;
 
@@ -47,17 +53,21 @@ function showNetwork() { message('network', navigator.onLine ? 'Online' : 'Offli
 function render() {
   const hasWrite = lease.held && fixture?.document?.schemaVersion === SCHEMA_VERSION;
   message('lease-status', lease.held ? 'WRITER (exclusive)' : 'READ ONLY / no writer lease');
-  message('recording-status', recording ? 'Simulated recording active; no real microphone captured' : 'Fixture idle');
+  message('recording-status', recordingSession?.phase === 'active'
+    ? 'Simulated recording active; no real microphone captured'
+    : `Fixture ${recordingSession?.phase ?? 'idle'}`);
   if (fixture && !migrationError && !migrationBlocked) message('schema-status', `Meeting schema ${fixture.meeting.schemaVersion}; document schema ${fixture.document.schemaVersion}; revision ${fixture.document.revision}` + (fixture.snapshot ? '; original v1 snapshot retained' : ''));
   if (migrationBlocked) message('schema-status', 'Migration postponed: another tab holds a writer/recording lease');
   if (migrationError) message('schema-status', 'Migration FAILED: ' + migrationError);
-  element('acquire').disabled = lease.held || migrationBlocked;
-  element('release').disabled = !lease.held;
-  element('start').disabled = !hasWrite || recording;
-  element('stop').disabled = !recording;
-  element('notes').disabled = !hasWrite;
-  element('migrate').disabled = lease.held || recording;
-  element('activate').disabled = !registration?.waiting;
+  element('acquire').disabled = lease.held || migrationBlocked || releasing;
+  element('release').disabled = !lease.held || releasing;
+  element('start').disabled = !hasWrite || isRecording() || releasing;
+  element('stop').disabled = !isRecording() || releasing;
+  element('notes').disabled = !hasWrite || releasing;
+  element('migrate').disabled = lease.held || isRecording() || !!migrationAttempt;
+  element('retry-migration').hidden = !migrationBlocked;
+  element('retry-migration').disabled = !!migrationAttempt || lease.held;
+  element('activate').disabled = !registration?.waiting || lease.held || isRecording() || releasing;
 }
 async function refreshFixture() {
   fixture = await readFixture(meetingId);
@@ -68,15 +78,23 @@ function initWorker() {
   if (!window.Worker) throw new Error('Worker unavailable');
   worker = new Worker(new URL('./opfs-worker.js', import.meta.url), { type: 'module' });
   worker.onmessage = event => {
-    const { requestId, ok, bytes, error } = event.data || {};
+    const { requestId, ok, bytes, error, indeterminate } = event.data || {};
     const pending = workerPending.get(requestId);
     if (!pending) return;
     workerPending.delete(requestId);
     if (ok) pending.resolve(bytes);
-    else pending.reject(new Error(error));
+    else {
+      const failure = new Error(error || 'Worker NACK');
+      failure.indeterminate = Boolean(indeterminate);
+      pending.reject(failure);
+    }
   };
   worker.onerror = event => {
-    for (const pending of workerPending.values()) pending.reject(new Error(event.message || 'OPFS worker failed'));
+    for (const pending of workerPending.values()) {
+      const error = new Error(event.message || 'OPFS Worker failed; outcome unknown');
+      error.indeterminate = true;
+      pending.reject(error);
+    }
     workerPending.clear();
   };
 }
@@ -85,11 +103,19 @@ function workerCall(action, payload) {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       workerPending.delete(requestId);
-      reject(new Error('Worker ACK timeout; no durability confirmation'));
+      const error = new Error('Worker ACK timeout; OPFS write outcome unknown');
+      error.indeterminate = true;
+      reject(error);
     }, 10000);
     workerPending.set(requestId, { resolve: value => { clearTimeout(timeout); resolve(value); }, reject: error => { clearTimeout(timeout); reject(error); } });
     const transfer = payload instanceof ArrayBuffer ? [payload] : [];
-    worker.postMessage({ requestId, meetingId, action, payload }, transfer);
+    try { worker.postMessage({ requestId, meetingId, action, payload }, transfer); }
+    catch (error) {
+      clearTimeout(timeout);
+      workerPending.delete(requestId);
+      error.indeterminate = action === 'append';
+      reject(error);
+    }
   });
 }
 async function checkOpfs() {
@@ -110,40 +136,30 @@ async function appendFixtureTick() {
   message('opfs-status', `OPFS fixture: ${bytes} confirmed bytes`);
   return bytes;
 }
-function scheduleTick() {
-  if (!recording || tickPromise) return;
-  tickPromise = appendFixtureTick().catch(error => {
+recordingSession = new RecordingSession({
+  append: appendFixtureTick,
+  canWrite: () => lease.held && !releasing,
+  onState: phase => {
+    if (phase === 'active') channel.post('recording-started');
+    if (phase === 'idle') channel.post('recording-stopped');
+    render();
+  },
+  onError: error => {
     log('OPFS write FAILED: ' + error.message);
     message('opfs-status', 'Write not confirmed: ' + error.message);
-    recording = false;
-    clearInterval(ticker);
     channel.post('recording-error');
-    render();
-  }).finally(() => { tickPromise = null; });
-}
-async function startRecording() {
-  if (!lease.held || recording || fixture?.document?.schemaVersion !== SCHEMA_VERSION) return;
-  try {
-    await appendFixtureTick(); // First durable ACK before reporting recording.
-    recording = true;
-    ticker = setInterval(scheduleTick, 250);
-    channel.post('recording-started');
-    log('Simulated recording started; OPFS bytes confirmed');
-  } catch (error) {
-    log('Recording refused: ' + error.message);
-    message('opfs-status', 'Write not confirmed: ' + error.message);
   }
-  render();
+});
+async function startRecording() {
+  if (releasing || !lease.held || fixture?.document?.schemaVersion !== SCHEMA_VERSION) return;
+  const started = await recordingSession.start();
+  if (started) log('Simulated recording started; first durable OPFS ACK confirmed');
 }
 async function stopRecording() {
-  if (!recording && !tickPromise) return;
-  recording = false;
-  clearInterval(ticker);
-  if (tickPromise) await tickPromise;
-  channel.post('recording-stopped');
+  await recordingSession.stop();
   log('Simulated recording stopped; committed bytes=' + bytesWritten);
-  render();
 }
+
 async function acquireWriter() {
   try {
     if (migrationBlocked && APP_VERSION === 'v2') {
@@ -172,63 +188,99 @@ async function acquireWriter() {
     render();
   } catch (error) { log('Acquire failed: ' + error.message); message('save-status', error.message); }
 }
+saveSession = new AutosaveSession({
+  canWrite: () => lease.held && !!fixture?.document,
+  readInput: () => element('notes').value,
+  readCommitted: () => editableText(fixture?.document),
+  commit: text => saveEditableText(meetingId, text, fixture.document.revision, SCHEMA_VERSION),
+  onCommit: updated => {
+    fixture.document = updated;
+    channel.post('saved', { revision: updated.revision });
+    log('IndexedDB committed revision ' + updated.revision);
+  },
+  onStatus: (state, value) => {
+    if (state === 'saving') message('save-status', 'Saving (not yet confirmed)...');
+    if (state === 'dirty') message('save-status', 'Unsaved edits newer than acknowledged revision');
+    if (state === 'saved') message('save-status', 'Saved revision ' + value.revision + ' (IndexedDB commit ACK)');
+    if (state === 'error') { message('save-status', 'NOT SAVED: ' + value.message); log('Save failed: ' + value.message); }
+  }
+});
 async function releaseWriter() {
-  if (!lease.held) return;
-  await stopRecording();
-  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
-  await persistNote();
-  if (releaseLease) await releaseLease();
-  releaseLease = null;
-  await refreshFixture();
+  if (!lease.held || releasing) return;
+  releasing = true; // Disable all input BEFORE awaiting first OPFS ACK / IDB commit.
+  clearTimeout(saveTimer);
+  saveTimer = null;
   render();
+  try {
+    await stopRecording(); // Also waits for a pending first ACK or periodic write.
+    await saveSession.freezeAndDrain(); // Wait for A and any later dirty edit B.
+    if (saveSession.dirty) throw new Error('Unsaved text; refusing to release writer');
+    if (!releaseLease) throw new Error('Missing lease release token');
+    await releaseLease();
+    releaseLease = null;
+    saveSession.unfreeze();
+    releasing = false;
+    await refreshFixture(); // Only refresh after committed data and lock release.
+    render();
+  } catch (error) {
+    // No destructive refresh on failure. Keep dirty text visible and the lock held.
+    saveSession.unfreeze();
+    releasing = false;
+    message('save-status', 'RELEASE BLOCKED - NOT SAVED/UNCONFIRMED: ' + error.message);
+    log('Release refused: ' + error.message);
+    render();
+  }
+}
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  if (releasing || !lease.held) return;
+  saveTimer = setTimeout(() => { void persistNote().catch(() => {}); }, 150);
 }
 async function persistNote() {
-  if (saving || !lease.held || !fixture?.document) return;
-  const text = element('notes').value;
-  if (text === editableText(fixture.document)) return;
-  saving = true;
-  message('save-status', 'Saving (not yet confirmed)...');
-  let nonRetryable = false;
-  try {
-    const updated = await saveEditableText(meetingId, text, fixture.document.revision, SCHEMA_VERSION);
-    fixture.document = updated;
-    message('save-status', 'Saved revision ' + updated.revision + ' (IndexedDB commit ACK)');
-    channel.post('saved', { revision: updated.revision });
-    log('Saved revision ' + updated.revision);
-  } catch (error) {
-    message('save-status', 'NOT SAVED: ' + error.message);
-    log('Save failed: ' + error.message);
-    nonRetryable = /Revision conflict|Schema mismatch/.test(error.message);
-  } finally {
-    saving = false;
-    if (!nonRetryable && lease.held && element('notes').value !== editableText(fixture.document)) {
-      // Allow recovery after a transient error, without claiming a failed write succeeded.
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(persistNote, 700);
-    }
-  }
-  render();
+  if (!lease.held || !fixture?.document) return false;
+  return saveSession.flush();
 }
+migrationRetry = new MaintenanceRetry({
+  needed: () => migrationBlocked && APP_VERSION === 'v2' && !lease.held,
+  attempt: migrate
+});
+function scheduleMigrationRetry(sourceMeetingId) {
+  log('Maintenance gate may be free after writer release: ' + sourceMeetingId);
+  migrationRetry.notifyRelease();
+}
+
 async function migrate() {
-  if (lease.held) { log('Release the writer before migration'); return; }
-  migrationError = null;
-  message('schema-status', 'Migration: requesting exclusive maintenance lock...');
-  try {
-    const { acquired, value, reason } = await withMaintenanceLock(() => migrateFixture(meetingId));
-    if (!acquired) {
-      migrationBlocked = true;
-      log('Migration postponed: ' + reason);
-      message('schema-status', 'Migration postponed: ' + reason);
-      return;
-    }
-    migrationBlocked = false;
+  if (migrationAttempt) return migrationAttempt;
+  if (lease.held || releasing) { log('Release the writer before migration'); return; }
+  const attempt = (async () => {
     migrationError = null;
-    log(value.changed ? 'Migration v1 -> v2 committed atomically; v1 snapshot preserved' : 'No migration needed');
-    await refreshFixture();
-    if (APP_VERSION === 'v1' && value.changed) message('save-status', 'Schema v2: reload the updated app before writing');
-  } catch (error) { migrationError = error.message; log('Migration FAILED: ' + error.message); message('schema-status', 'Migration FAILED: ' + error.message); }
-  finally { render(); }
+    message('schema-status', 'Migration: requesting exclusive maintenance lock...');
+    try {
+      const { acquired, value, reason } = await withMaintenanceLock(() => migrateFixture(meetingId));
+      if (!acquired) {
+        migrationBlocked = true;
+        log('Migration postponed: ' + reason);
+        message('schema-status', 'Migration postponed: ' + reason);
+        return false;
+      }
+      migrationBlocked = false;
+      migrationError = null;
+      log(value.changed ? 'Migration v1 -> v2 committed atomically; v1 snapshot preserved' : 'No migration needed');
+      await refreshFixture();
+      if (APP_VERSION === 'v1' && value.changed) message('save-status', 'Schema v2: reload the updated app before writing');
+      return true;
+    } catch (error) {
+      migrationError = error.message;
+      log('Migration FAILED: ' + error.message);
+      message('schema-status', 'Migration FAILED: ' + error.message);
+      return false;
+    }
+  })();
+  migrationAttempt = attempt;
+  try { return await attempt; }
+  finally { if (migrationAttempt === attempt) migrationAttempt = null; render(); }
 }
+
 function describeSW() {
   if (!registration) return;
   if (registration.waiting) {
@@ -266,28 +318,43 @@ async function checkForUpdate() {
   catch (error) { message('update-status', 'Update check failed: ' + error.message); }
 }
 async function activateWaiting() {
-  if (isRecording()) { message('update-status', 'BLOCKED: recording active in this tab'); log('Activation refused during recording'); return; }
+  if (isRecording() || lease.held || releasing || saveSession.dirty) {
+    message('update-status', 'BLOCKED: finish recording and release writer before activation');
+    return;
+  }
   if (!registration?.waiting) { describeSW(); return; }
+  const waiting = registration.waiting;
+  let controllerChanged;
+  let changedResolve;
+  const changed = new Promise(resolve => { changedResolve = resolve; });
+  controllerChanged = () => changedResolve(true);
+  navigator.serviceWorker.addEventListener('controllerchange', controllerChanged, { once: true });
+  // SW itself must acquire exclusive maintenance Web Lock. A direct postMessage
+  // from a different same-origin client cannot bypass an active writer.
+  const port = new MessageChannel();
+  const outcome = new Promise(resolve => {
+    const timeout = setTimeout(() => resolve({ accepted: false, reason: 'SW activation response timeout' }), 10000);
+    port.port1.onmessage = event => { clearTimeout(timeout); resolve(event.data); };
+  });
   try {
-    const result = await withMaintenanceLock(async () => {
-      const waiting = registration.waiting;
-      if (!waiting) return false;
-      let resolveChanged;
-      const changed = new Promise(resolve => { resolveChanged = resolve; });
-      const onChange = () => resolveChanged(true);
-      navigator.serviceWorker.addEventListener('controllerchange', onChange, { once: true });
-      const timeout = setTimeout(() => resolveChanged(false), 10000);
-      waiting.postMessage({ type: 'ACTIVATE_AFTER_EXCLUSIVE_GATE' });
-      const ok = await changed;
-      clearTimeout(timeout);
-      if (!ok) navigator.serviceWorker.removeEventListener('controllerchange', onChange);
-      return ok;
-    });
-    if (!result.acquired) { message('update-status', 'BLOCKED: another tab holds a writer/recording lock'); log('Activation blocked by exclusive maintenance gate'); }
-    else if (result.value) { message('update-status', 'Update ACTIVATED; no reload was forced. Reload only when safe.'); log('New SW activated, no automatic reload'); }
-    else { message('update-status', 'Activation not confirmed; no reload'); log('SW activation timeout'); }
-  } catch (error) { message('update-status', 'Activation failed: ' + error.message); log('SW activation failed: ' + error.message); }
-  render();
+    waiting.postMessage({ type: 'REQUEST_SAFE_ACTIVATION' }, [port.port2]);
+    const response = await outcome;
+    if (!response?.accepted) {
+      message('update-status', 'BLOCKED: ' + (response?.reason || 'SW refused activation'));
+      log('Activation refused: ' + (response?.reason || 'unknown'));
+      return;
+    }
+    const ok = await Promise.race([changed, new Promise(resolve => setTimeout(() => resolve(false), 10000))]);
+    if (ok) { message('update-status', 'Update ACTIVATED; no reload was forced. Reload only when safe.'); log('New SW activated, no automatic reload'); }
+    else { message('update-status', 'Activation requested but controllerchange unconfirmed; do not reload until safe'); }
+  } catch (error) {
+    message('update-status', 'Activation failed: ' + error.message);
+    log('SW activation failed: ' + error.message);
+  } finally {
+    navigator.serviceWorker.removeEventListener('controllerchange', controllerChanged);
+    port.port1.close();
+    render();
+  }
 }
 
 async function boot() {
@@ -298,12 +365,13 @@ async function boot() {
   addEventListener('online', showNetwork);
   addEventListener('offline', showNetwork);
   addEventListener('beforeunload', event => {
-    const unsaved = lease.held && (saving || element('notes').value !== editableText(fixture?.document));
-    if (recording || unsaved) { event.preventDefault(); event.returnValue = ''; }
+    const unsaved = lease.held && (saveSession.pending || saveSession.dirty || releasing);
+    if (isRecording() || unsaved) { event.preventDefault(); event.returnValue = ''; }
   });
   addEventListener('pagehide', () => {
-    clearInterval(ticker);
-    if (lease.held) lease.release();
+    clearTimeout(saveTimer);
+    migrationRetry.close();
+    if (lease.held) void lease.release();
     channel.close();
     worker?.terminate();
   });
@@ -312,17 +380,17 @@ async function boot() {
   element('start').addEventListener('click', startRecording);
   element('stop').addEventListener('click', stopRecording);
   element('migrate').addEventListener('click', migrate);
+  element('retry-migration').addEventListener('click', migrate);
   element('check-update').addEventListener('click', checkForUpdate);
   element('activate').addEventListener('click', activateWaiting);
   element('reload').addEventListener('click', () => {
-    if (recording) { message('update-status', 'BLOCKED: stop recording before intentional reload'); return; }
+    if (isRecording() || releasing) { message('update-status', 'BLOCKED: finish recording and release writer before reload'); return; }
     if (lease.held) { message('update-status', 'BLOCKED: release writer before intentional reload'); return; }
     location.reload();
   });
   element('notes').addEventListener('input', () => {
     message('save-status', 'Unsaved changes (waiting for confirmed commit)');
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(persistNote, 150);
+    scheduleSave();
   });
   try {
     fixture = await ensureFixture(meetingId);

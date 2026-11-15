@@ -1,0 +1,11 @@
+Linux x86_64 / Python 3.13.5 / Python stdlib HTTP server at loopback nested base path
+$ python poc/09-pwa/tests/http_smoke.py
+PASS nested HTTP 200: index.html, 2882 bytes
+PASS nested HTTP 200: app.js, 18296 bytes
+PASS nested HTTP 200: lease.js, 3533 bytes
+PASS nested HTTP 200: recording-session.js, 3179 bytes
+PASS nested HTTP 200: autosave-session.js, 1619 bytes
+PASS nested HTTP 200: maintenance-retry.js, 1337 bytes
+PASS nested HTTP 200: migration-core.js, 1931 bytes
+PASS nested HTTP 200: sw.js, 3285 bytes
+PASS nested HTTP 200: manifest.webmanifest, 456 bytes

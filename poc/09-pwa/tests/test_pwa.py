@@ -76,9 +76,12 @@ def browser():
             b.close()
 
 
-def open_page(context, server):
+def open_page(context, server, meeting=None, init_script=None):
     page = context.new_page()
-    page.goto(server.url, wait_until='domcontentloaded')
+    if init_script:
+        page.add_init_script(init_script)
+    url = server.url + (f'?meeting={meeting}' if meeting else '')
+    page.goto(url, wait_until='domcontentloaded')
     expect(page.get_by_test_id('save-status')).to_contain_text('Loaded revision', timeout=15000)
     page.wait_for_function('!!navigator.serviceWorker?.controller', timeout=15000)
     return page
@@ -303,5 +306,112 @@ def test_browser_crash_relinquishes_web_lock(browser, server):
             contender.wait_for_timeout(250)
         expect(contender.get_by_test_id('lease-status')).to_contain_text('WRITER (exclusive)')
         contender.get_by_test_id('release').click()
+    finally:
+        context.close()
+
+
+def test_g09_add01_release_during_deferred_first_opfs_ack(browser, server):
+    """Actual browser integration of controlled ACK race; independent from other streams."""
+    context = browser.new_context(service_workers='allow')
+    delayed_worker_script = """(() => {
+      const NativeWorker = window.Worker;
+      window.__poc09AppendCalls = 0;
+      window.Worker = class DelayedFirstWorker extends NativeWorker {
+        postMessage(message, transfer) {
+          if (message.action === 'append') {
+            window.__poc09AppendCalls++;
+            if (!this.__firstIntercepted) {
+              this.__firstIntercepted = true;
+              window.__releaseFirstAck = () => NativeWorker.prototype.postMessage.call(this, message, transfer);
+              return;
+            }
+          }
+          return NativeWorker.prototype.postMessage.call(this, message, transfer);
+        }
+      };
+    })();"""
+    try:
+        writer = open_page(context, server, init_script=delayed_worker_script)
+        contender = open_page(context, server)
+        writer.get_by_test_id('acquire').click()
+        expect(writer.get_by_test_id('lease-status')).to_contain_text('WRITER')
+        writer.get_by_test_id('start').click()
+        writer.wait_for_function('typeof window.__releaseFirstAck === "function"')
+        expect(writer.get_by_test_id('recording-status')).to_contain_text('starting')
+        writer.get_by_test_id('release').click()  # pending, cannot release lock until ACK
+        contender.get_by_test_id('acquire').click()
+        expect(contender.get_by_test_id('save-status')).to_contain_text('Other tab owns')
+        writer.evaluate('window.__releaseFirstAck()')
+        expect(writer.get_by_test_id('lease-status')).to_contain_text('READ ONLY')
+        expect(writer.get_by_test_id('recording-status')).to_contain_text('idle')
+        writer.wait_for_timeout(450)
+        assert writer.evaluate('window.__poc09AppendCalls') == 1
+        contender.get_by_test_id('acquire').click()
+        expect(contender.get_by_test_id('lease-status')).to_contain_text('WRITER')
+        contender.get_by_test_id('release').click()
+    finally:
+        context.close()
+
+
+def test_g09_add03_migration_retries_on_other_meeting_release(browser, server):
+    """B holding shared maintenance must postpone A migration; B release unblocks A."""
+    context = browser.new_context(service_workers='allow')
+    try:
+        initial = open_page(context, server)
+        server.upgrade()
+        initial.get_by_test_id('check-update').click()
+        initial.wait_for_function('navigator.serviceWorker.ready.then(r=>!!r.waiting)')
+        initial.get_by_test_id('activate').click()
+        expect(initial.get_by_test_id('update-status')).to_contain_text('Update ACTIVATED')
+        initial.get_by_test_id('reload').click()
+        expect(initial.get_by_test_id('version')).to_have_text('v2')
+        # Meeting B completes migration, then owns shared maintenance / writer lock.
+        other = open_page(context, server, meeting='meeting-B')
+        expect(other.get_by_test_id('schema-status')).to_contain_text('document schema 2')
+        other.get_by_test_id('acquire').click()
+        expect(other.get_by_test_id('lease-status')).to_contain_text('WRITER')
+        # New meeting A seeds v1 while running app v2, and cannot migrate yet.
+        blocked = open_page(context, server, meeting='meeting-A')
+        expect(blocked.get_by_test_id('schema-status')).to_contain_text('Migration postponed')
+        expect(blocked.get_by_test_id('retry-migration')).to_be_visible()
+        assert blocked.get_by_test_id('acquire').is_disabled()
+        other.get_by_test_id('release').click()
+        expect(blocked.get_by_test_id('schema-status')).to_contain_text('document schema 2', timeout=10000)
+        expect(blocked.get_by_test_id('retry-migration')).to_be_hidden()
+        blocked.get_by_test_id('acquire').click()
+        expect(blocked.get_by_test_id('lease-status')).to_contain_text('WRITER')
+        blocked.get_by_test_id('release').click()
+    finally:
+        context.close()
+
+
+def test_g09_add04_direct_worker_activation_message_cannot_bypass_writer(browser, server):
+    context = browser.new_context(service_workers='allow')
+    try:
+        recording = open_page(context, server)
+        requester = open_page(context, server)
+        recording.get_by_test_id('acquire').click()
+        recording.get_by_test_id('start').click()
+        expect(recording.get_by_test_id('recording-status')).to_contain_text('active')
+        server.upgrade()
+        requester.get_by_test_id('check-update').click()
+        requester.wait_for_function('navigator.serviceWorker.ready.then(r=>!!r.waiting)')
+        direct = requester.evaluate("""async () => {
+          const registration = await navigator.serviceWorker.ready;
+          const channel = new MessageChannel();
+          return await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(Error('SW did not respond')), 10000);
+            channel.port1.onmessage = e => {clearTimeout(timeout); resolve(e.data)};
+            registration.waiting.postMessage({type:'REQUEST_SAFE_ACTIVATION'}, [channel.port2]);
+          });
+        }""")
+        assert direct['accepted'] is False
+        assert 'writer' in direct['reason']
+        assert requester.evaluate('navigator.serviceWorker.controller.scriptURL.endsWith("/sw.js")')
+        expect(requester.get_by_test_id('version')).to_have_text('v1')
+        recording.get_by_test_id('stop').click()
+        recording.get_by_test_id('release').click()
+        requester.get_by_test_id('activate').click()
+        expect(requester.get_by_test_id('update-status')).to_contain_text('Update ACTIVATED')
     finally:
         context.close()

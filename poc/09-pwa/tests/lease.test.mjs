@@ -68,3 +68,49 @@ test('TC32: refuse unsafe fallback when Web Locks missing', async () => {
   await assert.rejects(() => new MeetingLease().acquire('meeting-A'), /Web Locks unavailable/);
   assert.equal((await withMaintenanceLock(() => {})).acquired, false);
 });
+
+test('G09-ADD-01: stale release callback cannot unlock a newly acquired writer', async () => {
+  const locks = locksFixture();
+  const owner = new MeetingLease();
+  const oldRelease = await owner.acquire('m-stale');
+  await oldRelease();
+  const newRelease = await owner.acquire('m-stale');
+  assert.equal(await oldRelease(), false);
+  assert.equal(owner.held, true);
+  assert.deepEqual(locks.holders.get(WRITER_PREFIX + 'm-stale'), ['exclusive']);
+  await newRelease();
+  assert.equal(owner.held, false);
+});
+
+test('G09-ADD-03: meeting B release event notifies A for origin-global maintenance retry', async () => {
+  const locks = locksFixture();
+  class FakeBroadcastChannel {
+    static channels = new Set();
+    constructor(name) { this.name=name; this.handlers=[]; FakeBroadcastChannel.channels.add(this); }
+    addEventListener(type, listener) { if (type === 'message') this.handlers.push(listener); }
+    postMessage(data) { for (const other of FakeBroadcastChannel.channels) {
+      if (other !== this && other.name === this.name) for (const h of other.handlers) h({data});
+    } }
+    close() { FakeBroadcastChannel.channels.delete(this); }
+  }
+  const previous=globalThis.BroadcastChannel;
+  globalThis.BroadcastChannel = FakeBroadcastChannel;
+  try {
+    const { makeChannel } = await import('../lease.js');
+    const owner=new MeetingLease();
+    const release=await owner.acquire('meeting-B');
+    const local=[]; const all=[];
+    const channelA=makeChannel('meeting-A', e=>local.push(e.type), e=>all.push(e.meetingId));
+    const channelB=makeChannel('meeting-B',()=>{});
+    assert.equal((await withMaintenanceLock(()=>true)).acquired,false);
+    channelB.post('writer-released');
+    assert.deepEqual(local,[],'event not local to meeting A');
+    assert.deepEqual(all,['meeting-B'],'global release event is delivered');
+    await release();
+    const retry=await withMaintenanceLock(()=>true);
+    assert.equal(retry.acquired,true);
+    assert.equal(retry.value,true);
+    channelA.close();channelB.close();
+    assert.equal(locks.holders.size,0);
+  } finally {globalThis.BroadcastChannel=previous;}
+});
