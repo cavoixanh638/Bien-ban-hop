@@ -50,8 +50,15 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
   const marked=page.locator('.tiptap [data-time-recording-id]');
   await expect(marked.first()).toBeVisible({timeout:10000});
   await marked.first().click();
-  // This must actually invoke the durable OPFS player, not merely select a mark.
-  await expect(page.locator('#anchor-status')).toContainText('Đang phát từ',{timeout:20000});
+  // Playback error toasts must fail fast with a diagnostic instead of being
+  // silently retried and misreported as a successful end-to-end run.
+  await expect.poll(async()=>{
+    const text=await page.locator('#anchor-status').innerText();
+    const toast=await page.locator('#message').innerText();
+    if(/Không (phát|nghe)|Lỗi phát|Không xác minh được nguồn âm thanh/.test(toast))
+      throw Error('Playback unavailable: '+toast+'; anchor='+text);
+    return text;
+  },{timeout:12000,message:'Durable OPFS playback did not start'}).toContain('Đang phát từ');
   await page.locator('#play-stop').click();
   await page.reload();
   await expect(page.locator('.tiptap [data-time-recording-id]').first()).toBeVisible({timeout:15000});
