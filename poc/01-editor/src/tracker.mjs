@@ -132,8 +132,15 @@ export function readAnchorAtCursor(state, allowedRecordingIds = null) {
     return { status: 'unlinked', anchor: null };
   }
   const $pos = selection.$from;
-  const left = vetted($pos.nodeBefore), right = vetted($pos.nodeAfter);
-  if (left && right && !sameAnchor(left, right)) return { status: 'ambiguous', left, right };
+  const before = $pos.nodeBefore, after = $pos.nodeAfter;
+  const left = vetted(before), right = vetted(after);
+  // At a linked/unlinked (or linked/foreign-invalid) boundary, selecting the
+  // one valid side silently plays the wrong source for adjacent unlinked text.
+  // A true document edge (one missing node) is not an ambiguous boundary.
+  if (before && after && ((Boolean(left) !== Boolean(right))
+    || (left && right && !sameAnchor(left, right)))) {
+    return { status: 'ambiguous', left, right };
+  }
   const anchor = left || right;
   return anchor ? { status: anchor.recordingId ? 'linked' : 'unlinked', anchor } : { status: 'unlinked', anchor: null };
 }
@@ -235,7 +242,10 @@ export class InputTracker {
     if (token) this.clipboardTokens.set(token, saved);
     // Bounded lifetime: avoid turning copied arbitrary external text into trusted provenance.
     if (this.clipboardTokens.size > 30) this.clipboardTokens.delete(this.clipboardTokens.keys().next().value);
-    const selection = saved.slice.content;
+    // The OS clipboard and other applications receive plain formatted HTML,
+    // never internal meeting IDs, recording offsets or anchor metadata. The
+    // immutable Slice remains in this editor's token store for trusted moves.
+    const selection = sanitizeSlice(saved.slice, this.allowed, false).content;
     const holder = document.createElement('div');
     holder.appendChild(DOMSerializer.fromSchema(view.state.schema).serializeFragment(selection));
     try {
@@ -284,17 +294,24 @@ export class InputTracker {
       : sanitizeSlice(slice, this.allowed, false);
   }
   append(transactions, oldState, newState) {
+    // ProseMirror's history plugin tags undo/redo with the history$ key.
+    // Inspect it BEFORE collecting text steps: the collector intentionally
+    // excludes history transactions, so otherwise an Undo/Redo silently
+    // leaves the active input burst alive and may attach stale audio to a
+    // later insertion at the same position.
+    const isHistory = transactions.some(tx => Boolean(tx.getMeta('history$')));
+    if (isHistory) {
+      this.active = null;
+      this.pendingDeletion = null;
+      this.pendingPaste = null;
+      this.lastIntent = null;
+      this.log('history', {});
+      return null;
+    }
     if (this.composing) return null;
     const now = this.now();
     const changes = collectTextChanges(transactions);
     if (!changes.length) return null;
-    const isHistory = transactions.some(tr => Boolean(tr.getMeta('history$')));
-    if (isHistory) {
-      this.active = null;
-      this.pendingDeletion = null;
-      this.log('history', {});
-      return null;
-    }
     const incomingPaste = transactions.some(tr => tr.getMeta('uiEvent') === 'paste');
     const isPaste = incomingPaste || Boolean(this.pendingPaste && now.mono - this.pendingPaste.mono < 1000);
     const trustedPaste = isPaste && Boolean(this.pendingPaste?.trusted);

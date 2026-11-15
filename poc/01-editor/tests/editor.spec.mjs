@@ -223,3 +223,40 @@ test('TC10 / cross-meeting clipboard metadata never creates foreign audio link',
   expect(runs.some(r => r.text.includes('ngoai'))).toBe(true);
   expect(runs.filter(r => r.text.includes('ngoai')).every(r => r.anchor?.recordingId === null)).toBe(true);
 });
+
+test('TC22/TC10 / cursor at linked-unlinked edge is ambiguous; no adjacent-source playback', async ({ page }) => {
+  await openEditor(page);
+  await page.evaluate(() => {
+    const { editor } = window.__mochop;
+    const attrs = { anchorId: 'edge-a', recordingId: 'demo-recording-01',
+      audioOffsetMs: 12345, typedAt: 1794750000000, source: 'live_recording', schemaVersion: 1 };
+    const doc = editor.schema.nodeFromJSON({ type: 'doc', content: [{ type: 'paragraph', content: [
+      { type: 'text', text: 'ab', marks: [{ type: 'timeSpan', attrs }] },
+      { type: 'text', text: 'cd' },
+    ] }] });
+    editor.view.dispatch(editor.state.tr.replaceWith(0, editor.state.doc.content.size, doc.content)
+      .setMeta('mochop:mark-applied', true));
+    editor.commands.setTextSelection(3);
+  });
+  expect(await page.evaluate(() => window.__mochop.readAnchor().status)).toBe('ambiguous');
+  await page.evaluate(() => window.__mochop.editor.commands.setTextSelection(2));
+  expect(await page.evaluate(() => window.__mochop.readAnchor().status)).toBe('linked');
+});
+
+test('TC07 / copied HTML contains no internal audio IDs but trusted MIME retains moved marks', async ({ page }) => {
+  await openEditor(page);
+  await page.keyboard.type('Noi dung mau');
+  const copied = await page.evaluate(() => {
+    const { editor } = window.__mochop;
+    editor.commands.setTextSelection({ from: 1, to: 4 });
+    const data = new DataTransfer();
+    editor.view.dom.dispatchEvent(new ClipboardEvent('copy', {
+      clipboardData: data, bubbles: true, cancelable: true,
+    }));
+    return { html: data.getData('text/html'), text: data.getData('text/plain'),
+      token: Boolean(data.getData('application/x-mochop-slice+json')) };
+  });
+  expect(copied.text).toBe('Noi');
+  expect(copied.html).not.toContain('data-time-');
+  expect(copied.token).toBe(true);
+});

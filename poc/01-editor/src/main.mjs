@@ -47,7 +47,7 @@ const editor = new Editor({
 
 function safeAnchorText(result) {
   if (!result || result.status === 'unlinked' && !result.anchor) return 'Chưa có mốc tại con trỏ';
-  if (result.status === 'ambiguous') return 'Con trỏ ở ranh giới hai mốc khác nhau — hãy đặt vào chữ cần nghe';
+  if (result.status === 'ambiguous') return 'Con trỏ ở ranh giới khác nguồn hoặc chữ chưa liên kết — hãy đặt vào bên trong chữ cần nghe';
   if (result.status === 'mixed') return `Vùng chọn chứa ${result.candidates.length} mốc khác nhau`;
   const a = result.anchor;
   return `${result.status === 'unlinked' ? 'Chưa liên kết audio' : `${a.recordingId} · ${(a.audioOffsetMs / 1000).toFixed(3)} s`}

@@ -20,7 +20,7 @@ class Fragment {
   static fromArray(content) { return new Fragment(content); }
 }
 class Slice { constructor(content, openStart, openEnd) { Object.assign(this, { content, openStart, openEnd }); } }
-const DOMSerializer = { fromSchema: () => ({ serializeFragment: () => ({}) }) };
+const DOMSerializer = { fromSchema: () => ({ serializeFragment: (fragment) => fragment }) };
 export { Fragment, Slice };
 `);
 source = source.replace("import { Plugin, PluginKey } from '@tiptap/pm/state';", `
@@ -209,4 +209,76 @@ test('TC10 adapter: paste pending state cannot relabel a subsequent non-paste ke
   assert.equal(tracker.pendingPaste.trusted, true);
   tracker.event('beforeinput', view, { inputType: 'insertText', data: 'x' });
   assert.equal(tracker.pendingPaste, null);
+});
+
+
+test('TC22/TC10: caret exactly at linked/unlinked boundary never plays adjacent audio', () => {
+  const doc = new FakeDoc([{ text: 'abc', anchor: anchorA }, { text: 'de', anchor: null }]);
+  const state = { doc, selection: { empty: true, $from: doc.resolve(4) } };
+  const result = readAnchorAtCursor(state, new Set(['rec-1']));
+  assert.equal(result.status, 'ambiguous');
+  assert.deepEqual(result.left, anchorA);
+  assert.equal(result.right, null);
+  // At a genuine document edge, there is no competing text source.
+  state.selection.$from = doc.resolve(1);
+  assert.equal(readAnchorAtCursor(state, new Set(['rec-1'])).status, 'linked');
+});
+
+test('TC22: caret at unlinked/linked boundary or foreign-invalid source is ambiguous', () => {
+  const foreign = { ...anchorA, recordingId: 'foreign-rec' };
+  const docs = [
+    new FakeDoc([{ text: 'ab', anchor: null }, { text: 'cd', anchor: anchorA }]),
+    new FakeDoc([{ text: 'ab', anchor: anchorA }, { text: 'cd', anchor: foreign }]),
+  ];
+  for (const doc of docs) {
+    assert.equal(readAnchorAtCursor({ doc, selection: { empty: true, $from: doc.resolve(3) } }, new Set(['rec-1'])).status, 'ambiguous');
+  }
+  const both = new FakeDoc([{ text: 'ab', anchor: anchorA }, { text: 'cd', anchor: anchorA }]);
+  assert.equal(readAnchorAtCursor({ doc: both, selection: { empty: true, $from: both.resolve(3) } }, new Set(['rec-1'])).status, 'linked');
+});
+
+test('TC07: OS clipboard HTML strips audio metadata while in-session move retains immutable Slice', () => {
+  let exportedFragment = null;
+  globalThis.document = { createElement: () => ({
+    appendChild(fragment) { exportedFragment = fragment; },
+    get innerHTML() { return '<em>abc</em>'; },
+  }) };
+  const { tracker } = newTracker();
+  const data = dataTransfer();
+  const view = copiedView();
+  assert.equal(tracker.clipboard(view, { clipboardData: data, preventDefault() {} }), true);
+  assert.equal(exportedFragment.content[0].marks.length, 0, 'OS HTML fragment must have no timeSpan');
+  assert.equal(data.getData('text/html'), '<em>abc</em>');
+  assert.equal(data.getData('text/plain'), 'abc');
+  assert.ok(data.getData('application/x-mochop-slice+json'));
+  tracker.paste(view, { clipboardData: data });
+  const originalSlice = tracker.transformPasted(new Slice(Fragment.fromArray([]), 0, 0));
+  assert.deepEqual(originalSlice.content.content[0].marks[0].attrs, anchorA, 'trusted same-session paste still retains audio provenance');
+});
+
+test('TC08: Undo/Redo metadata does not cause automatic re-anchoring', () => {
+  const { tracker } = newTracker();
+  const oldDoc = new FakeDoc([{ text: 'truong', anchor: anchorA }]);
+  const newDoc = new FakeDoc([{ text: 'trương', anchor: anchorA }]);
+  const tx = makeTransaction(4, 1, 1);
+  tx.getMeta = key => key === 'history$' ? { redo: false } : undefined;
+  tracker.active = { anchor: anchorA, contextEpoch: 1, contextState: 'valid',
+    startMonoMs: 900, monotonicMs: 900, nextPos: 4, charCount: 3 };
+  tracker.pendingDeletion = { pos: 4, oldAnchor: anchorA, at: 999, deletedText: 'a' };
+  tracker.pendingPaste = { trusted: true, mono: 999 };
+  tracker.lastIntent = { type: 'insertText', mono: 999, epoch: baseEpoch + 999 };
+  const appended = tracker.append([tx], { doc: oldDoc }, makeNewState(newDoc));
+  assert.equal(appended, null);
+  assert.equal(tracker.trace.at(-1)?.kind, 'history');
+  assert.equal(tracker.active, null);
+  assert.equal(tracker.pendingDeletion, null);
+  assert.equal(tracker.pendingPaste, null);
+  assert.equal(tracker.lastIntent, null);
+  // Typing AFTER Undo must use the current audio context, never stale active marks.
+  const postHistory = tracker.append([makeTransaction(4, 0, 1)],
+    { doc: new FakeDoc([{ text: 'abc', anchor: anchorA }]) },
+    makeNewState(new FakeDoc([{ text: 'abc', anchor: anchorA }, { text: 'x' }])));
+  assert.equal(postHistory.marks.length, 1);
+  assert.notEqual(postHistory.marks[0].mark.attrs.anchorId, anchorA.anchorId);
+  assert.equal(postHistory.marks[0].mark.attrs.audioOffsetMs, 95000);
 });
