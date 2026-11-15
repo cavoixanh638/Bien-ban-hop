@@ -4,10 +4,10 @@
     "kind": "Linux headless Chromium, synthetic sine tones (NOT speech)",
     "chromium": "144.0.7559.96",
     "chromiumProcessIDs": [
-      3976,
-      4020,
-      4025,
-      4044
+      5234,
+      5279,
+      5284,
+      5311
     ],
     "rssScope": "chromium processes observed by CDP (not page-only)"
   },
@@ -20,9 +20,9 @@
       "sampleRate": 16000,
       "engine": "C1",
       "rate": 0.75,
-      "rssBytesSnapshot": 229175296,
-      "rssBytesInitial": 229130240,
-      "rssBytesPeakObserved": 229294080,
+      "rssBytesSnapshot": 230146048,
+      "rssBytesInitial": 230006784,
+      "rssBytesPeakObserved": 230146048,
       "urlCount": 2,
       "maxPending": null,
       "errors": []
@@ -35,9 +35,9 @@
       "sampleRate": 16000,
       "engine": "C1",
       "rate": 0.9,
-      "rssBytesSnapshot": 245903360,
-      "rssBytesInitial": 233979904,
-      "rssBytesPeakObserved": 245903360,
+      "rssBytesSnapshot": 247939072,
+      "rssBytesInitial": 235233280,
+      "rssBytesPeakObserved": 247939072,
       "urlCount": 2,
       "maxPending": null,
       "errors": []
@@ -50,9 +50,9 @@
       "sampleRate": 16000,
       "engine": "C2",
       "rate": 0.75,
-      "rssBytesSnapshot": 232579072,
-      "rssBytesInitial": 231878656,
-      "rssBytesPeakObserved": 232566784,
+      "rssBytesSnapshot": 233066496,
+      "rssBytesInitial": 232472576,
+      "rssBytesPeakObserved": 233062400,
       "urlCount": null,
       "maxPending": 6,
       "errors": []
@@ -65,9 +65,9 @@
       "sampleRate": 16000,
       "engine": "C2",
       "rate": 0.9,
-      "rssBytesSnapshot": 213553152,
-      "rssBytesInitial": 232136704,
-      "rssBytesPeakObserved": 232140800,
+      "rssBytesSnapshot": 233209856,
+      "rssBytesInitial": 232513536,
+      "rssBytesPeakObserved": 233197568,
       "urlCount": null,
       "maxPending": 6,
       "errors": []
@@ -116,23 +116,23 @@
       "valid"
     ],
     "latencyMs": [
-      2.8,
+      2.2,
+      3.2,
+      267.0,
+      522.5,
+      525.6,
+      259.7,
+      549.3,
+      667.7,
+      245.1,
+      465.7,
       1.7,
-      265.4,
-      414.8,
-      427.8,
-      266.2,
-      540.9,
-      532.4,
-      252.3,
-      482.0,
-      1.6,
-      502.4,
-      185.2,
-      360.8,
-      497.0,
-      480.1,
-      11.7
+      471.3,
+      184.8,
+      354.9,
+      476.2,
+      473.4,
+      13.5
     ],
     "urlCounts": [
       2,
@@ -154,8 +154,8 @@
       1
     ],
     "maxBlobURLs": 2,
-    "baselineRssBytes": 234221568,
-    "observedPeakRssBytes": 293171200,
+    "baselineRssBytes": 234618880,
+    "observedPeakRssBytes": 293765120,
     "note": "snapshots after each seek, not continuously sampled; one synthetic fixture only",
     "errors": []
   }
