@@ -8,10 +8,11 @@ Yêu cầu: Node.js >=18. Không cần `npm install`, không cần mạng để 
 
 ```sh
 cd poc/08-export
-node test.mjs               # 20 bài regression ban đầu
-node edge.test.mjs          # 20 bài bổ sung: Unicode, nested list, mark, XML
-node generate.mjs           # 8 file dưới samples/
-python verify-formats.py    # DOCX ZIP/XML, CSV parser, Markdown Pandoc nếu có
+npm test                    # 55 bài unit: 20 regression + 20 edge + 15 security
+npm run generate            # 8 file mẫu trong samples/
+npm run test:formats        # DOCX ZIP/XML, CSV parser, Pandoc Markdown
+npm run test:consumers      # LibreOffice Calc + Pandoc hostile content (nếu có)
+npm run test:stress         # 10.000 đoạn tổng hợp, đo thời gian/RSS; không phải benchmark Word/Windows
 ```
 
 Kiểm thử trình duyệt Chromium thật (tùy chọn, yêu cầu Python Playwright và Chromium):
@@ -19,7 +20,7 @@ Kiểm thử trình duyệt Chromium thật (tùy chọn, yêu cầu Python Play
 ```sh
 python -m pip install playwright
 python -m playwright install chromium
-python browser-smoke.py     # 8 lần tải Blob + 1 lỗi đầu vào, shim trong bộ nhớ
+npm run test:browser         # 8 lần tải Blob + 1 lỗi đầu vào, shim trong bộ nhớ
 ```
 
 Chạy giao diện demo trực tiếp bằng trình duyệt hỗ trợ module ES và localhost:
@@ -43,12 +44,12 @@ const outputs = exportAll(input);  // txt/md/csv: string; docx: Uint8Array
 
 - **DOCX:** Office Open XML/ZIP thật; tiếng Việt, heading, bold, italic, heading outline, danh sách gạch đầu dòng/đánh số dạng *Word numbering*, hard break và dòng trống. Mốc trong bản có mốc hiển thị màu xám, không chứa chức năng nhấp để phát âm thanh.
 - **TXT:** chữ gốc, dấu xuống dòng/danh sách và nhãn mốc theo lựa chọn; không thể giữ đậm/nghiêng.
-- **Markdown:** heading, bold/italic đồng thời, escaping ký tự dán, hard break, danh sách lồng nhau GFM; mốc là chuỗi literal được escape để không biến thành cú pháp Markdown.
-- **CSV:** UTF-8 BOM, CRLF, quoted field và quote-double, một hàng cho mỗi text run. Các cột cơ bản: `meetingTitle,blockIndex,blockType,headingLevel,listType,text`; nếu bật mốc, có thêm `anchorId,recordingId,audioOffsetMs,typedAt,source,linked`. `audioOffsetMs` là ms media **gốc**, không áp dụng pre-roll. `linked` chỉ nói Mark chứa recordingId+offset hợp lệ, **không** khẳng định media đã ghi/đã flush.
+- **Markdown:** heading, bold/italic đồng thời, escaping ký tự Markdown **và raw HTML** dán từ ngoài, hard break, danh sách lồng nhau GFM, danh sách đánh số bắt đầu khác 1. Văn bản gốc có thẻ HTML hiển thị thành văn bản trong Markdown thay vì chạy markup. Mốc là chuỗi literal được escape để không biến thành cú pháp Markdown.
+- **CSV:** UTF-8 BOM, CRLF, quoted field và quote-double, một hàng cho mỗi text run. **Chống CSV formula injection theo mặc định:** trường bắt đầu bằng `=`, `+`, `-`, `@` sau khoảng trắng/điều khiển sẽ được đặt dấu nháy đơn `'` ở trước để LibreOffice Calc không diễn giải thành công thức; raw text trong CSV thay đổi có chủ đích ở những ô này. Chỉ cho phép xuất nguyên văn với `{csvFormulaPolicy:'raw'}` khi dữ liệu hoàn toàn đáng tin cậy, không dùng raw cho file sẽ mở trong Excel/Calc. Các cột cơ bản: `meetingTitle,blockIndex,blockType,headingLevel,listType,text`; nếu bật mốc, có thêm `anchorId,recordingId,audioOffsetMs,typedAt,source,linked`. `audioOffsetMs` là ms media **gốc**, không áp dụng pre-roll. `linked` chỉ nói Mark chứa recordingId+offset hợp lệ, **không** khẳng định media đã ghi/đã flush.
 - **Unlinked:** bản kèm mốc ghi `[không liên kết âm thanh]` cho vùng chưa có vị trí media; không tạo mốc âm thanh giả. Bản sạch không thêm nhãn/mốc.
 
 ## Bằng chứng, giới hạn, bàn giao
 
 Xem `evidence/QA_20261115.md` và checkpoint tại `docs/workstreams/2026-11-15/checkpoints/08-export.md` để biết SHA, lệnh chạy, PASS/NOT_RUN và môi trường.
 
-PoC dùng OOXML writer tự chứa (không dùng thư viện `docx.js` dù là ứng viên trong TECHNICAL_OPTIONS); Word trên Windows và Chrome/Edge trên Windows vẫn `NOT_RUN`. Bản TXT/DOCX/CSV/Markdown **không** thay được backup `.mochop` chứa âm thanh và Mark gốc. Chưa kiểm tài liệu rất lớn, công thức CSV từ nguồn không tin cậy cần chính sách bảo vệ spreadsheet khi tích hợp, chưa nối IndexedDB, UI chính, tên file theo cuộc họp và API `readNoteDocument` của sản phẩm. Không được coi PoC PASS là nghiệm thu ứng dụng tích hợp.
+PoC dùng OOXML writer tự chứa (không dùng thư viện `docx.js` dù là ứng viên trong TECHNICAL_OPTIONS); Word trên Windows và Chrome/Edge trên Windows vẫn `NOT_RUN`. Bản TXT/DOCX/CSV/Markdown **không** thay được backup `.mochop` chứa âm thanh và Mark gốc. Đã thử thêm fixture **10.000 đoạn** trên Node Linux (tổng hợp, không chứng minh tốc độ trên thiết bị người dùng), mở CSV bằng LibreOffice Calc có kiểm formula vs string. Chưa kiểm Word/Excel Microsoft, tài liệu họp thực rất dài, chưa nối IndexedDB, UI chính, tên file theo cuộc họp và API `readNoteDocument` của sản phẩm. Không được coi PoC PASS là nghiệm thu ứng dụng tích hợp.
