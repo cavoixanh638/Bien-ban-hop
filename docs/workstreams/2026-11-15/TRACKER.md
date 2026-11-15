@@ -15,7 +15,7 @@ Baseline `6142f56a6efdb27aa9445920c9321f7930c0d5fd`. Trạng thái dòng này l�
 | Gemini 06-notes | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-06-notes/docs/workstreams/2026-11-15/checkpoints/06-notes.md) | IN_PROGRESS | `ed272d05` | — | V8 memory fixture 9/9 | IndexedDB browser + two-tab/quota/crash NOT_RUN |
 | Gemini 07-backup | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-07-backup/docs/workstreams/2026-11-15/checkpoints/07-backup.md) | IN_PROGRESS | `80af80db` | — | Python ref 10/10 local | 512MiB/2GiB benchmark Python không thay được 3 ZIP JS; clean SHA/browser NOT_RUN |
 | Gemini 08-export | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-08-export/docs/workstreams/2026-11-15/checkpoints/08-export.md) | IN_PROGRESS | `9b71d4d9` | — | Node ref 20/20 local | Mã GitHub đã sửa sau run; cần test exact SHA, Word/Chrome/Edge |
-| Gemini 09-pwa | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-09-pwa/docs/workstreams/2026-11-15/checkpoints/09-pwa.md) | IN_PROGRESS | `ea60179c` | — | Node mock 10/10 LOCAL_ONLY | Chưa có poc/09-pwa/ trên HEAD; worker đang push, browser NOT_RUN |
+| Gemini 09-pwa | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-09-pwa/docs/workstreams/2026-11-15/checkpoints/09-pwa.md) | READY_FOR_REVIEW | `4cdde5a5` | local source at `46e82448` (not clean checkout) | Node mock 10/10; browser NOT_RUN | 22 PoC files đã push; cần kiểm race start/release, save/release, migration đa meeting và SW activation gate |
 
 ## Giao lại theo bằng chứng
 
@@ -75,3 +75,40 @@ Kiểm cổng Gói 1.1 và bằng chứng thực trên từng SHA. Chốt các a
 **Ưu tiên điều phối:** (1) 05 sửa lỗi timeline sai nguồn/false gap; (2) 02 và 09 phải có mã nguồn thực; (3) 01 qua cổng Windows IME; (4) 00/04/03/06/08/07 chốt lại exact SHA và chạy môi trường phù hợp; (5) sau đủ gate mới tích hợp, chưa merge/deploy.
 
 - **09-pwa bổ sung trong lúc rà soát:** HEAD `ea60179c8cf1b4ad4802c597508772e45599ec3b` chỉ vừa cập nhật checkpoint; báo code và test Node 10/10 **LOCAL_ONLY**, `poc/09-pwa/` chưa có trên Git-tree. Vì thế chỉ ghi `IN_PROGRESS`, không ghi tested SHA hoặc bàn giao.
+
+## G09-PWA — review mới sau commit code `46e82448` (15/11/2026)
+
+- Đã kiểm nhánh `gemini/20261115-09-pwa` ở HEAD `4cdde5a51909e1db016bfe880097944a3c26ea06`, Git-tree có **22 tệp PoC**; checkpoint `READY_FOR_REVIEW`, Node mock 10/10 local, 7 kịch bản Playwright đã viết nhưng browser bị chính sách chặn localhost, **runtime NOT_RUN**. Không coi nội dung code trên nhánh là đã nghiệm thu Chrome/Edge.
+- **Phạm vi giao G09**: chỉ `poc/09-pwa/` và `docs/workstreams/2026-11-15/checkpoints/09-pwa.md`; không sửa COMMON, không yêu cầu nhập worker 01–08.
+
+### G09-ADD-01 — High: race Start → Release trong first OPFS ACK
+
+- Nguồn: `poc/09-pwa/app.js` `startRecording` (dòng ~124–137) chờ `appendFixtureTick()` rồi **không kiểm lại lease** trước khi set `recording=true` và tạo interval; `releaseWriter` (~175–184) gọi `stopRecording()`, nhưng khi first ACK chưa xong, `recording=false`, `tickPromise=null` nên trả về và thả lock. ACK đến sau có thể bật ticker **khi không còn writer lease**. Đây là đường tranh chấp nhìn thấy từ mã, chưa chạy browser.
+- Yêu cầu: biểu diễn trạng thái `starting/active/stopping` hoặc generation token; theo dõi first write đang chờ, chặn/đợi start khi release, kiểm lease/token sau ACK; không có append/ticker tiếp tục sau release. Fail-closed nếu Worker chậm/lỗi/abort.
+- Test mới: trong `poc/09-pwa/tests/` dùng deferred first Worker ACK, nhấn Start→Release trước ACK, thả ACK sau khi release; **PASS khi không còn recording, ticker và writer nào chạy**, tab khác có thể acquire an toàn; ghi trạng thái saved/OPFS đúng, không ghi PASS nếu chưa chạy. Test thêm stop ngay trong Start và timeout.
+
+### G09-ADD-02 — High: race autosave → Release làm mất dirty text
+
+- Nguồn: `poc/09-pwa/app.js` `persistNote()` (~185–209) trả sớm khi `saving=true`; `releaseWriter()` (~175–183) `await persistNote()` nhưng **không đợi tác vụ save hiện có**, sau đó release và refresh. Nếu người dùng nhập ký tự mới khi save đang chờ, bản dirty mới có thể không được commit, dù status của revision cũ được báo Saved.
+- Yêu cầu: theo dõi `pendingSave` Promise, đặt cờ releasing để khóa input mới, đợi tất cả commit/flush đang có, kiểm dirty lần cuối trước release; nếu lỗi phải giữ nguyên nội dung chưa lưu và cảnh báo, không tự xóa bằng refresh/read-only. CAS revision và callback stale phải không ghi saved giả.
+- Test: trì hoãn IDB `transaction.complete`, nhập lần A rồi sửa lần B trước khi A hoàn tất, nhấn Release; **PASS khi B được commit + revision xác nhận trước release hoặc release bị chặn với B còn visible/dirty**, không bao giờ mất B mà UI báo Saved. Test quota/transaction abort và hai tab tiếp quản.
+
+### G09-ADD-03 — Medium: migration không tự retry khi writer cuộc họp KHÁC nhả lock
+
+- Nguồn: `poc/09-pwa/lease.js` `makeChannel` (dòng ~67–75) chỉ chuyển tiếp BroadcastChannel event khi `meetingId` khớp; `app.js` listener đầu file chỉ retry `migrate()` khi thấy `writer-released`. Tuy nhiên `MAINTENANCE_LOCK` là **global cùng origin**, writer của meeting B cũng chặn migration meeting A; sự kiện B không tới A → `migrationBlocked` giữ nguyên, nút Acquire bị disable.
+- Yêu cầu: listener riêng cho sự kiện global maintenance/release hoặc retry an toàn có kiểm lại Web Locks, kèm nút Retry thủ công khi blocked; không để UX kẹt vô hạn.
+- Test 2 meeting IDs A/B: app A=v2 bị migrate blocked khi B giữ writer, B release → A retry và vẫn giữ document/marks/revision, không sửa dữ liệu khi B chưa release.
+
+### G09-ADD-04 — Safety hardening: yêu cầu activate SW phải không bypass maintenance gate
+
+- Nguồn: `poc/09-pwa/sw.js` message handler (dòng ~21–26) chạy `skipWaiting()` cho bất kỳ message có `type='ACTIVATE_AFTER_EXCLUSIVE_GATE'`, không xác minh lock hoặc sender. Guard `withMaintenanceLock` hiện chỉ ở `app.js` (`activateWaiting`), nên các message khác có thể gọi trực tiếp, đặc biệt cần thận trọng trên shared GitHub Pages origin.
+- Yêu cầu: xác định trust boundary và phòng ngừa direct message ngoài quy trình an toàn; thêm negative test gửi message khi meeting khác đang ghi để xác nhận không tự activate. Giữ `skipWaiting` opt-in, không tự reload. Nếu chưa thể xác nhận bảo vệ nội bộ SW trên trình duyệt, ghi hạn chế và HOLD phát hành production; không lấy mock PASS làm bảo đảm.
+- Đối chiếu thêm SW network-first `index.html` với cached phiên bản JS cũ khi v2 đã phát hành; kiểm version-consistent shell hoặc giữ HTML và JS đồng nhất khi waiting worker còn sống.
+
+**Phân loại:** ADD-01/02 là nguy cơ race suy ra trực tiếp từ await/lock (cần xác nhận bằng test có điều khiển); ADD-03 là rủi ro kẹt retry từ bộ lọc meetingId; ADD-04 là yêu cầu kiểm soát điều kiện kích hoạt. Chưa có kết quả chạy negative cases trên bản đã sửa → **NOT_RUN**, không tự gọi là runtime FAIL. Các test TC32–TC35 trên browser/Windows vẫn giữ NOT_RUN nếu chưa thử.
+
+### Điều kiện xét lại G09
+
+1. Fix ADD-01/02 và bổ sung deterministic tests; xử lý ADD-03 và hardening ADD-04 trong phạm vi PoC; run `npm test` trên đúng checkout, ghi SHA/stdout.
+2. Chạy 7 Playwright scenarios và các negative mới trên Chrome/Edge có localhost được phép; lưu version/screenshot/trace, sửa FAIL.
+3. Giữ việc Pages HTTPS/origin riêng và tích hợp capture/OPFS thực cho **đợt tích hợp được ủy quyền**; không tự deploy hay sửa nhánh khác.
