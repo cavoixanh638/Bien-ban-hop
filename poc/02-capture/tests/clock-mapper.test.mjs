@@ -72,3 +72,68 @@ test('zero output timestamp is uncalibrated; later valid context/output pair ret
   assert.equal(m.resolveInput(500).sampleIndex,24000);
   assert.equal(estimateInputMonoMs(ev('started',0,0),null),null);
 });
+
+
+test('G02-ADD-06 exact final clock point is valid and 1500ms stays pending until next progress',()=>{
+  const m=new CaptureClockMapper(48000,{recordingId:'rec-clock'});
+  m.receive(ev('started',0,0),ref);
+  m.receive(ev('progress',48000,1),ref);
+  assert.equal(m.resolveInput(1000).status,'valid');
+  assert.equal(m.resolveInput(1000).sampleIndex,48000);
+  const pending=m.queueInput(1500,'note-1500');
+  assert.equal(pending.status,'pending');
+  assert.equal(pending.inputMonoMs,1500);
+  assert.equal(pending.recordingId,'rec-clock');
+  assert.equal(pending.source,'live_recording');
+  assert.equal(m.summary().pendingInputAnchors,1);
+  m.receive(ev('progress',96000,2),ref);
+  assert.deepEqual(m.takeInputResolutions().map(v=>[v.anchorId,v.status,v.sampleIndex]),
+    [['note-1500','valid',72000]]);
+  assert.equal(m.summary().pendingInputAnchors,0);
+});
+
+test('G02-ADD-06 pause/stop/unavailable never reconcile a future note to stale samples',()=>{
+  const make=()=>{const m=new CaptureClockMapper(48000);m.receive(ev('started',0,0),ref);
+    m.receive(ev('progress',48000,1),ref);return m;};
+  const pause=make();pause.queueInput(1500,'pa');
+  pause.receive(ev('paused',60000,1.25),ref);
+  assert.equal(pause.takeInputResolutions()[0].status,'paused');
+  assert.equal(pause.resolveInput(1300).status,'paused');
+  const stop=make();stop.queueInput(1500,'st');
+  stop.receive(ev('stopped',48000,1),ref);
+  assert.equal(stop.takeInputResolutions()[0].status,'unlinked');
+  assert.equal(stop.resolveInput(1500).status,'unlinked');
+  const missing=make();missing.queueInput(1500,'un');
+  missing.receive(ev('unavailable',48000,1,{reason:'track-ended'}),ref);
+  assert.equal(missing.takeInputResolutions()[0].status,'unavailable');
+});
+
+test('G02-ADD-06 pool/sink gaps and bounded pending queue fail closed',()=>{
+  const m=new CaptureClockMapper(48000);
+  m.receive(ev('started',0,0),ref);
+  m.receive(ev('progress',48000,1),ref);
+  m.queueInput(1250,'pool-gap');
+  m.receive(ev('gap',72000,1.5,{start:48000,end:72000,reason:'pool-exhausted'}),ref);
+  assert.equal(m.takeInputResolutions()[0].status,'gap');
+  const q=new CaptureClockMapper(48000);
+  q.receive(ev('started',0,0),ref);
+  for(let i=0;i<1024;i++)
+    assert.equal(q.queueInput(1500,'id'+i).queued,true);
+  const over=q.queueInput(1500,'overflow');
+  assert.equal(over.status,'pending');
+  assert.equal(over.queued,false);
+  assert.equal(q.summary().pendingAnchorOverflow,1);
+  assert.equal(q.summary().pendingInputAnchors,1024);
+});
+
+test('G02-ADD-06 stopped single-point interval drains pending instead of leaving it forever',()=>{
+  const m=new CaptureClockMapper(48000,{recordingId:'rec-short'});
+  m.receive(ev('started',0,0),ref);
+  assert.equal(m.queueInput(500,'short-note').status,'pending');
+  m.receive(ev('stopped',0,1),ref);
+  const result=m.takeInputResolutions();
+  assert.equal(result.length,1);
+  assert.equal(result[0].anchorId,'short-note');
+  assert.equal(result[0].status,'unlinked');
+  assert.equal(m.summary().pendingInputAnchors,0);
+});

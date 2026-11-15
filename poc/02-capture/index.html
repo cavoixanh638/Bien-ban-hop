@@ -22,7 +22,7 @@ strong{color:#1c426e}small{color:#65768b}#status{font-weight:600}
 <label>CPU Worker (ms/chunk)<input id="cpuBurnMs" type="number" min="0" max="1000" value="0"></label>
 <label>MediaRecorder timeslice (ms)<input id="mediaTimesliceMs" type="number" min="250" max="5000" value="600"></label>
 </div><div class="buttons"><button id="start">Bắt đầu</button><button id="pause" class="alt" disabled>Pause</button><button id="resume" class="alt" disabled>Resume</button><button id="trackEnd" class="alt" disabled>Mô phỏng ngắt nguồn</button><button id="stop" disabled>Dừng và đo</button><button id="downloadWav" class="alt" disabled>Tải WAV mẫu đầu</button><button id="downloadWebm" class="alt" disabled>Tải WebM thử</button></div>
-<p id="status" role="status">Chưa bắt đầu. crossOriginIsolated: <span id="isolated"></span></p><small>Không có SharedArrayBuffer. ACK trả buffer ≠ xác nhận ghi bền vững. WAV tải về là tiền tố liên tục tối đa 8 giây, không phải toàn phiên.</small>
+<p id="status" role="status">Chưa bắt đầu. crossOriginIsolated: <span id="isolated"></span></p><small>Không có SharedArrayBuffer. ACK trả buffer ≠ xác nhận ghi bền vững. WAV tải về là tiền tố liên tục tối đa 8 giây, không phải toàn phiên. Nếu trình duyệt không trả lời yêu cầu quyền micro, nút Dừng sẽ thoát ngay nhưng Start vẫn bị khóa đến khi quyền được trả lời và mọi track cấp muộn đã dừng.</small>
 </section>
 <section><h2>Giám sát sự kiện</h2><pre id="events">[]</pre></section>
 <section><h2>Kết quả theo hợp đồng</h2><pre id="results">Chưa có kết quả.</pre></section>
@@ -35,7 +35,7 @@ let run = null;
 let uiMode = 'idle';
 function buttons(mode,paused=false) {
   uiMode=mode;
-  el('start').disabled = mode!=='idle' && mode!=='stopped';
+  el('start').disabled = (mode!=='idle' && mode!=='stopped') || !!run?.permissionPendingCleanup;
   el('stop').disabled = mode==='idle'||mode==='stopped'||mode==='stopping';
   el('pause').disabled = mode!=='capturing'||paused;
   el('resume').disabled = mode!=='capturing'||!paused;
@@ -47,6 +47,14 @@ function config() {return {source:el('source').value,engine:el('engine').value,
 function reportEvent(event) {
   el('events').textContent = JSON.stringify(run?.events.slice(-25) || [event],null,2);
   el('status').textContent = `${event.type} · ${Math.round(event.inputMonoMs)} ms · ${run?.recordingId || ''}`;
+  // Stop may return before an OS permission prompt is resolved; never offer a new
+  // session until that pending promise settles and any late-granted track is stopped.
+  if (event.type==='permission-settled' && uiMode==='permission_pending_cleanup' &&
+      run && !run.permissionPendingCleanup && run.resourcesReleased) {
+    buttons('stopped');
+    el('status').textContent='Quyền micro đã trả lời; không còn nguồn từ phiên đã hủy. Có thể bắt đầu lại.';
+    el('results').textContent=JSON.stringify(run.results(),null,2);
+  }
 }
 el('start').onclick = async () => {
   if(uiMode!=='idle' && uiMode!=='stopped')return; // Protect against synchronous double clicks.
@@ -63,9 +71,11 @@ el('start').onclick = async () => {
       buttons('capturing');el('results').textContent='Đang thu…';
     }
   } catch(error) {
-    if(run===candidate){
-      buttons('stopped');
-      el('status').textContent=`Không thể bắt đầu: ${error}. Đã dọn tài nguyên.`;
+    if(run===candidate && uiMode!=='stopping'){
+      buttons(candidate.permissionPendingCleanup?'permission_pending_cleanup':'stopped');
+      el('status').textContent=candidate.permissionPendingCleanup
+        ? 'Đã hủy Start. Hộp thoại cấp quyền chưa trả lời; chưa xác nhận giải phóng micro. Hãy trả lời/đóng hộp thoại trước khi thử lại.'
+        : `Không thể bắt đầu: ${error}. Đã dọn tài nguyên.`;
     }
   }
 };
@@ -87,12 +97,17 @@ el('stop').onclick = async () => {
     el('results').textContent=JSON.stringify(result,null,2);
     el('downloadWav').disabled=!candidate.worker || !candidate.workletFinal;
     el('downloadWebm').disabled=!candidate.media || !(await candidate.media.getCompleteBlob());
-    buttons('stopped');
+    if(candidate.permissionPendingCleanup) {
+      buttons('permission_pending_cleanup');
+      el('status').textContent='Đã thoát chờ Stop, nhưng hộp thoại cấp quyền CHƯA kết thúc; chưa thể xác nhận giải phóng micro. Trả lời/đóng prompt để thử lại.';
+    } else buttons('stopped');
   } catch(error) {
     if(run!==candidate)return;
-    buttons('stopped');
+    buttons(candidate.permissionPendingCleanup?'permission_pending_cleanup':'stopped');
     el('results').textContent=JSON.stringify(candidate.results(),null,2);
-    el('status').textContent=`Lỗi dừng/timeout: ${error}. Bộ thu đã thử dọn tài nguyên; KHÔNG có ACK lưu bền vững.`;
+    el('status').textContent=candidate.permissionPendingCleanup
+      ? `Stop báo lỗi ${error}; quyền micro còn treo. Không khởi động phiên mới cho tới khi prompt kết thúc.`
+      : `Lỗi dừng/timeout: ${error}. Bộ thu đã thử dọn tài nguyên; KHÔNG có ACK lưu bền vững.`;
   }
 };
 function download(blob,name) {

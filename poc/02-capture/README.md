@@ -83,3 +83,23 @@ Worker dùng `maxQueue` (bao gồm chunk đang xử lý), `delayMs`, `cpuBurnMs`
 - **ADD-05:** MediaRecorder spool một container liên tục trên đĩa qua adapter có giới hạn backlog và hỗ trợ HTMLAudioElement seek ở toàn file. Chưa có kết quả seek/CPU/RAM/browser cho phiên thật; không chuyển ranh giới công việc OPFS durability từ G03 sang G02.
 
 **Chỉ định khi chạy benchmark 3 giờ:** giữ máy không sleep/đủ nguồn điện, ít nhất 4 GB dung lượng trống với PCM diagnostic khác nếu lắp G03, ghi run ID/chrome version, CPU/RSS, tình trạng track và quota. Ở PoC G02, PCM chỉ xuất WAV prefix 8s và first/middle/last block summaries; **không được khẳng định PCM full 3h có thể seek**. Nếu MediaRecorder tạo WebM không hỗ trợ seek chính xác, ghi FAIL/unsupported, không chấp nhận chunk timeslice như file độc lập. Chạy kiểm riêng micro thật, chuyển tab, revoke quyền, pause/resume, Worker stress và queue-full, không trộn các case đó vào kết quả 3h ổn định.
+
+
+## G00 giao bổ sung G02-ADD-06/07 (15/11/2026)
+
+**ADD-06 — clock frontier:** khi phiên `recorded` đang mở, `resolveInput(1000)` trả `valid` nếu 1.000 ms là điểm đã hiệu chuẩn cuối, và `resolveInput(1500)` trả `pending` thay vì `unlinked` nếu điểm mới nhất mới là 1.000 ms. Không *extrapolate* số frame chưa đo. Mỗi kết quả `pending` có `inputMonoMs`, `recordingId` và `source:'live_recording'`. Adapter mỏng dùng:
+
+```js
+const resolution = capture.resolveInputAnchor(inputMonoMs, anchorId);
+// Nếu pending: giữ anchorId/inputMonoMs/typedAt ở hàng đợi riêng,
+// KHÔNG ghi trạng thái pending vào timeSpan Mark và KHÔNG đóng dấu unlinked.
+const completed = capture.takeInputResolutions();
+// Khi có progress mới: pending 1500 ms -> sampleIndex=72000 ở 48 kHz;
+// nếu gặp pause/gap/unavailable/stop: trả trạng thái không phát được, không nối nhầm.
+```
+
+`CaptureClockMapper.queueInput` quản lý tối đa **1.024 anchor chờ**, trả `queued:false` + lý do nếu đầy, không bỏ âm thầm. `takeInputResolutions` trả kết quả đã đối soát; hàng đợi ở **memory** và không phải journal phục hồi. Trong đợt tích hợp, Editor/G04 phải lưu ngữ cảnh typedAt và hoàn tất ghi Mark theo snapshot/revision riêng sau kết quả; không đưa `pending/valid` vào Mark. Không xem mapping đã valid là chứng nhận OPFS durable.
+
+**ADD-07 — quyền micro không được trả lời:** `stop()` không chờ vô hạn một `getUserMedia()`/`getDisplayMedia()` promise đang pending, vì API này không bảo đảm hỗ trợ AbortSignal. Stop chỉ hủy *await* và chặn Start tiếp theo; nếu browser chưa trả permission, báo `permissionPendingCleanup:true`, `resourcesReleased:false`, đồng thời giữ listener trên promise cũ. Grant muộn sẽ `stop()` toàn bộ track ngay, chỉ một lần; Deny muộn cũng giải khóa. UI giữ nút Start khóa cho đến khi sự kiện `permission-settled` xác nhận đã dọn nguồn, hoặc người dùng đóng/cấp/từ chối prompt. **Không báo đã giải phóng micro khi lời nhắc OS còn treo.** Nếu prompt trình duyệt vĩnh viễn không settle, phiên hiện tại fail-closed, không reset để tạo writer cạnh tranh.
+
+Regression mới trong `tests/clock-mapper.test.mjs` và `tests/lifecycle.test.mjs` tái hiện đúng mốc cuối, pending→valid, pause trước progress, stop chỉ có một điểm, gap/unavailable, prompt không settle, late grant/deny và double Start. Có thể chạy bằng `npm test` trên checkout sạch Node >=22; các kết quả mô phỏng V8 và hạn chế chính xác được ghi ở `evidence/add06-add07-v8.md`. Kiểm thử UX permission thật/IME/Windows/Chrome/Edge và liên kết thực với Editor/G04 là **NOT_RUN**, không suy từ V8 thành PASS thiết bị.

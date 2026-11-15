@@ -40,6 +40,10 @@ export class CaptureComparison {
     this.trackInfo = null;
     this.resourcesReleased = false;
     this._releasedTracks = new Set();
+    this.permissionPendingCleanup = false;
+    this.permissionSource = null;
+    this.cleanupFinished = false;
+    this.cancelStartResolve = null;
   }
   log(type, details = {}) {
     const event = {...details, type, inputMonoMs: performance.now()};
@@ -62,19 +66,56 @@ export class CaptureComparison {
     this.source=source;
     this.recordingId=`capture-poc-${Math.round(performance.timeOrigin)}-${globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2)}`;
     this.config=config;
+    this.cancelStartSignal = new Promise(resolve=>{this.cancelStartResolve=resolve;});
     this.startPromise=this._begin(config);
     return this.startPromise;
+  }
+  /** Stop tracks from an asynchronously granted permission even after a cancelled Start. */
+  releaseTracks(stream) {
+    for (const track of stream?.getTracks?.() || []) {
+      if (this._releasedTracks.has(track)) continue;
+      try {track.stop();} catch(error) {this.log('cleanup-error',{resource:'late-permission-track',reason:String(error)});}
+      this._releasedTracks.add(track);
+    }
+  }
+  /**
+   * getUserMedia/getDisplayMedia cannot be aborted by a browser AbortSignal.
+   * Race only OUR wait against cancellation; keep the original request watched
+   * until it settles, and stop any tracks granted after Stop.
+   */
+  async awaitPermission(request,source) {
+    const permission=Promise.resolve(request);
+    this.permissionPendingCleanup=true;
+    this.permissionSource=source;
+    this.resourcesReleased=false;
+    permission.then(stream=>{
+      this.permissionPendingCleanup=false;
+      if(this.stopping || this.state!=='starting') {
+        this.releaseTracks(stream);
+        if(this.cleanupFinished)this.resourcesReleased=true;
+        this.log('permission-settled',{source,decision:'granted',lateCleanup:true});
+      } else {
+        this.log('permission-settled',{source,decision:'granted',lateCleanup:false});
+      }
+    },error=>{
+      this.permissionPendingCleanup=false;
+      if(this.stopping && this.cleanupFinished)this.resourcesReleased=true;
+      this.log('permission-settled',{source,decision:'rejected',lateCleanup:this.stopping,
+        reason:String(error)});
+    });
+    return Promise.race([permission,this.cancelStartSignal.then(()=>{throw cancelled();})]);
   }
   async _begin({engine,source,batchFrames,poolSize,maxQueue,delayMs,cpuBurnMs,mediaTimesliceMs,maxPrefixSeconds,targetMidSeconds}) {
     try {
       let stream=null;
       if (source==='microphone') {
-        stream=await navigator.mediaDevices.getUserMedia({
-          audio:{echoCancellation:false,noiseSuppression:false},video:false});
+        stream=await this.awaitPermission(navigator.mediaDevices.getUserMedia({
+          audio:{echoCancellation:false,noiseSuppression:false},video:false}),'microphone');
         this.inputStream=stream; // Store before checking cancellation so late grants are stopped.
         this.requireStarting();
       } else if (source==='display-audio') {
-        this.displayStream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:true});
+        this.displayStream=await this.awaitPermission(
+          navigator.mediaDevices.getDisplayMedia({audio:true,video:true}),'display-audio');
         this.requireStarting();
         stream=new MediaStream(this.displayStream.getAudioTracks());
         this.inputStream=stream;
@@ -158,7 +199,7 @@ export class CaptureComparison {
           readyReject(error);this.finalReject(error);
           if (this.state==='capturing') this.stop().catch(()=>{});
         };
-        this.clock=new CaptureClockMapper(this.sampleRate);
+        this.clock=new CaptureClockMapper(this.sampleRate,{recordingId:this.recordingId});
         this.node.port.onmessage=event=>{
           const message=event.data;
           if (message.type==='ready') nodeReadyResolve();
@@ -244,6 +285,8 @@ export class CaptureComparison {
   async stop() {
     if (this.stopPromise) return this.stopPromise;
     this.stopping=true;
+    this.cancelStartResolve?.(); // unblocks pending permission without claiming browser prompt closed
+    this.cancelStartResolve=null;
     const prior=this.state;
     this.state='stopping';
     clearInterval(this.statsTimer);
@@ -254,7 +297,7 @@ export class CaptureComparison {
           await this.startPromise.catch(e=>{if(!isAbort(e))error=e;});
           this.endedMonoMs=performance.now();
           if(error)throw error;
-          this.log('stopped',{reason:'cancelled-during-start'});
+          this.log('stopped',{reason:'cancelled-during-start',permissionPendingCleanup:this.permissionPendingCleanup});
         } else if (prior==='capturing') {
           this.node?.port.postMessage({type:'stop'});
           // Settle both sides even when one fails. The sink ACK is NOT a durability ACK.
@@ -279,6 +322,8 @@ export class CaptureComparison {
       } finally {
         await this.cleanup(!error && prior==='capturing');
         this.state=error?'failed':'stopped';
+        if (this.permissionPendingCleanup) this.log('permission-pending-cleanup',{
+          source:this.permissionSource,reason:'browser permission prompt has not settled; Start must remain disabled'});
       }
       if(error)throw error;
       return this.results(); // after cleanup, so state/resourcesReleased are truthful
@@ -289,17 +334,14 @@ export class CaptureComparison {
     if (this.cleanupPromise) {
       await this.cleanupPromise;
       if (!keepDiagnosticWorker) this.terminateWorker();
+      this.resourcesReleased=!this.permissionPendingCleanup;
       return;
     }
     this.cleanupPromise=(async()=>{
       clearInterval(this.statsTimer);
       // This is the only place that releases tracks/context/resources; never skip on reject.
       const all=[...(this.inputStream?.getTracks?.() || []),...(this.displayStream?.getTracks?.() || [])];
-      for (const track of new Set(all)) {
-        if (this._releasedTracks.has(track)) continue;
-        try {track.stop();} catch(error) {this.log('cleanup-error',{resource:'track',reason:String(error)});}
-        this._releasedTracks.add(track);
-      }
+      this.releaseTracks({getTracks:()=>[...new Set(all)]});
       if (this.media?.recorder?.state && this.media.recorder.state!=='inactive') {
         try {await timeout(this.media.stop(),Math.min(this.mediaStopTimeoutMs,2000),'force recorder stop');}
         catch(error) {this.log('cleanup-error',{resource:'MediaRecorder',reason:String(error)});}
@@ -313,10 +355,12 @@ export class CaptureComparison {
       }
       try {await timeout(this.context?.close(),4500,'AudioContext.close');}
       catch(error) {this.log('cleanup-error',{resource:'AudioContext',reason:String(error)});}
-      this.resourcesReleased=true;
+      this.cleanupFinished=true;
+      this.resourcesReleased=!this.permissionPendingCleanup;
     })();
     await this.cleanupPromise;
     if (!keepDiagnosticWorker) this.terminateWorker();
+    this.resourcesReleased=!this.permissionPendingCleanup;
   }
   terminateWorker() {
     try {this.worker?.terminate();} catch {}
@@ -330,6 +374,14 @@ export class CaptureComparison {
     this.worker.postMessage({type:'export-prefix'});
     return timeout(answer,4000,'export WAV');
   }
+  /** A thin adapter for the editor/timeline integration phase. No Mark mutation. */
+  resolveInputAnchor(inputMonoMs,anchorId=null) {
+    if(!this.clock) return {status:'unlinked',reason:'No PCM clock timeline',
+      inputMonoMs,recordingId:this.recordingId};
+    return anchorId===null ? this.clock.resolveInput(inputMonoMs)
+      : this.clock.queueInput(inputMonoMs,anchorId);
+  }
+  takeInputResolutions() {return this.clock?.takeInputResolutions() || [];}
   results() {
     this.clock?.applySinkGaps(this.workletFinal?.sourceEvents);
     const mapping=this.clock?.summary();
@@ -342,10 +394,13 @@ export class CaptureComparison {
       events:this.events.slice(-400),eventCount:this.eventCount || 0,
       workerErrors:this.workerErrors,browserHeapBytes:performance.memory?.usedJSHeapSize ?? null,
       resourcesReleased:this.resourcesReleased,
-      limitations:['Pool recycle ≠ durable storage ACK',
+      permissionPendingCleanup:this.permissionPendingCleanup,
+      permissionSource:this.permissionPendingCleanup?this.permissionSource:null,
+      limitations:[this.permissionPendingCleanup?'Browser permission prompt unresolved: no claim of track release':null,
+        'Pool recycle ≠ durable storage ACK',
         'Output timestamp calibrates render timeline, NOT physical mic input latency',
         'Never interpolate across paused, gap, unavailable; check independent sink coverage',
-        'MediaRecorder timeslice does not prove independently seekable chunks']};
+        'MediaRecorder timeslice does not prove independently seekable chunks'].filter(Boolean)};
   }
   async dispose() {
     if (!this.stopping && ['starting','capturing'].includes(this.state)) {

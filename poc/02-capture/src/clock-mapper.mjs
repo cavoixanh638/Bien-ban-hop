@@ -7,6 +7,7 @@
 const CLOCK_TYPES = new Set(['started','progress','paused','resumed','gap','unavailable','stopped']);
 const MAX_INTERVALS = 4096;
 const MAX_POINTS = 12000;
+const MAX_PENDING_INPUTS = 1024;
 
 export function estimateInputMonoMs(event, timestamp) {
   if (!event || !Number.isFinite(event.contextTimeSec) || !timestamp ||
@@ -16,10 +17,11 @@ export function estimateInputMonoMs(event, timestamp) {
 }
 
 export class CaptureClockMapper {
-  constructor(sampleRate) {
+  constructor(sampleRate, {recordingId=null}={}) {
     if (!Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 192000)
       throw new RangeError('sampleRate');
     this.sampleRate = sampleRate;
+    this.recordingId = recordingId;
     this.intervals = [];
     this.mappingPoints = [];
     this.state = 'idle';
@@ -31,6 +33,10 @@ export class CaptureClockMapper {
     this.sensorLatencyCalibrated = false;
     this.sinkGaps = [];
     this.invalidSequences = 0;
+    // Pending note anchors are separate from NoteDocument/timeSpan Mark data.
+    this.pendingInputAnchors = new Map();
+    this.reconciledInputAnchors = [];
+    this.pendingAnchorOverflow = 0;
   }
   addPoint(interval, inputMonoMs, sampleIndex, eventType) {
     const point = {inputMonoMs, sampleIndex, eventType};
@@ -102,6 +108,7 @@ export class CaptureClockMapper {
       const t = estimateInputMonoMs(item,timestamp);
       if (t !== null) this.consume(item,t);
     }
+    this.reconcilePendingInputs();
   }
   consume(m,t) {
     const i=m.sampleIndex;
@@ -133,35 +140,83 @@ export class CaptureClockMapper {
       if (!this.sinkGaps.some(g => g.start===e.start && g.end===e.end))
         this.sinkGaps.push({start:e.start,end:e.end,reason:e.reason});
     }
+    this.reconcilePendingInputs();
+  }
+  pendingResult(inputMonoMs,reason) {
+    return {status:'pending',reason,inputMonoMs,recordingId:this.recordingId,source:'live_recording'};
+  }
+  mappedSample(sampleIndex, interval, inputMonoMs) {
+    const missing=this.sinkGaps.find(g=>sampleIndex>=g.start && sampleIndex<g.end);
+    if(missing)return {status:'gap',reason:missing.reason,sampleIndex,recordingId:this.recordingId,inputMonoMs};
+    return {status:'valid',sampleIndex,recordingId:this.recordingId,recordedIntervalStart:interval.sampleStart};
+  }
+  /** Queue by stable editor anchorId. No pending/valid state is written into a Mark. */
+  queueInput(inputMonoMs,anchorId) {
+    if(typeof anchorId!=='string' || !anchorId.length) throw new TypeError('anchorId required');
+    const mapped=this.resolveInput(inputMonoMs);
+    if(mapped.status==='pending') {
+      const old=this.pendingInputAnchors.get(anchorId);
+      if(old && old.inputMonoMs!==inputMonoMs) throw new Error('conflicting pending anchorId');
+      if(!old && this.pendingInputAnchors.size>=MAX_PENDING_INPUTS) {
+        this.pendingAnchorOverflow++;
+        return {...mapped,anchorId,reason:'pending anchor queue full; retry required',queued:false};
+      }
+      this.pendingInputAnchors.set(anchorId,{anchorId,inputMonoMs,recordingId:this.recordingId,source:'live_recording'});
+    }
+    return {...mapped,anchorId,queued:mapped.status==='pending'};
+  }
+  /** Receive finalized pending resolutions via the adapter, not by mutating timeSpan marks. */
+  takeInputResolutions() {return this.reconciledInputAnchors.splice(0);}
+  reconcilePendingInputs() {
+    for(const [anchorId,anchor] of this.pendingInputAnchors) {
+      if(this.reconciledInputAnchors.length>=MAX_PENDING_INPUTS) break;
+      const mapped=this.resolveInput(anchor.inputMonoMs);
+      if(mapped.status==='pending') continue;
+      this.pendingInputAnchors.delete(anchorId);
+      this.reconciledInputAnchors.push({...anchor,...mapped,anchorId});
+    }
   }
   resolveInput(inputMonoMs) {
     if (!Number.isFinite(inputMonoMs)) return {status:'unlinked',reason:'invalid input timestamp'};
     const intervals = [...this.intervals];
     if (this.active) intervals.push(this.active);
     if (this.idleInterval) intervals.push({...this.idleInterval,inputMonoEndMs:Infinity});
-    // Explicit gap/pause/unavailable take precedence over recorded intervals.
-    const ordered = intervals.sort((a,b) => {
-      const rank=k=>k==='recorded'?1:0;
-      return rank(a.kind)-rank(b.kind);
-    });
-    for (const interval of ordered) {
-      const last=interval===this.active ? interval.mappingPoints.at(-1)?.inputMonoMs : interval.inputMonoEndMs;
-      if (inputMonoMs < interval.inputMonoStartMs || inputMonoMs >= last) continue;
-      if (interval.kind!=='recorded') return {status:interval.kind,reason:interval.reason};
+    // Pause/gap/unavailable override recorded coverage at coincident boundaries.
+    intervals.sort((a,b)=>(a.kind==='recorded'?1:0)-(b.kind==='recorded'?1:0));
+    for(const interval of intervals) {
+      const ongoingRecorded = interval===this.active;
+      const end=ongoingRecorded?Infinity:interval.inputMonoEndMs;
+      if(inputMonoMs<interval.inputMonoStartMs || inputMonoMs>=end) continue;
+      if(interval.kind!=='recorded')
+        return {status:interval.kind,reason:interval.reason,inputMonoMs,recordingId:this.recordingId};
       const pts=interval.mappingPoints;
+      if(!pts.length) return this.pendingResult(inputMonoMs,'no calibrated recorded points yet');
+      const last=pts.at(-1);
+      // Do not extrapolate a future sample: next progress closes this pending span.
+      if(inputMonoMs>last.inputMonoMs) {
+        return ongoingRecorded
+          ? this.pendingResult(inputMonoMs,'awaiting next calibrated sample point')
+          : {status:'unlinked',reason:'unmeasured tail of closed recorded interval',inputMonoMs,recordingId:this.recordingId};
+      }
+      // The last (or first) exact calibrated point is valid, not unlinked.
+      if(inputMonoMs===last.inputMonoMs)
+        return this.mappedSample(last.sampleIndex,interval,inputMonoMs);
+      if(inputMonoMs===pts[0].inputMonoMs)
+        return this.mappedSample(pts[0].sampleIndex,interval,inputMonoMs);
       for(let i=1;i<pts.length;i++) {
-        if(inputMonoMs>pts[i].inputMonoMs)continue;
         const a=pts[i-1],b=pts[i];
-        if(b.inputMonoMs<=a.inputMonoMs || b.sampleIndex<a.sampleIndex)continue;
+        if(inputMonoMs>b.inputMonoMs)continue;
+        if(inputMonoMs<a.inputMonoMs || b.inputMonoMs<=a.inputMonoMs || b.sampleIndex<a.sampleIndex)continue;
         const sampleIndex=Math.max(a.sampleIndex,Math.min(b.sampleIndex,Math.round(a.sampleIndex+
           (inputMonoMs-a.inputMonoMs)*(b.sampleIndex-a.sampleIndex)/(b.inputMonoMs-a.inputMonoMs))));
-        const missing=this.sinkGaps.find(g=>sampleIndex>=g.start && sampleIndex<g.end);
-        if(missing)return {status:'gap',reason:missing.reason,sampleIndex};
-        return {status:'valid',sampleIndex,recordedIntervalStart:interval.sampleStart};
+        return this.mappedSample(sampleIndex,interval,inputMonoMs);
       }
-      return {status:'pending',reason:'need two distinct calibrated points inside recorded interval'};
+      return ongoingRecorded
+        ? this.pendingResult(inputMonoMs,'need two distinct calibrated points inside recorded interval')
+        : {status:'unlinked',reason:'closed interval lacks enough calibration points',
+          inputMonoMs,recordingId:this.recordingId};
     }
-    return {status:'unlinked',reason:'outside calibrated recorded coverage'};
+    return {status:'unlinked',reason:'outside calibrated recorded coverage',inputMonoMs,recordingId:this.recordingId};
   }
   summary() {
     return {calibrationMethod:'AudioContext.getOutputTimestamp (render/output clock, not measured mic latency)',
@@ -170,6 +225,9 @@ export class CaptureClockMapper {
       intervals:[...this.intervals,...(this.active?[this.active]:[]),...(this.idleInterval?[this.idleInterval]:[])],
       sinkGaps:this.sinkGaps.slice(), uncalibratedEvents:this.uncalibratedEvents,
       pendingEvents:this.pending.length, invalidSequences:this.invalidSequences,
+      pendingInputAnchors:this.pendingInputAnchors.size,
+      readyInputResolutions:this.reconciledInputAnchors.length,
+      pendingAnchorOverflow:this.pendingAnchorOverflow,
       maxTimestampTransportLagMs:this.maxTimestampTransportLagMs,
       limitation:'No interpolation across pause/gap/unavailable; source-end and input hardware latency require real-device calibration'};
   }

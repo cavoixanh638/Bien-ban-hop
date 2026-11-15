@@ -197,3 +197,75 @@ test('display share with video but no audio track closes granted screen track an
   assert.equal(fakeContexts.length,0);
   assert.equal(run.resourcesReleased,true);
 });
+
+
+test('G02-ADD-07 Stop returns while mic permission never settles and reports pending cleanup',async t=>{
+  const forever=deferred();install({getUserMedia:()=>forever.promise});t.after(restore);
+  const run=new CaptureComparison();
+  const started=run.start({engine:'media',source:'microphone'});
+  const stopped=await Promise.race([run.stop(),new Promise((_,reject)=>
+    setTimeout(()=>reject(new Error('Stop blocked indefinitely by browser permission')),300))]);
+  await assert.rejects(started,{name:'AbortError'});
+  assert.equal(stopped.state,'stopped');
+  assert.equal(stopped.permissionPendingCleanup,true);
+  assert.equal(stopped.resourcesReleased,false,'do not claim unknown OS permission was released');
+  assert.equal(run.events.some(v=>v.type==='started'),false);
+  assert.equal(fakeContexts.length,0);
+  assert.equal(recorders.length,0);
+});
+
+test('G02-ADD-07 late grant stops original track once and then permits a new session',async t=>{
+  const grant=deferred(),track=new FakeTrack();
+  install({getUserMedia:()=>grant.promise});t.after(restore);
+  const run=new CaptureComparison();
+  const start=run.start({engine:'media',source:'microphone'});
+  await run.stop();
+  assert.equal(run.permissionPendingCleanup,true);
+  grant.resolve(new FakeStream([track]));
+  await assert.rejects(start,{name:'AbortError'});
+  await Promise.resolve();await Promise.resolve();
+  assert.equal(track.stopCalls,1);
+  assert.equal(run.permissionPendingCleanup,false);
+  assert.equal(run.resourcesReleased,true);
+  assert.equal(recorders.length,0);
+  assert.equal(fakeContexts.length,0);
+  assert.equal(run.events.some(v=>v.type==='started'),false);
+  assert.throws(()=>run.start(),/single-use/);
+  const next=new CaptureComparison();
+  await next.start({engine:'media',source:'synthetic'});
+  await next.stop();
+  assert.equal(next.state,'stopped');
+});
+
+test('G02-ADD-07 late rejection and repeated stop are safe while display grant is unresolved',async t=>{
+  const grant=deferred();
+  install({getDisplayMedia:()=>grant.promise});t.after(restore);
+  const run=new CaptureComparison();
+  const started=run.start({engine:'media',source:'display-audio'});
+  const stopped=await run.stop();
+  assert.equal(stopped.permissionPendingCleanup,true);
+  assert.equal((await run.stop()).state,'stopped');
+  grant.reject(new DOMException('user closed prompt','NotAllowedError'));
+  await assert.rejects(started,{name:'AbortError'});
+  await Promise.resolve();await Promise.resolve();
+  assert.equal(run.permissionPendingCleanup,false);
+  assert.equal(run.resourcesReleased,true);
+  assert.equal(fakeContexts.length,0);
+  assert.equal(recorders.length,0);
+  assert.equal(run.events.some(e=>e.type==='started'),false);
+});
+
+test('G02-ADD-07 late display grant releases both audio and video tracks exactly once',async t=>{
+  const grant=deferred(),audio=new FakeTrack(),video=new FakeTrack();video.kind='video';
+  install({getDisplayMedia:()=>grant.promise});t.after(restore);
+  const run=new CaptureComparison();
+  const started=run.start({engine:'media',source:'display-audio'});
+  await run.stop();
+  grant.resolve(new FakeStream([audio,video]));
+  await assert.rejects(started,{name:'AbortError'});
+  await Promise.resolve();await Promise.resolve();
+  assert.equal(audio.stopCalls,1);assert.equal(video.stopCalls,1);
+  assert.equal(run.resourcesReleased,true);
+  assert.equal(run.permissionPendingCleanup,false);
+  assert.equal(fakeContexts.length,0);assert.equal(recorders.length,0);
+});
