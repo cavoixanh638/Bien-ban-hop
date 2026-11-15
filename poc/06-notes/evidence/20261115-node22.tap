@@ -1,0 +1,142 @@
+TAP version 13
+# Subtest: search returns editor-aligned offsets across adjacent marks, paragraphs, and Unicode
+ok 1 - search returns editor-aligned offsets across adjacent marks, paragraphs, and Unicode
+  ---
+  duration_ms: 5.696134
+  type: 'test'
+  ...
+# Subtest: autosave drains late edits while commit is pending and reports saved only at final ACK
+ok 2 - autosave drains late edits while commit is pending and reports saved only at final ACK
+  ---
+  duration_ms: 3.457455
+  type: 'test'
+  ...
+# Subtest: autosave coalesces concurrent flush callers; dispose rejects dirty state
+ok 3 - autosave coalesces concurrent flush callers; dispose rejects dirty state
+  ---
+  duration_ms: 0.907207
+  type: 'test'
+  ...
+# Subtest: autosave maxWait starts at first dirty edit, even if continuous typing
+ok 4 - autosave maxWait starts at first dirty edit, even if continuous typing
+  ---
+  duration_ms: 284.494458
+  type: 'test'
+  ...
+# Subtest: invalid mark content never receives saved ACK
+ok 5 - invalid mark content never receives saved ACK
+  ---
+  duration_ms: 0.630519
+  type: 'test'
+  ...
+# Subtest: Fake IndexedDB: open upgrade, durable CRUD and reopen
+ok 6 - Fake IndexedDB: open upgrade, durable CRUD and reopen
+  ---
+  duration_ms: 55.652419
+  type: 'test'
+  ...
+# Subtest: Fake IndexedDB: aborted transaction does not publish snapshot/journal or advance revision
+ok 7 - Fake IndexedDB: aborted transaction does not publish snapshot/journal or advance revision
+  ---
+  duration_ms: 52.963004
+  type: 'test'
+  ...
+# Subtest: Fake IndexedDB: simultaneous cross-connection save CAS yields one writer
+ok 8 - Fake IndexedDB: simultaneous cross-connection save CAS yields one writer
+  ---
+  duration_ms: 50.382967
+  type: 'test'
+  ...
+# Subtest: Fake IndexedDB: legacy note upgraded on read without modifying backing store
+ok 9 - Fake IndexedDB: legacy note upgraded on read without modifying backing store
+  ---
+  duration_ms: 30.107869
+  type: 'test'
+  ...
+# Subtest: Mock lease stale release cannot revoke a new owner
+ok 10 - Mock lease stale release cannot revoke a new owner
+  ---
+  duration_ms: 0.765709
+  type: 'test'
+  ...
+# Subtest: Fake IndexedDB: simulated mid-transaction crash leaves only committed revision
+ok 11 - Fake IndexedDB: simulated mid-transaction crash leaves only committed revision
+  ---
+  duration_ms: 344.642371
+  type: 'test'
+  ...
+# Subtest: Fake IndexedDB: index/key error after writing snapshot aborts whole transaction
+ok 12 - Fake IndexedDB: index/key error after writing snapshot aborts whole transaction
+  ---
+  duration_ms: 38.182933
+  type: 'test'
+  ...
+# Subtest: Shared note reference and multiple timeSpan marks survive independent meeting lifecycle
+ok 13 - Shared note reference and multiple timeSpan marks survive independent meeting lifecycle
+  ---
+  duration_ms: 2.371524
+  type: 'test'
+  ...
+# Subtest: create / rename / reopen / remove meeting
+ok 14 - create / rename / reopen / remove meeting
+  ---
+  duration_ms: 10.078447
+  type: 'test'
+  ...
+# Subtest: lossless ProseMirror round trip / Vietnamese / marks / revision journal
+ok 15 - lossless ProseMirror round trip / Vietnamese / marks / revision journal
+  ---
+  duration_ms: 4.589212
+  type: 'test'
+  ...
+# Subtest: conflicting writers cannot silently overwrite
+ok 16 - conflicting writers cannot silently overwrite
+  ---
+  duration_ms: 3.17906
+  type: 'test'
+  ...
+# Subtest: failed commit cannot advance revision or journal
+ok 17 - failed commit cannot advance revision or journal
+  ---
+  duration_ms: 0.452096
+  type: 'test'
+  ...
+# Subtest: mock lease and acknowledgment state
+ok 18 - mock lease and acknowledgment state
+  ---
+  duration_ms: 1.098649
+  type: 'test'
+  ...
+# Subtest: save failure remains unsaved and retry succeeds
+ok 19 - save failure remains unsaved and retry succeeds
+  ---
+  duration_ms: 0.57633
+  type: 'test'
+  ...
+# Subtest: legacy schema fixture migrates on read without destructive rewrite
+ok 20 - legacy schema fixture migrates on read without destructive rewrite
+  ---
+  duration_ms: 0.571572
+  type: 'test'
+  ...
+# Subtest: newer schema is rejected, not downgraded
+ok 21 - newer schema is rejected, not downgraded
+  ---
+  duration_ms: 0.175708
+  type: 'test'
+  ...
+# Subtest: audio-reference veto protects shared recording
+ok 22 - audio-reference veto protects shared recording
+  ---
+  duration_ms: 0.724337
+  type: 'test'
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 945.26486
