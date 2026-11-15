@@ -36,3 +36,10 @@
 - Hand off final measured recommendation to commander to decide D13; do not alter shared tracker or status as worker.
 
 Previous checkpoint said NOT_STARTED; this update is an explicit partial handoff. Local working originals were held in `/mnt/data/backup_poc/`, and committed Github scripts are a compact adaptation rather than byte-identical.
+
+## WIP tiếp quản 15/11/2026 — trước benchmark dài
+
+- Đọc TRACKER.md của G00: công việc 07 chưa qua 3 ứng viên ZIP JS/browser; code/tested SHA của bản GitHub cũ chưa có bằng chứng exact checkout.
+- LOCAL_ONLY hiện tại: `/mnt/data/bien-ban-hop-07/poc/07-backup/` đang phát triển ZIP64 streaming JS/Web Streams, mock staging Node và adapter OPFS/IndexedDB. 13/13 Node tests PASS bản local WIP; benchmark 1 MiB Node PASS; chưa push nên chưa có Code SHA/Tested SHA mới.
+- Chromium Playwright navigation `localhost`, `https` route, `file://` bị `ERR_BLOCKED_BY_ADMINISTRATOR`: browser/OPFS NOT_RUN. npm registry/GitHub DNS từ container không truy cập được: fflate/client-zip/zip.js thực tế NOT_RUN, adapter phải đánh dấu unverified.
+- Chạy benchmark 512 MiB, 2 GiB/ZIP64 và kiểm đường dẫn âm tính trước khi push; giữ các PASS 10/10 Python reference cũ theo phạm vi cũ.
