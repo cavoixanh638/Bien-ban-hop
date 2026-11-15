@@ -8,6 +8,16 @@ const SOURCE_SET = new Set(SOURCES);
 const WORD = /[\p{L}\p{M}\p{N}_]/u;
 export const isWordChar = (char) => Boolean(char && WORD.test(char));
 
+// A redacted IME trace must NEVER contain a printable keystroke.
+export function safeKeyboardKey(key) {
+  const allowed = new Set(['Backspace', 'Delete', 'Enter', 'Escape', 'Tab', 'Insert',
+    'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End',
+    'PageUp', 'PageDown', 'Control', 'Alt', 'Meta', 'Shift',
+    'Process', 'Dead', 'Unidentified', 'Compose']);
+  if (allowed.has(key)) return key;
+  return typeof key === 'string' && key.length === 1 ? '[printable]' : '[other]';
+}
+
 export function normalizeContext(context = {}) {
   const source = SOURCE_SET.has(context.source) ? context.source : 'unlinked';
   const recordingId = typeof context.recordingId === 'string' && context.recordingId.trim()

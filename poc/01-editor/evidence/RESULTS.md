@@ -21,7 +21,7 @@ node --test tests/policy.test.mjs
 ```
 
 - JS syntax: **PASS** với các tệp liệt kê.
-- Node built-in tests: **23/23 PASS, 0 FAIL**, chạy dựa trên các hàm logic phụ thuộc 0 thư viện; log TAP tại [`policy-node22.tap.md`](policy-node22.tap.md), chạy từ bản sao code/test độc lập không cần node_modules (không phải checkout GitHub sạch hoặc CI).
+- Node built-in tests: **24/24 PASS, 0 FAIL**, chạy dựa trên các hàm logic phụ thuộc 0 thư viện; log TAP tại [`policy-node22.tap.md`](policy-node22.tap.md), chạy từ bản sao code/test độc lập không cần node_modules (không phải checkout GitHub sạch hoặc CI).
 - `npm install`, `npm run build`, Playwright browser test: **NOT_RUN** do npm registry không truy cập được.
 - P95 gõ với trình duyệt và Unicode composition của máy Windows: **NOT_RUN**.
 - Các phép đo Node chỉ kiểm **quy tắc thuần**; `TC02 synthetic` chỉ là 120 bước logic, **không phải** gõ trong 120 giây qua bộ gõ thật.
@@ -42,4 +42,4 @@ node --test tests/policy.test.mjs
 | 10 | PASS (paste/unlinked policy) | NOT_RUN | NOT_RUN | NOT_RUN |
 | 11 | PASS (count/P95 pure) | NOT_RUN | NOT_RUN | NOT_RUN |
 
-**Đánh giá hiện tại: IN_PROGRESS, không đủ READY_FOR_REVIEW.** Cần máy Windows + thử 4 cấu hình IME, browser build, kiểm mark xuyên edit/undo/redo và đo P95/memory/JSON thật. Không phát hành hoặc tích hợp chỉ nhờ 23 test pure logic.
+**Đánh giá hiện tại: IN_PROGRESS, không đủ READY_FOR_REVIEW.** Cần máy Windows + thử 4 cấu hình IME, browser build, kiểm mark xuyên edit/undo/redo và đo P95/memory/JSON thật. Không phát hành hoặc tích hợp chỉ nhờ 24 test pure logic.

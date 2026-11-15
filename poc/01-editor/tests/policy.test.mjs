@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   SOURCES, normalizeContext, makeAnchor, sameAnchor, wordRange, isWordChar,
-  hasWordBoundary, shouldCoalesce, shouldRetainWordAnchor, isAllowedMeetingMark,
+  hasWordBoundary, shouldCoalesce, shouldRetainWordAnchor, isAllowedMeetingMark, safeKeyboardKey,
   getJsonMetrics, p95,
 } from '../src/policy.mjs';
 
@@ -141,4 +141,12 @@ test('TC11: metrics and P95 counted from JSON not DOM assumptions', () => {
   assert.equal(m.unlinkedChars, 1);
   assert.equal(p95([]), null);
   assert.equal(p95(Array.from({ length: 100 }, (_, i) => i + 1)), 95);
+});
+
+test('TC03 trace privacy: printable keys are redacted while IME control signals remain', () => {
+  for (const key of ['a', 'ư', 'ê', 'ó', '1', ' ']) assert.equal(safeKeyboardKey(key), '[printable]');
+  for (const key of ['Backspace', 'Delete', 'ArrowLeft', 'Process', 'Dead', 'Enter']) {
+    assert.equal(safeKeyboardKey(key), key);
+  }
+  assert.equal(safeKeyboardKey('SomeUnknownKey'), '[other]');
 });

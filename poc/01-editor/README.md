@@ -47,6 +47,8 @@ npm run build
 4. Bật nút giả lập tải nặng 15 giây trong PoC, tiếp tục gõ sửa; thử thêm với ứng dụng thực chạy nền và ghi rõ cấu hình tải. Xem lỗi gõ, mốc sai, lag. Thu metric JSON/TextNode/DOM wrapper, P95 `beforeinput→requestAnimationFrame` (proxy đo UI), P95 append và kích thước JSON trên đoạn dài; **ngưỡng mong muốn P95 <100 ms** trên máy đo, chưa chứng minh.
 5. Điền toàn bộ metadata ở panel bên phải rồi bấm **Tải trace đã lược nội dung gõ** và **Xuất NoteDocument JSON**. Trace đã lược `event.data` và text nhập, nhưng vẫn **tự kiểm trước khi chia sẻ**. Chạy `npm run trace:check -- path/to/trace.json`. Tạo bảng so sánh các anchorId/source/audioOffsetMs trước-sau edit/Undo/Redo. Chỉ reviewer xác nhận log có nguồn IME thực và không mất dữ liệu mới có quyền chuyển trạng thái gate.
 
+Các phím in được (kể cả ký tự Việt) được lược thành `[printable]`; chỉ các phím điều khiển (Backspace, Delete, mũi tên...) còn tên để phân tích IME.
+
 Trace có thể được sinh trong demo trên máy không phải Windows; kiểm tra cấu trúc trace **không chứng minh** đã chạy bộ gõ thật. `testEnvironment` là trường nhập tay, cần đối chiếu screenshot/cấu hình. Cần ghi cả các kết quả FAIL và nguyên nhân.
 
 ## Kiểm thử tương ứng

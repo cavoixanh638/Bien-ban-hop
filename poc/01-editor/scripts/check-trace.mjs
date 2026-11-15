@@ -12,7 +12,7 @@ if (!file) {
     if (!trace.testEnvironment?.os || !trace.testEnvironment?.browser
       || !trace.testEnvironment?.ime || !trace.testEnvironment?.inputMode) errors.push('missing Windows/browser/IME fields');
     if (!Array.isArray(trace.events)) errors.push('events missing');
-    if ((trace.events || []).some(event => 'data' in event || 'typedText' in event || 'clipboardHtml' in event)) {
+    if ((trace.events || []).some(event => 'data' in event || 'typedText' in event || 'clipboardHtml' in event || (event.kind === 'keydown' && event.key && !['[printable]','[other]','Backspace','Delete','Enter','Escape','Tab','Insert','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown','Control','Alt','Meta','Shift','Process','Dead','Unidentified','Compose'].includes(event.key)))) {
       errors.push('raw content found in trace');
     }
     const types = new Set((trace.events || []).map(e => e.kind));

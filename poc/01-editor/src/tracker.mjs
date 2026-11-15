@@ -3,7 +3,7 @@ import { DOMSerializer, Fragment, Slice } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import {
   getJsonMetrics, hasWordBoundary, isAllowedMeetingMark, isWordChar,
-  makeAnchor, normalizeContext, p95, sameAnchor, shouldCoalesce, shouldRetainWordAnchor, wordRange,
+  makeAnchor, normalizeContext, p95, safeKeyboardKey, sameAnchor, shouldCoalesce, shouldRetainWordAnchor, wordRange,
 } from './policy.mjs';
 
 const trackerKey = new PluginKey('mochop-input-tracker');
@@ -200,7 +200,7 @@ export class InputTracker {
       setTimeout(() => this.finishComposition(), 0);
     }
     if (name === 'keydown' && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) this.reset('keyboard-selection');
-    this.log(name, { inputType: event.inputType || undefined, key: name === 'keydown' ? event.key : undefined,
+    this.log(name, { inputType: event.inputType || undefined, key: name === 'keydown' ? safeKeyboardKey(event.key) : undefined,
       from: view.state.selection.from, to: view.state.selection.to,
       dataLength: typeof event.data === 'string' ? event.data.length : undefined,
       isComposing: this.composing });
