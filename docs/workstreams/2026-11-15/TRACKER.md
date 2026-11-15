@@ -8,7 +8,7 @@ Baseline `6142f56a6efdb27aa9445920c9321f7930c0d5fd`. Trạng thái dòng này l�
 |---|---|---|---|---|---|---|
 | Gemini 00-command | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/CHECKPOINT.md) | READY_FOR_REVIEW | `89e88347` | — | V8 shim 17/17; clean Node NOT_RUN | Harness độc lập đã push; thiếu Node chạy từ checkout đúng SHA |
 | Gemini 01-editor | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-01-editor/docs/workstreams/2026-11-15/checkpoints/01-editor.md) | IN_PROGRESS | `d8ca16fa` | — | Node policy 23/23 local | Tiptap build/Playwright/IME Windows NOT_RUN |
-| Gemini 02-capture | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-02-capture/docs/workstreams/2026-11-15/checkpoints/02-capture.md) | IN_PROGRESS | `5c107a59` | — | NOT_RUN | Chưa có poc/02-capture/ trên HEAD; cần commit demo + PCM/capture test |
+| Gemini 02-capture | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-02-capture/docs/workstreams/2026-11-15/checkpoints/02-capture.md) | PARTIAL / BROWSER_BLOCKED | `8a9780cf` | local source `6898ec9b`; clean SHA NOT_RUN | Node 11/11; 3h metadata only; browser NOT_RUN | Đã push 18 file PoC; G02-ADD-01..04 cần fix/test; ghi 3h thực và đối chứng engine chưa chạy |
 | Gemini 03-opfs | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-03-opfs/docs/workstreams/2026-11-15/checkpoints/03-opfs.md) | IN_PROGRESS | `e23593ba` | — | Node reference 10/10 local | Simulation 3h @1kHz; exact GitHub SHA/OPFS browser NOT_RUN; seek ~1.5s |
 | Gemini 04-timeline | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-04-timeline/docs/workstreams/2026-11-15/checkpoints/04-timeline.md) | READY_FOR_REVIEW | `7a20de0e` | — | Node TS fixture 16/16 local | PoC độc lập; clean checkout SHA và capture live NOT_RUN |
 | Gemini 05-player | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-05-player/docs/workstreams/2026-11-15/checkpoints/05-player.md) | IN_PROGRESS | `b9ac38fa` | — | Node reference 9/9 local | BUG: resolve nhầm meetingMs vs audioOffsetMs; fixture thiếu media range/segmentRefs; browser C1/C2 NOT_RUN |
@@ -112,3 +112,44 @@ Kiểm cổng Gói 1.1 và bằng chứng thực trên từng SHA. Chốt các a
 1. Fix ADD-01/02 và bổ sung deterministic tests; xử lý ADD-03 và hardening ADD-04 trong phạm vi PoC; run `npm test` trên đúng checkout, ghi SHA/stdout.
 2. Chạy 7 Playwright scenarios và các negative mới trên Chrome/Edge có localhost được phép; lưu version/screenshot/trace, sửa FAIL.
 3. Giữ việc Pages HTTPS/origin riêng và tích hợp capture/OPFS thực cho **đợt tích hợp được ủy quyền**; không tự deploy hay sửa nhánh khác.
+
+## G02-capture — kiểm tra mã mới sau bàn giao (15/11/2026)
+
+- Branch `gemini/20261115-02-capture` HEAD quan sát `8a9780cf01e3b7e0a014ddf76bdbf9db1f2ad7e8`, Code SHA `6898ec9b11c296427f11479c31514ecda13a08b4`. Git-tree có **18 tệp PoC** cùng checkpoint riêng, không sửa các luồng khác.
+- Checkpoint chính G02 báo `PARTIAL/BROWSER_BLOCKED`, Node 11/11 PASS từ mã đã bàn giao, 3 giờ chỉ duyệt metadata 518.4 triệu frame (không ghi/đọc 3 giờ), browser Chromium `NOT_RUN` vì URLBlocklist. Không đánh `DONE` hoặc PASS Gói 1.2.
+- **Bằng chứng reviewer mới:** thực thi chính source GitHub blob `2fe32254f7871c144ff0f8e3f3567f6323c9c461` (controller) và `9163ce0d1cd30cc18875d3132b43e406d5191683` (processor) trong V8 với thiết bị/ArrayBuffer fake. Đây là *controlled JS mock*, **không phải test micro/browser**, không tự áp status PASS/FAIL cho TC thực địa.
+
+### G02-ADD-01 — High/Critical candidate: race Start / Stop khi quyền micro chưa được cấp
+
+- **Source:** `poc/02-capture/src/controller.mjs`: `start()` chờ `getUserMedia()`/setup nhiều bước nhưng không kiểm lại `this.stopping`; `stop()` có thể hoàn tất khi chưa có context/media; `index.html` chỉ disable nút Start sau `await run.start()`, nên double-click cũng có thể khởi tạo hai session và mất handle session trước.
+- **Reproducer V8 trên đúng mã:** `run.start({engine:'media',source:'microphone'})` với promise quyền mic hoãn; gọi `await run.stop()`; sau đó resolve quyền micro. Đã quan sát `mediaStartCount=1` **sau Stop**, `mediaStopCount=0`, `trackStopCount=0`, `contextCloseCount=0`, gọi Stop lần hai chỉ lấy lại `stopPromise` cũ. Nguy cơ micro tiếp tục chạy sau khi người dùng đã dừng.
+- **Yêu cầu:** state machine `idle/starting/capturing/stopping/stopped/failed` hoặc generation/abort token; serialize start/stop/permission, dừng và release mọi stream phát sinh khi stop trước ready; disable Start ngay khi click, không ghi đè `run` khi đang khởi tạo; track-ended/start-error cũng đi qua cleanup duy nhất.
+- **Regression:** deferred getUserMedia permission; Stop trước grant; double-click Start; revoke permission/setup fail; Stop khi chưa ready; khi kết thúc không còn `MediaStreamTrack` live, context/recorder/timer/worklet/worker tồn dư, không khởi động sau stop; lưu test output đúng SHA.
+
+### G02-ADD-02 — High: lỗi Stop/timeout bỏ qua cleanup (đã tái hiện)
+
+- **Source:** `poc/02-capture/src/controller.mjs` `stop()` chờ `media.stop()` rồi `this.final` (sink drain), sau đó mới `AudioContext.close()` và `getTracks().stop()`; hiện **không có finally** bao quanh chuỗi await.
+- **Reproducer V8:** ép `media.stop()` reject: `stopError='forced MediaRecorder.stop failure'`; `contextClosed=false`; `trackStopped=false`. Tương tự Worker final reject/timeout có thể bỏ qua cleanup.
+- **Yêu cầu:** `try/finally` dọn mic/screen tracks, oscillator, AudioContext, MessagePorts/worker handle, với trạng thái fail-closed và lỗi hiển thị; preserve diagnostic WAV export chỉ khi stop thành công, dùng `dispose()` có chủ đích sau export. Stop idempotent kể cả khi hỏng, không báo hoàn tất lưu giả.
+- **Regression:** media.stop reject/timeout, worker crash/timeout, track ended giữa Stop, cleanup được gọi chính xác một lần và không còn track live; UI báo lỗi rõ.
+
+### G02-ADD-03 — High integration gap: ánh xạ thời điểm nhập ↔ sample chưa đủ
+
+- **Source:** `poc/02-capture/src/controller.mjs` `results().clockMapping` chỉ trả **một** điểm `{inputMonoMs:startMonoMs,sampleIndex:0}`; `inputMonoAtStart/contextTimeAtStart` được lấy trước setup bất đồng bộ và Worklet mới nhận lệnh Start sau đó. Worklet `paused/resumed` có `sampleIndex/contextTimeSec`, nhưng chưa tạo mapping points đã hiệu chuẩn.
+- **Probe V8:** `results().clockMapping.length === 1`. Luồng G04 `inputToSample` yêu cầu **ít nhất hai** điểm mapping để nội suy, và sau Pause phải phân biệt input monotonic / meeting time với media frame cursor.
+- **Yêu cầu:** Worklet START ACK và mốc sample thật, mapping sau pause/resume, định kỳ và cuối phiên (sampleIndex/frameCursor + monotonic input correlation); không suy mapping từ thời điểm nhận message trễ trên main, không tự nối qua gap/pause. Thử drift/jitter và event delay; hợp đồng COMMON giữ nguyên.
+- **Regression:** tạo 2+ calibrated points có ý nghĩa, pause 10s không cộng 10s vào media, resume không gán nhầm mốc note sang sample trước/sau; sample drift ±100 ppm, delayed message, đoạn gap/unavailable, đối chiếu G04 adapter **bằng fixture riêng**, không import code của worker khác.
+
+### G02-ADD-04 — Medium/High resilience: không giới hạn số frame trong cấu hình bộ đệm
+
+- **Source:** `poc/02-capture/src/capture-processor.js` case `attach` kiểm `batchFrames` chỉ integer ≥128, **không có giới hạn trên**. Sau đó `poolSize × batchFrames × channels × 4` cấp phát trên audio thread. Browser UI chọn sẵn 2048/4096 nhưng public `CaptureComparison.start(config)` có thể nhận số rất lớn.
+- **Probe V8:** `attach(batchFrames=100000000,poolSize=2,channels=1)` chấp nhận và yêu cầu cấp hai buffer **400,000,000 bytes mỗi cái** (FakeArrayBuffer, không cấp phát thật).
+- **Yêu cầu:** whitelist `2048/4096` cho PoC hoặc kiểm hard byte ceiling tổng pool + queue; config lỗi trả `invalid-configuration` trước bất kỳ allocation nào; validate recordingId/finite config và không crash AudioWorklet.
+- **Regression:** 0/127/-1/float/NaN/`1e8` frames, pool 2..64, channels 1..2; zero allocations for invalid configs.
+
+### G02-ADD-05 — Benchmark completeness (đã biết, không gán lỗi mới)
+
+- `MediaRecorderProbe` giữ tối đa 20 MB trong `parts`, nếu vượt thì `truncated=true` và `getBlob()` không xuất bản đầy đủ; bên PCM diagnostic chỉ giữ tối đa 8 giây WAV prefix. Đây là giới hạn được công bố minh bạch, **không thể dùng hai đầu ra hiện tại để chứng minh phát/seek toàn bộ phiên 3 giờ**. Với engine đối chứng nên có fixture test lưu theo luồng/rolling segments, chỉ giữ buffer có giới hạn, đo bytes/cadence và đọc/tua điểm đầu/giữa/cuối mà không kéo 3 giờ vào RAM.
+- Chạy Chrome/Edge Windows thực 3h với nguồn xác định; audio track thực của TC21 có hỗ trợ thì test, không hỗ trợ phải đánh `UNSUPPORTED/NOT_RUN`, không bịa PASS. OPFS journal/crash của G03 không bị chuyển trách nhiệm sang G02.
+
+**Điều kiện bàn giao G02 vòng tiếp:** owner sửa ADD-01..04 và bổ sung negative tests; chạy `npm test` + `npm run test:virtual3h` trên **đúng SHA đã push** và ghi log/checkpoint. Nếu browser/Windows còn bị chặn, ghi `NOT_RUN` và chuyển kịch bản thực địa, không tuyên bố DONE Gói 1.2. Không chỉnh COMMON hoặc branch worker khác.
