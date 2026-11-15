@@ -70,3 +70,11 @@ npm run dev
 Sau thử Windows: lưu trace đã lược chữ + NoteDocument/screenshot/cấu hình máy; đối chiếu bảng TC, sửa lỗi nếu phát hiện và cập nhật checkpoint theo tested SHA mới. Chỉ đổi `READY_FOR_REVIEW` khi **toàn bộ bằng chứng bắt buộc** Gói 1.1 có thể kiểm độc lập.
 
 WIP/chưa push: **không** · Chặn bên ngoài: **cài npm/browser tại máy có mạng; chạy IME Windows thật**.
+
+## Tiếp tục theo G00 TRACKER — lượt kiểm 15/11/2026
+
+- **HEAD trước sửa:** `f3b5a436ea8b9a3735156391dca16281b28e9205`; 15 Git blobs trong `poc/01-editor/` đối chiếu bằng `git hash-object` với GitHub tree đều trùng.
+- Đọc trực tiếp `TRACKER.md` G00 trên nhánh 00: không có bug logic cụ thể mới gán cho 01, nhưng yêu cầu build/e2e/IME Windows thật, 120 giây một đoạn, dấu tiếng Việt và mốc trước/sau. Không đổi COMMON hoặc STATUS.
+- Node `v22.16.0` trên bản source local có Git blob trùng HEAD: `node --test tests/policy.test.mjs` **24 PASS / 0 FAIL / exit 0**; không kế thừa cho Tiptap runtime.
+- Git clone/npm registry trong Linux sandbox hiện **không phân giải DNS ngoài**; Tiptap dependencies/chạy Playwright Tiptap đang **NOT_RUN**. Có Chromium và Python Playwright, có thể bổ sung browser-native event probe độc lập; không thay cho Windows/UniKey/EVKey.
+- Đang harden timeSpan provenance, clipboard bất biến/trust, multi-step mapping, trace privacy; sẽ chạy hồi quy theo source SHA mới và push đúng phạm vi.
