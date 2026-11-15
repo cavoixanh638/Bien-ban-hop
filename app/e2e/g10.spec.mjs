@@ -59,3 +59,23 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
   await expect(page.locator('#anchor-status')).toContainText('Đang phát từ',{timeout:20000});
   expect(errors).toEqual([]);
 });
+
+test('G10 PWA production shell reloads offline without caching meeting notes',async({page,context})=>{
+  test.skip(process.env.G10_PREVIEW!=='1','This checks the production build Service Worker only');
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('/');
+  await expect(page.locator('.tiptap')).toBeVisible();
+  await page.evaluate(async()=>{
+    await navigator.serviceWorker.ready;
+    if(!navigator.serviceWorker.controller)await new Promise((resolve,reject)=>{
+      const timeout=setTimeout(()=>reject(Error('Service Worker did not claim current client')),15000);
+      navigator.serviceWorker.addEventListener('controllerchange',()=>{clearTimeout(timeout);resolve();},{once:true});
+    });
+  });
+  await page.reload();await expect(page.locator('.tiptap')).toBeVisible();
+  await context.setOffline(true);
+  await page.reload({waitUntil:'domcontentloaded'});
+  await expect(page.locator('.tiptap')).toBeVisible({timeout:15000});
+  await context.setOffline(false);
+  expect(errors).toEqual([]);
+});
