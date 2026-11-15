@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#152b35">
+  <meta name="description" content="Mốc Họp — ghi chú trung tâm, ghi âm và nghe lại theo từng đoạn chữ.">
+  <title>Mốc Họp • Bản tích hợp thử nghiệm G10</title>
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-logo">M</div><div><strong>Mốc Họp</strong><small>Bản tích hợp thử nghiệm</small></div></div>
+      <div class="side-section">
+        <div class="side-heading"><span>Cuộc họp của tôi</span><button id="new-meeting" title="Tạo cuộc họp">＋</button></div>
+        <div id="meeting-list" class="meeting-list" role="list"></div>
+      </div>
+      <div class="sidebar-foot"><span class="dot"></span> Lưu tại trình duyệt của thiết bị này</div>
+    </aside>
+    <main class="workspace">
+      <header class="topbar">
+        <div><div class="eyebrow">BIÊN BẢN VÀ GHI CHÚ</div><input id="meeting-title" aria-label="Tên cuộc họp" placeholder="Tên cuộc họp"></div>
+        <div class="top-status"><span id="writer-status" class="chip">Chờ tải</span><span id="save-status" class="chip">Chưa tải</span></div>
+      </header>
+      <div class="toolbar" aria-label="Công cụ soạn thảo">
+        <button data-action="bold" title="In đậm (Ctrl+B)"><b>B</b></button>
+        <button data-action="italic" title="In nghiêng (Ctrl+I)"><i>I</i></button>
+        <button data-action="bulletList" title="Danh sách chấm">• ≡</button>
+        <button data-action="orderedList" title="Danh sách số">1. ≡</button>
+        <div class="separator"></div>
+        <button data-action="undo" title="Hoàn tác (Ctrl+Z)">↶</button>
+        <button data-action="redo" title="Làm lại (Ctrl+Y)">↷</button>
+        <span class="toolbar-hint">Gõ tự nhiên như một tài liệu. Nhấp chữ có mốc để nghe lại sau khi dừng thu.</span>
+      </div>
+      <section class="paper-wrap"><div class="paper">
+        <div id="editor" aria-label="Nội dung ghi chú cuộc họp"></div>
+      </div></section>
+      <div id="message" class="message" role="status" aria-live="polite"></div>
+    </main>
+    <aside class="panel">
+      <div class="panel-title">ÂM THANH</div>
+      <div class="rec-state"><div id="rec-light" class="rec-light"></div><div><strong id="rec-label">Chưa ghi âm</strong><div id="rec-clock">00:00:00</div></div></div>
+      <div class="controls"><button id="rec-start" class="primary">● Bắt đầu ghi</button><button id="rec-pause" disabled>Tạm dừng</button><button id="rec-stop" disabled>Kết thúc</button></div>
+      <div class="panel-small">Ghi micro bằng AudioWorklet → OPFS/IndexedDB. Chỉ báo dữ liệu âm thanh an toàn sau ACK flush.</div>
+      <div class="panel-title">NGHE LẠI</div>
+      <div class="play-row"><button id="play-stop" title="Dừng phát">■ Dừng</button><label>Tốc độ <select id="play-rate"><option value="1">1,0×</option><option value="0.9">0,9×</option><option value="0.75">0,75×</option></select></label></div>
+      <label class="field">Nghe lùi trước mốc<select id="preroll"><option value="0">Không</option><option value="3000">3 giây</option><option value="5000" selected>5 giây</option><option value="10000">10 giây</option></select></label>
+      <div id="anchor-status" class="anchor-status">Chọn một đoạn chữ đã gắn mốc để nghe lại.</div>
+      <div class="panel-title">TỆP & XUẤT</div>
+      <div class="exports"><button data-export="docx">Word</button><button data-export="txt">TXT</button><button data-export="md">Markdown</button><button data-export="csv">CSV</button></div>
+      <button id="backup" class="wide">Sao lưu .mochop (ZIP streaming)</button>
+      <label class="field"><input type="checkbox" id="include-time"> Kèm mốc thời gian trong file xuất</label>
+      <div class="panel-divider"></div>
+      <div id="technical-status" class="technical">Chưa có phiên ghi.</div>
+      <p class="experimental">G10 • Bản thử nghiệm chưa nghiệm thu TC01–TC38. Không dùng cho cuộc họp quan trọng khi chưa thử trên thiết bị thực.</p>
+    </aside>
+  </div>
+  <script type="module" src="./src/main.mjs"></script>
+</body>
+</html>
