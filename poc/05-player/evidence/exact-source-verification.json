@@ -1,0 +1,47 @@
+{
+  "codeSHA": "a85c2d526db4ed2ef01a654cf9f5d1280fcf852e",
+  "method": "reconstructed clean directory with all source Git blob SHA-1 equal GitHub, git clone unavailable due DNS",
+  "os": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "node": "v22.16.0",
+  "chromium": "144.0.7559.96",
+  "nodeTests": "10/10 PASS",
+  "browserTests": {
+    "passed": 10,
+    "failed": 0
+  },
+  "fft": [
+    {
+      "engine": "C1",
+      "rate": 0.75,
+      "peakHz": 220.0
+    },
+    {
+      "engine": "C1",
+      "rate": 0.9,
+      "peakHz": 220.0
+    },
+    {
+      "engine": "C2",
+      "rate": 0.75,
+      "peakHz": 165.0
+    },
+    {
+      "engine": "C2",
+      "rate": 0.9,
+      "peakHz": 198.0
+    }
+  ],
+  "sourceBlobSHAs": {
+    "timeline.js": "0cb08f6c9bd99de563006dd33cfabbc69d860ba5",
+    "player.js": "ef7a12533a050c3ee014775b5858828c136c9fe8",
+    "player.test.js": "087eba39b7e691ebe726952c168e10bc85850c1b",
+    "index.html": "7be9c36020d1765a53fcf56e8f2b4d06674ba1db",
+    "browser_smoke.py": "6755eee6ef421bd0a6d25ce6b314e35213dd8618",
+    "browser_benchmark.py": "073a6ac3623dc2b58fd3cc026b43b2db97f15fae",
+    "README.md": "a534b15d94ad2427b8f29b891151a75188f365a4",
+    "package.json": "a368917215c2873cbeed3dc4c2b34291ba97cdc5"
+  },
+  "createdAtUTC": "2026-11-15T11:33:16.240026+00:00",
+  "windowsRealDevice": "NOT_RUN",
+  "sampleAccurateExternalLoopback": "NOT_RUN"
+}
