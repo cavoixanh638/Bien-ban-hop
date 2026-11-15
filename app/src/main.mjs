@@ -55,6 +55,12 @@ function updateAnchor(){
   const run=state.run;if(!run?.editor)return;
   const pos=readAnchorAtCursor(run.editor.state,run.tracker.allowed);
   const a=pos.anchor;
+  // Selection-update rAF may run after the click handler; never erase a live
+  // playback status with the static mark-inspector message.
+  if(player.playing && a?.recordingId===player.recordingId){
+    $('anchor-status').textContent='Đang phát từ '+timing(player.startOffsetMs)+' · '+player.recordingId;
+    return;
+  }
   $('anchor-status').textContent=!a?'Chọn một đoạn chữ có mốc để nghe lại':
     pos.status==='ambiguous'||pos.status==='mixed'?'Vùng chọn có nhiều mốc hoặc ranh giới không rõ nguồn':
     run.tracker.pendingLinks.has(a.anchorId)?'Mốc đang chờ dữ liệu âm thanh được xác nhận. Ghi chú vẫn được lưu.':
