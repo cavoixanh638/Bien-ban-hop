@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mốc Họp · Editor PoC 1.1</title>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="brand">MỐC HỌP <span>PoC 1.1 · Editor / timeSpan</span></div>
+      <p>Gõ tự nhiên như Word. Mốc được gắn theo từng cụm, không cần xuống dòng hay bấm Lưu.</p>
+      <div class="warning">Bản thử sử dụng timeline giả lập, KHÔNG thu âm và KHÔNG tự lưu dữ liệu bền vững. Không nhập nội dung họp thật hoặc dữ liệu nhạy cảm.</div>
+    </header>
+    <main>
+      <section class="writing-area" aria-label="Soạn thảo ghi chú">
+        <div class="toolbar" aria-label="Định dạng văn bản">
+          <button id="paragraph" title="Đoạn văn">¶</button><button id="heading" title="Tiêu đề 2">H2</button>
+          <button id="bold" title="In đậm Ctrl+B"><b>B</b></button><button id="italic" title="In nghiêng Ctrl+I"><i>I</i></button>
+          <button id="strike" title="Gạch ngang">S̶</button><button id="bullet" title="Danh sách dấu đầu dòng">•</button>
+          <button id="ordered" title="Danh sách đánh số">1.</button>
+          <span class="toolbar-separator"></span><button id="undo" title="Hoàn tác Ctrl+Z">↶</button>
+          <button id="redo" title="Làm lại Ctrl+Y">↷</button>
+        </div>
+        <div id="editor" aria-label="Nội dung ghi chú" role="textbox" aria-multiline="true"></div>
+        <p class="hint">Đường gạch chấm mờ dưới chữ biểu thị các cụm có timeSpan. Nhấp thường để đặt con trỏ, không bắt đầu phát. Hỗ trợ dán nội bộ có nguồn nếu clipboard giữ được định dạng riêng.</p>
+      </section>
+      <aside>
+        <h2>Audio giả lập</h2>
+        <label for="source">Nguồn của chữ mới</label>
+        <select id="source"><option value="live_recording">Micro đang ghi</option><option value="imported_playback">Đang phát file nhập</option><option value="playback_paused">File đang tạm dừng</option><option value="unlinked">Không có nguồn</option></select>
+        <label for="coverage">Coverage (mô phỏng)</label>
+        <select id="coverage"><option value="valid">Vùng hợp lệ</option><option value="gap">Gap / mất audio</option><option value="missing">File thiếu</option><option value="unavailable">Chưa có nguồn</option></select>
+        <label for="offset">Mốc audio đầu vào <output id="offset-value">45 giây</output></label>
+        <input type="range" id="offset" min="0" max="3600000" step="1000" value="45000">
+        <div class="muted" id="context-preview"></div>
+        <h2>Mốc tại con trỏ</h2>
+        <pre id="anchor-inspector" aria-live="polite">Chưa có mốc</pre>
+        <h2>Đo lường</h2>
+        <pre id="metrics"></pre>
+        <button id="metrics-refresh">Đo lại</button>
+        <h2>Thu trace Windows thực</h2>
+        <label for="os">Windows</label><input id="os" value="Windows 11 (điền build)" spellcheck="false">
+        <label for="browser">Chrome / Edge phiên bản</label><input id="browser" value="Ghi số phiên bản thực" spellcheck="false">
+        <label for="ime">Bộ gõ</label><select id="ime"><option>UniKey</option><option>EVKey</option><option>Không dùng IME</option></select>
+        <label for="ime-version">Phiên bản IME</label><input id="ime-version" placeholder="VD: 4.6 RC2" spellcheck="false">
+        <label for="input-mode">Kiểu gõ</label><select id="input-mode"><option>Telex</option><option>VNI</option></select>
+        <label for="scenario">Kịch bản</label><select id="scenario"><option>trường / tiếng</option><option>Backspace+Insert không composition</option><option>Đổi dấu muộn</option><option>Gõ nhanh / chậm</option><option>Giữa hai mốc</option><option>Bold/italic</option><option>Cut/paste/Undo/Redo</option><option>CPU tải nặng</option></select>
+        <div class="actions">
+          <button id="start-load">Giả lập máy tải nặng 15 s</button>
+          <small id="load-state">no load</small>
+        </div>
+        <div class="actions"><button id="export-document">Xuất NoteDocument JSON</button><button id="export-trace">Tải trace đã lược nội dung gõ</button></div>
+        <small>Trace chỉ ghi loại sự kiện, vị trí, độ dài, metadata mốc; không lưu ký tự vừa gõ hay HTML clipboard. Kiểm tra lại tệp trước khi chia sẻ.</small>
+      </aside>
+    </main>
+    <footer>Đây là phép thử quyết định Gói 1.1, chưa phải bản ứng dụng phát hành.</footer>
+  </div>
+  <script type="module" src="/src/main.mjs"></script>
+</body>
+</html>
