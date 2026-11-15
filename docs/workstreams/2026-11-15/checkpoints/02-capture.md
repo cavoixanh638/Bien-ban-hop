@@ -1,42 +1,52 @@
-# Checkpoint · 02-capture
+# Checkpoint · G02 — Thu âm và vận chuyển dữ liệu
 
-- Chủ sở hữu: worker 02-capture · Thu âm và vận chuyển dữ liệu
-- Nhánh: `gemini/20261115-02-capture`
-- Baseline: `6142f56a6efdb27aa9445920c9321f7930c0d5fd`
-- Trạng thái: **PARTIAL / BROWSER_BLOCKED** (PoC mã nguồn đã bàn giao, **không DONE**, chưa đủ tiêu chí nghiệm thu)
-- Code SHA: `6898ec9b11c296427f11479c31514ecda13a08b4`
-- Tested code: nội dung 18 tệp trong commit trên; Node.js 22.16.0
-- Kết quả: **11/11 PASS** Node unit/integration; metadata 3 giờ **PASS_METADATA_ONLY**; Chromium browser benchmark **NOT_RUN — BLOCKED_ENV**.
-- Môi trường: Linux x86_64; Chromium headless 144.0.7559.96 có quản trị URLBlocklist `["*"]`, chặn localhost. **Không phải Windows Chrome/Edge thực**; không có micro/online audio track thật.
+**Bản chốt vòng sửa theo G00 TRACKER — 15/11/2026**
 
-Entrypoint: [02-capture](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/02-capture.md) · [COMMON](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/COMMON.md).
+| Trường | Giá trị |
+|---|---|
+| Owner | G02-capture; duy nhất nhánh `gemini/20261115-02-capture` |
+| Baseline | `6142f56a6efdb27aa9445920c9321f7930c0d5fd` |
+| Code SHA | **`0083a670e5537952899afb247949bc71442b46b8`** |
+| Tested SHA | **`0083a670e5537952899afb247949bc71442b46b8` — exact source-blob equivalent**, kiểm 20/20 file mã/test khớp SHA từ Git tree (không phải `git clone` checkout có metadata) |
+| Bằng chứng SHA | `26eb4bf8812227f67b4f5b68277bfa6c02b0bdea` — `poc/02-capture/evidence/verified-tree-round2.md` |
+| Trạng thái | **PARTIAL / NEEDS_BROWSER_AND_WINDOWS_EVIDENCE; NOT DONE**; không nghiệm thu Gói 1.2 hay ứng dụng tích hợp |
+| Runtime | Linux x86_64, Node.js v22.16.0, Chromium headless 144.0.7559.96; không có thiết bị micro hoặc Windows Chrome/Edge thật |
+| Code/tests WIP | **NONE** — các tệp mã, test, evidence đã push; không merge main/deploy |
 
-## Đã làm / code bàn giao
+Entrypoint: [02-capture](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/02-capture.md) · [TRACKER của G00](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/TRACKER.md) · [COMMON cố định](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/COMMON.md).
 
-1. [Mã PoC + demo](https://github.com/cavoixanh638/Bien-ban-hop/tree/gemini/20261115-02-capture/poc/02-capture): AudioWorklet f32le mono → MessageChannel riêng → Worker, pool ArrayBuffer hữu hạn, batch 2.048/4.096, runtime quantum length, `sequenceNo/firstSample/sampleCount`, pause/resume/unavailable/gap, queue/burn/delay, ACK tái sử dụng khác ACK durability.
-2. MediaRecorder đối chứng cùng source node, MIME runtime, timeslice, kiểm đọc/seek qua browser runner khi môi trường cho phép; demo nguồn tổng hợp, micro, display audio có track.
-3. [README vận hành](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-02-capture/poc/02-capture/README.md), [báo cáo chạy](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-02-capture/poc/02-capture/evidence/run-report.md), [unit log](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-02-capture/poc/02-capture/evidence/unit-tests.txt), [virtual-3h](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-02-capture/poc/02-capture/evidence/virtual-3h.json), [browser-blocker](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-02-capture/poc/02-capture/evidence/browser-results.json).
-4. Test Node chạy `cd poc/02-capture && npm test`: 11 PASS, 0 FAIL. `node tests/virtual-3h.mjs`: 518.400.000 frame/10.800 giây theo **metadata**, 253.125 batch 2.048 hoặc 126.563 batch 4.096; phép chèn thiếu/trùng được nhận diện.
-5. `npm run test:browser -- --quick`: công cụ thực thi, nhưng browser bị chính sách chặn khi truy cập localhost; exit 2, **0 browser PASS, 0 FAIL, 1 NOT_RUN**. Chính sách được phát hiện trực tiếp từ trang lỗi Chrome, không thay đổi/chọc qua policy.
+## Mã đã sửa sau review G00
 
-## Các phần còn thiếu để DONE
+| Tracker | Xử lý | Kết quả kiểm độc lập |
+|---|---|---|
+| **G02-ADD-01** Start/Stop và permission race | Lifecycle `idle → starting → capturing → stopping → stopped/failed`; token/cancel sau các async setup, Stop trước getUserMedia grant, không đè phiên nếu double-start; cleanup track đã grant dù start bị cancel; UI disable Start ngay click | **PASS** Node deferred permission/Start/Stop/track-ended; Windows prompt **NOT_RUN** |
+| **G02-ADD-02** Stop fail/timeout bỏ cleanup | `finally` fail-closed cho stream, oscillator, context, recorder, worker/port; Stop idempotent, lỗi sink drain, media.stop reject/timeout; không báo saved giả | **PASS** Node fault injection; browser worker crash/quota **NOT_RUN** |
+| **G02-ADD-03** mapping input/PCM | START ACK Worklet, điểm định kỳ và stop theo render `contextTimeSec + sampleIndex`, hiệu chuẩn bằng `AudioContext.getOutputTimestamp`; khoảng paused/gap/unavailable riêng, không cộng wall-clock pause vào media | **PASS** Node delayed event 3 giây, drift ±100ppm, pause 10 giây; độ trễ hardware mic/TC17 thật **NOT_RUN** |
+| **G02-ADD-04** cấp phát vô hạn | Batch chỉ 2048 hoặc 4096, pool 2–64, channels 1–2, ceiling toàn pool ≤2 MiB; validate recordingId/port/finite values trước allocation, lỗi `invalid-configuration` | **PASS** Node 0 allocations với invalid 0/127/-1/float/NaN/1e8 và pool/channel invalid; AudioWorklet browser **NOT_RUN** |
+| **G02-ADD-05** streaming 3h | `stream-spool.mjs` có bounded queue 8MiB/32 chunks, append một WebM container liên tục vào OPFS chẩn đoán, retained prefix giới hạn; 3h browser runner dùng marker tín hiệu mỗi phút, kiểm mẫu phút90 và full-file seeks | **PASS** Node synthetic spool/quota/backpressure; WebM/OPFS/full-file seek và recording 3h browser thực **NOT_RUN** |
 
-- Thu **3 giờ thời gian thực** và phát/tua toàn bộ file ở đầu/giữa/cuối, mẫu đối chứng, CPU/RAM/batch cadence và mất mẫu trên Windows Chrome/Edge thật; hiện **NOT_RUN**.
-- Browser benchmark cả hai engine **cùng nguồn** và các case chuyển tab, worker stress, nghẽn hàng đợi, pause/resume, track-ended/micro rút vật lý; hiện **NOT_RUN**.
-- Đo/đối chiếu decode/seek WebM blob toàn phần và fragment; không được mặc định timeslice độc lập; **NOT_RUN**.
-- TC21 audio online từ track thực; **NOT_RUN** do thiếu Windows và nguồn.
-- OPFS flush/journal/recovery/quota thuộc luồng 03, **không báo đã hoàn tất ở 02**.
-- Chưa đủ số liệu để kết luận lựa chọn engine; tạm ưu tiên Worklet cho phép đo tiếp theo, giữ MediaRecorder đối chứng.
+## Test và bằng chứng
 
-## Tiếp quản
+| Case | Lệnh/fixture | Kết quả | Vật chứng |
+|---|---|---|---|
+| Unit/fault injection + Worker `MessagePort` transfer | `cd poc/02-capture && npm test` | **PASS 36/36, FAIL 0, skipped 0; exit 0** | [unit-tests-round2.txt](../../../poc/02-capture/evidence/unit-tests-round2.txt) |
+| Source byte verification | 20 file source/test copy vào source-only folder trống, so sánh `git hash-object` với Git tree Code SHA, chạy `npm test` trong folder đó | **PASS 20/20 SHA, PASS 36/36; exit 0**; *clean Git checkout thực* **NOT_RUN** | [verified-tree-round2.md](../../../poc/02-capture/evidence/verified-tree-round2.md) |
+| Virtual metadata 3h | `npm run test:virtual3h`, 48 kHz × 10.800 s | **PASS_METADATA_ONLY**, 518.400.000 frame, sequence/gap/duplicate; **không** ghi âm 3h thực | [virtual-3h-run.txt](../../../poc/02-capture/evidence/virtual-3h-run.txt) |
+| Chrome synthetic quick | `npm run test:browser -- --quick` | **NOT_RUN / BLOCKED_ENV** (managed Chromium `URLBlocklist: ["*"]` từ chối `localhost`), 0 PASS / 0 FAIL / 1 NOT_RUN, exit 2 | [browser-run.txt](../../../poc/02-capture/evidence/browser-run.txt) |
+| Chrome 3 giờ wall-clock + real CPU/RAM/cadence/seek | `npm run test:browser -- --three-hours` | **NOT_RUN**: browser policy + thiếu Windows + 3 giờ thời gian thực; không suy PASS từ 3h metadata | [run-report.md](../../../poc/02-capture/evidence/run-report.md) |
+| Micro physical unplug, online audio track TC21, Windows Chrome/Edge | thiết bị thật | **NOT_RUN** | thiết bị/môi trường chưa có |
+| OPFS durability, journal, crash/quota phục hồi | luồng G03; adapter G02 chỉ gửi PCM + events/ACK recycle | **NOT_RUN** ở G02; chưa tích hợp G03 | Hợp đồng COMMON |
 
-Chỉ một writer tại nhánh này; tiếp tục từ HEAD hiện hành. Không chờ output luồng khác để chạy PoC riêng. Dùng `poc/02-capture/package.json` và lệnh trong README; chạy trên Windows Chrome/Edge có quyền localhost/HTTPS; lưu kết quả/thông số/log ở `poc/02-capture/evidence/`, cập nhật checkpoint đúng tested SHA. Không tự động đổi kết quả fixture sang nghiệm thu ứng dụng.
+- Node đã chạy trên nguồn cô lập với **20/20 Git blob SHA trùng Code SHA**. Vì không có credential mạng để clone private repo vào container, không được mô tả đó là `git checkout` remote. Verified/tested *source content* chính xác; chỉ metadata checkout thật `NOT_RUN`.
+- MediaRecorder `timeslice` **không bảo đảm fragment phát độc lập**; full WebM diagnostic `durable:false` ngay cả khi file đóng, chưa có journal/flush chắc chắn. Worklet ACK buffer recycle **khác** `committedThroughSampleExclusive` sau OPFS flush.
+- Mapping context render time → input monotonic không đo hardware mic input latency; các khoảng thiếu từ sink/track/gap không được nội suy thành media valid.
+- PCM diagnostic giữ WAV prefix tối đa 8 giây và summary first/mid/end; chưa phải nguồn PCM đủ ba giờ để tua toàn phiên. Không chọn engine production khi chưa có dữ liệu Chrome/Edge đối chứng thật.
 
-WIP/chưa push: **none** · Chặn bên ngoài: browser policy trong container, Windows/micro/screen audio thật và bài thu 3 giờ wall-clock.
+## Tiếp tục đến điều kiện DONE
 
-## Tiếp tục theo TRACKER G00 — 15/11/2026 (bắt đầu vòng sửa)
+1. Trên Windows Chrome/Edge với origin localhost/HTTPS được phép: chạy 2 engine với **cùng source**, cả batch 2048 và 4096, `crossOriginIsolated=false`; stress Worker/queue, pause-resume, tab hidden, track-ended, rút micro, lấy CPU/RAM/received/drop/cadence và bản WAV/WebM đối chứng.
+2. Chạy **ba giờ wall-clock** với tín hiệu đã biết, ghi format/sample-rate, logs/mép đầu giữa cuối, full WebM seek đầu/phút90/cuối; định lượng missing/duplicate và giới hạn thiết bị. Khi chưa đạt không báo DONE G02.
+3. TC21 online audio thực chỉ PASS trên các cấu hình có audio track; nếu không có/không thể thử ghi rõ UNSUPPORTED/NOT_RUN. G03 tự kiểm durability, không gọi ACK recycle là ACK committed.
+4. Quyết định engine dựa trên số liệu browser, không từ unit fixture. G01 gate và tích hợp ứng dụng thuộc giai đoạn sau.
 
-- HEAD tiếp nhận: `8a9780cf01e3b7e0a014ddf76bdbf9db1f2ad7e8`; so sánh Git blob local 18/18 trùng blob SHA trên HEAD; source cục bộ tại `/mnt/data/capture-work/poc/02-capture`, worktree tạm ban đầu chưa ánh xạ commit remote.
-- Đã đọc TRACKER.md tại nhánh `gemini/20261115-00-command`. Các mã `G02-ADD-01..04` còn cần fix và negative regressions; `G02-ADD-05` cần streaming/rolling diagnostic, benchmark browser/Windows.
-- Trạng thái: IN_PROGRESS. Kiểm thử mới: NOT_RUN tại mốc này; giữ bằng chứng Node 11/11 đã có không chạy lại khi chưa bị ảnh hưởng.
-- Mục tiêu: vòng sửa race lifecycle, cleanup fail-closed, đồng hồ worklet/context ↔ performance timestamp, guard pool allocations và benchmark streaming; test Node exact code rồi commit/push chỉ scope G02. TC12/14/17/21 cần browser/Windows sẽ ghi NOT_RUN nếu chưa có môi trường phù hợp.
+**Lịch sử:** bản đầu `6898ec9b` 11/11 unit; checkpoint `8a9780cf` PARTIAL; tiếp nhận ADD-01..05 tại `9f120caa`; code sửa `0083a670`, test 36/36; chứng thực nội dung `26eb4bf8`. Không sửa COMMON.md, TRACKER.md hay bất kỳ nhánh nào khác.
