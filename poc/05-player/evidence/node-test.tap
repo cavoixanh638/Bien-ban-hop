@@ -6,61 +6,61 @@ TAP version 13
 # Subtest: frozen contract: 36 source segments, contiguous 3h media with complete references
 ok 1 - frozen contract: 36 source segments, contiguous 3h media with complete references
   ---
-  duration_ms: 2.397203
+  duration_ms: 5.435004
   type: 'test'
   ...
 # Subtest: G00 BUG: media 1805000 is valid while meeting 1805000 is paused
 ok 2 - G00 BUG: media 1805000 is valid while meeting 1805000 is paused
   ---
-  duration_ms: 0.447106
+  duration_ms: 0.564203
   type: 'test'
   ...
 # Subtest: gap on meeting clock does not fabricate a gap on media clock
 ok 3 - gap on meeting clock does not fabricate a gap on media clock
   ---
-  duration_ms: 0.275997
+  duration_ms: 0.287274
   type: 'test'
   ...
 # Subtest: actual media hole is distinct from a meeting pause, clips stop at its exact edges
 ok 4 - actual media hole is distinct from a meeting pause, clips stop at its exact edges
   ---
-  duration_ms: 0.272011
+  duration_ms: 0.434497
   type: 'test'
   ...
 # Subtest: 04:58->05:02, minute 90/170 and A-B cross segment without false gaps
 ok 5 - 04:58->05:02, minute 90/170 and A-B cross segment without false gaps
   ---
-  duration_ms: 0.236357
+  duration_ms: 0.30448
   type: 'test'
   ...
 # Subtest: missing, pending, wrong source, uncovered range never fallback to adjacent segment
 ok 6 - missing, pending, wrong source, uncovered range never fallback to adjacent segment
   ---
-  duration_ms: 0.392984
+  duration_ms: 0.411833
   type: 'test'
   ...
 # Subtest: pre-roll 0/3/5/10 keeps anchor immutable, refuses to cross missing media
 ok 7 - pre-roll 0/3/5/10 keeps anchor immutable, refuses to cross missing media
   ---
-  duration_ms: 0.468288
+  duration_ms: 0.790034
   type: 'test'
   ...
 # Subtest: WAV header valid and PCM globally sample-continuous at segment boundary
 ok 8 - WAV header valid and PCM globally sample-continuous at segment boundary
   ---
-  duration_ms: 2.429122
+  duration_ms: 2.655012
   type: 'test'
   ...
 # Subtest: windowPCM rejects full recording decode and limits one window to 2s
 ok 9 - windowPCM rejects full recording decode and limits one window to 2s
   ---
-  duration_ms: 2.860434
+  duration_ms: 7.012408
   type: 'test'
   ...
 # Subtest: C2 scheduler clips to gap, no sample from invalid media can be scheduled
 ok 10 - C2 scheduler clips to gap, no sample from invalid media can be scheduled
   ---
-  duration_ms: 5.548627
+  duration_ms: 6.686426
   type: 'test'
   ...
 1..10
@@ -71,4 +71,4 @@ ok 10 - C2 scheduler clips to gap, no sample from invalid media can be scheduled
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 116.880386
+# duration_ms 113.597794
