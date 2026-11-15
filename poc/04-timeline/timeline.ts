@@ -196,6 +196,23 @@ export interface PlaybackContext {
 }
 export interface AnchoredResult { anchor: Anchor; resolution: Resolution }
 
+/** Quantize the mandatory integer-ms Mark without jumping to a different segment.
+ * A sample-accurate fractional boundary may have no integer in a very short segment. */
+function quantizeInSource(m: Manifest, rawMs: number): number | null {
+  if (!nonnegative(rawMs)) return null;
+  const intervals = m.intervals.filter(it => it.mediaStartMs !== undefined &&
+    it.mediaEndMs !== undefined && inside(rawMs, it.mediaStartMs, it.mediaEndMs));
+  const segments = m.segments.filter(s => inside(rawMs, s.mediaStartMs, segmentEnd(s)));
+  if (intervals.length !== 1 || segments.length > 1) return null;
+  const [interval] = intervals;
+  const segment = segments[0]; // May not exist yet while input is pending storage allocation.
+  const candidates = [...new Set([Math.floor(rawMs), Math.ceil(rawMs)])]
+    .filter(v => inside(v, interval.mediaStartMs!, interval.mediaEndMs!) &&
+      (!segment || inside(v, segment.mediaStartMs, segmentEnd(segment))))
+    .sort((a, b) => Math.abs(a - rawMs) - Math.abs(b - rawMs));
+  return candidates[0] ?? null;
+}
+
 /** Uses observed sample position for live notes; meeting mapping cross-check prevents clock confusion. */
 export function createLiveAnchor(m: Manifest, ctx: LiveContext): AnchoredResult {
   const anchor: Anchor = { anchorId: ctx.anchorId, recordingId: ctx.recordingId, audioOffsetMs: null,
@@ -214,7 +231,8 @@ export function createLiveAnchor(m: Manifest, ctx: LiveContext): AnchoredResult 
     // The mapped audio range may be pending allocation, but a recorded interval gives
     // a provisional media coordinate. NEVER claim it is durably playable before flush.
     if (mapped.status === 'pending') {
-      anchor.audioOffsetMs = Math.floor(meeting.audioOffsetMs!);
+      anchor.audioOffsetMs = quantizeInSource(m, meeting.audioOffsetMs!);
+      if (anchor.audioOffsetMs === null) return { anchor, resolution: fail('unsupported', 'provisional media time cannot be represented in integer ms', ctx.recordingId) };
       return { anchor, resolution: fail('pending', 'sample not yet assigned to segment; provisional recorded media offset', ctx.recordingId, anchor.audioOffsetMs) };
     }
     return { anchor, resolution: fail(mapped.status, mapped.reason, ctx.recordingId) };
@@ -222,8 +240,8 @@ export function createLiveAnchor(m: Manifest, ctx: LiveContext): AnchoredResult 
   if (Math.abs(mapped.audioOffsetMs! - meeting.audioOffsetMs!) > 1000) {
     return { anchor, resolution: fail('unsupported', 'clock and meeting timeline differ by more than 1000ms', ctx.recordingId) };
   }
-  // Integer media ms: floor (not round) avoids mapping a final fractional ms into the next gap.
-  anchor.audioOffsetMs = Math.floor(mapped.audioOffsetMs!);
+  anchor.audioOffsetMs = quantizeInSource(m, mapped.audioOffsetMs!);
+  if (anchor.audioOffsetMs === null) return { anchor, resolution: fail('unsupported', 'sample media position has no safe integer-ms anchor in the source segment', ctx.recordingId) };
   return { anchor, resolution: resolve([m], ctx.recordingId, anchor.audioOffsetMs) };
 }
 
@@ -234,6 +252,23 @@ export function createPlaybackAnchor(manifests: readonly Manifest[], ctx: Playba
     typedAt: ctx.typedAt, source: ctx.paused ? 'playback_paused' : 'imported_playback', schemaVersion: 1 };
   if (ctx.currentMediaMs !== null && !nonnegative(ctx.currentMediaMs)) {
     return { anchor, resolution: fail('unsupported', 'invalid playback position', ctx.recordingId) };
+  }
+  if (anchor.audioOffsetMs !== null && ctx.recordingId && Array.isArray(manifests)) {
+    const known = manifests.filter(m => m?.recordingId === ctx.recordingId);
+    if (known.length === 1 && validateManifest(known[0]).length === 0) {
+      const raw = ctx.currentMediaMs!;
+      const selected = quantizeInSource(known[0], raw);
+      if (selected === null) {
+        // Preserve a future-recoverable offset only if integer rounding does not change
+        // its resolution state (e.g. no mounted media yet, or an incomplete recording).
+        if (!Number.isInteger(raw) && resolve(manifests, ctx.recordingId, anchor.audioOffsetMs).status !== resolve(manifests, ctx.recordingId, raw).status) {
+          anchor.audioOffsetMs = null;
+          return { anchor, resolution: fail('unsupported', 'cannot quantize playback position without changing media source', ctx.recordingId) };
+        }
+      } else {
+        anchor.audioOffsetMs = selected;
+      }
+    }
   }
   return { anchor, resolution: resolve(manifests, anchor.recordingId, anchor.audioOffsetMs) };
 }
