@@ -291,8 +291,27 @@ function wire(){
     }
   },1000);
 }
+async function registerPwa(){
+  const button=$('update-app');
+  if(!import.meta.env.PROD || !('serviceWorker' in navigator) || !isSecureContext)return;
+  try{
+    const scope=new URL('./',document.baseURI),registration=await navigator.serviceWorker.register(new URL('./sw.js',scope),{scope:scope.pathname});
+    button.disabled=false;
+    button.onclick=async()=>{
+      await registration.update();
+      if(!registration.waiting){show('Chưa có bản PWA mới đang chờ kích hoạt.');return;}
+      const channel=new MessageChannel(),answer=new Promise(resolve=>channel.port1.onmessage=e=>resolve(e.data));
+      registration.waiting.postMessage({type:'REQUEST_SAFE_ACTIVATION'},[channel.port2]);
+      const result=await Promise.race([answer,new Promise(resolve=>setTimeout(()=>resolve({accepted:false,reason:'Timeout'}),7000))]);
+      if(result.accepted)show('Đã cho phép phiên bản mới kích hoạt an toàn. Tự tải lại sau khi kết thúc công việc.');
+      else show('Chưa thể cập nhật: '+result.reason,'error');
+      channel.port1.close();
+    };
+  }catch(e){show('PWA chưa sẵn sàng: '+e.message,'error');}
+}
 async function main(){
   wire();
+  registerPwa().catch(()=>{});
   try{
     state.store=await MeetingStore.open();
     await refreshMeetings();
