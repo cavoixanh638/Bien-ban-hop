@@ -7,7 +7,7 @@ import tempfile
 import unittest
 import zipfile
 
-from mochop import BackupError, export_archive, import_archive, make_fixture
+from mochop import BackupError, clean_path, export_archive, import_archive, make_fixture
 
 class MochopTests(unittest.TestCase):
     def setUp(self):
@@ -132,6 +132,15 @@ class MochopTests(unittest.TestCase):
                 return json.dumps(j).encode()
             return data
         self.assert_no_publish(self.rewrite(mutate))
+
+
+    def test_reject_windows_paths(self):
+        unsafe = ['audio/CON', 'audio/nul.wav', 'audio/COM1.a', 'audio/LPT9',
+                  'audio/file:secret', 'audio/trailing.', 'audio/trailing ',
+                  'audio/flag?x', 'audio/f*ile', 'audio/e\u0301.pcm']
+        for name in unsafe:
+            with self.subTest(name=name), self.assertRaises(BackupError):
+                clean_path(name)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

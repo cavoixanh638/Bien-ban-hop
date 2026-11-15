@@ -34,8 +34,11 @@ def clean_path(name: str) -> str:
     if unicodedata.normalize('NFC', name) != name:
         raise BackupError('noncanonical Unicode path')
     parts = name.split('/')
-    if any(part in ('', '.', '..') for part in parts):
-        raise BackupError('path traversal or noncanonical path')
+    if any(part in ('', '.', '..') or part.endswith(('.', ' '))
+           or re.search(r'[<>:"|?*]', part)
+           or re.match(r'^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)', part, re.I)
+           for part in parts):
+        raise BackupError('path traversal, Windows reserved name or noncanonical path')
     if any(ord(ch) < 32 for ch in name):
         raise BackupError('control character in path')
     return name

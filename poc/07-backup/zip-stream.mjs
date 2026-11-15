@@ -80,7 +80,9 @@ const n64 = x => { if(x>BigInt(Number.MAX_SAFE_INTEGER))throw Error('ZIP offset 
 function bytes(n){const b=new Uint8Array(n);return {b,d:new DataView(b.buffer)};}
 function requireBytes(chunk){if(!(chunk instanceof Uint8Array)) throw Error('stream chunk must be Uint8Array');return chunk;}
 function fileName(name){
-  if(typeof name!=='string'||!name||name.startsWith('/')||name.includes('\\')||name.includes('\0')||/^[A-Za-z]:/.test(name)||name.split('/').some(p=>!p||p==='.'||p==='..')||/[\x00-\x1f\x7f]/.test(name)) throw Error('unsafe ZIP path: '+name);
+  if(typeof name!=='string'||!name||name.normalize('NFC')!==name||name.startsWith('/')||name.includes('\\')||name.includes('\0')||/^[A-Za-z]:/.test(name)||name.split('/').some(p=>
+    !p||p==='.'||p==='..'||/[. ]$/.test(p)||/[<>:"|?*]/.test(p)||/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(p)
+  )||/[\x00-\x1f\x7f]/.test(name)) throw Error('unsafe ZIP path: '+name);
   return name;
 }
 export {fileName};

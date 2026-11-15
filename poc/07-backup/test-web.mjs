@@ -4,7 +4,7 @@ import * as fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {ZipStoreWriter,ZipStoreReader,Sha256,Crc32,blobSource} from './zip-stream.mjs';
+import {ZipStoreWriter,ZipStoreReader,Sha256,Crc32,blobSource,fileName} from './zip-stream.mjs';
 import {exportMochop,importMochop,syntheticSource,BackupError} from './mochop-web.mjs';
 import {nodeRepo} from './node-adapter.mjs';
 const url=new URL('./',import.meta.url);
@@ -209,4 +209,27 @@ test('exporting interrupted source cannot return a backup success',async()=>{
     return new ReadableStream({pull(controller){if(!once){once=true;controller.enqueue(new Uint8Array(1024));}else controller.error(Error('source disappeared'));}});
   };
   await assert.rejects(()=>exportMochop(src,new WritableStream({write(b){chunks.push(b);}})),/source disappeared/);
+});
+test('manifest payload changed with stale ZIP CRC must be rejected before staging (regression)',async t=>{
+  const full=await zipOf(syntheticSource(128)),bytes=new Uint8Array(await full.arrayBuffer());
+  const manifest=(await new ZipStoreReader(blobSource(full)).entries()).find(e=>e.name==='manifest.json');
+  const header=new DataView(bytes.buffer,bytes.byteOffset+manifest.offset,30);
+  const start=manifest.offset+30+header.getUint16(26,true)+header.getUint16(28,true);
+  const content=new TextDecoder().decode(bytes.subarray(start,start+manifest.size));
+  const needle='poc-07-web',at=content.indexOf(needle);
+  assert(at>=0,'fixture manifest must have known marker');
+  bytes[start+at+needle.length-1]='x'.charCodeAt(0);
+  await expectRejected(t,new Blob([bytes]));
+});
+test('manifest declared ZIP length differs from actually streamed bytes: reject before staging',async t=>{
+  const full=await zipOf(syntheticSource(32)),original=new ZipStoreReader(blobSource(full)),entries=await original.entries();
+  const forged={entries:async()=>entries.map(e=>e.name==='manifest.json'?{...e,size:e.size+1,compressedSize:e.compressedSize+1}:e),
+    open:e=>original.open(entries.find(x=>x.name===e.name))};
+  await expectRejected(t,forged);
+});
+test('Windows reserved names, alternate streams and filename folding are rejected',()=>{
+  for(const unsafe of ['audio/CON','audio/CON.pcm','audio/nul.wav','audio/COM1.a','audio/LPT9','audio/file:secret',
+    'audio/trailing.','audio/trailing ','audio/flag?x','audio/f*ile','audio/e\u0301.pcm']){
+    assert.throws(()=>fileName(unsafe),/unsafe ZIP path/);
+  }
 });

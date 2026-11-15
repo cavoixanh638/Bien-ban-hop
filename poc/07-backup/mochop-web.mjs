@@ -66,7 +66,7 @@ export async function importMochop(archive,repo,{allowMissingAudio=false,limits=
   }
   const m=fileMap.get('manifest.json');
   if(!m||m.size>limits.manifestBytes)fail('manifest missing/oversize');
-  const manifest=readJson(await readLimited(await archive.open(m),limits.manifestBytes,abortSignal));
+  const manifest=readJson(await readLimited(await archive.open(m),limits.manifestBytes,abortSignal,{size:m.size,crc32:m.crc32}));
   if(manifest?.format!=='mochop'||manifest.formatVersion!==1||manifest.schemaVersion!==1||!Array.isArray(manifest.files))fail('unsupported format/version');
   const declared=new Map(),lower=new Set();
   for(const record of manifest.files){
@@ -127,13 +127,16 @@ export async function importMochop(archive,repo,{allowMissingAudio=false,limits=
     return {meetingId:meeting.meetingId,missingAudio:missing,files:declared.size};
   } finally { if(!published)await stage.discard(); }
 }
-async function readLimited(stream,max,signal){
-  const chunks=[];let size=0;const reader=stream.getReader();
+async function readLimited(stream,max,signal,integrity){
+  const chunks=[];let size=0;const crc=new Crc32(),reader=stream.getReader();
   try{
     for(;;){if(signal?.aborted)fail('aborted');const {done,value}=await reader.read();if(done)break;
-      size+=value.byteLength;if(size>max)fail('JSON entry exceeds memory cap');chunks.push(value);
+      if(!(value instanceof Uint8Array))fail('JSON stream chunk invalid');
+      size+=value.byteLength;if(size>max||integrity&&size>integrity.size)fail('JSON entry exceeds declared size/limit');
+      crc.update(value);chunks.push(value);
     }
   }finally{reader.releaseLock();}
+  if(integrity&&(size!==integrity.size||crc.digest()!==integrity.crc32))fail('manifest checksum/CRC mismatch');
   const out=new Uint8Array(size);let offset=0;for(const c of chunks){out.set(c,offset);offset+=c.length;}return out;
 }
 export const openBlobArchive=blob=>new ZipStoreReader({size:blob.size,async readAt(offset,length){return new Uint8Array(await blob.slice(offset,offset+length).arrayBuffer());}});
