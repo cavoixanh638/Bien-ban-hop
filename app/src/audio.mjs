@@ -1,6 +1,7 @@
 import {CaptureClockMapper} from '../../poc/02-capture/src/clock-mapper.mjs';
 import {resolveMedia,choosePreRoll} from '../../poc/05-player/timeline.js';
 import {contextFor,resolvePending} from './clock-bridge.mjs';
+import {resolvePlaybackStart} from './playback-start.mjs';
 
 const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
 const withTimeout=(p,ms,label)=>Promise.race([p,new Promise((_,reject)=>setTimeout(()=>reject(Error(label+' quá thời hạn')),ms))]);
@@ -196,9 +197,9 @@ export class AudioPlayer {
     this.stop();
     await this.ensure(recordingId);
     this.rate=rate;
-    const mark={recordingId,audioOffsetMs:offsetMs};
-    const check=choosePreRoll(this.safeManifest,mark,preRollMs/1000);
+    const check=resolvePlaybackStart(this.safeManifest,recordingId,offsetMs,preRollMs,resolveMedia,choosePreRoll);
     if(check.status!=='valid'){this.onEvent('unavailable',check);return check;}
+    if(check.preRollLimited)this.onEvent('preroll-limited',check);
     if(!this.context)this.context=new AudioContext();
     await this.context.resume();
     this.playing=true;this.nextSample=Math.round(check.startMs*this.manifest.sampleRate/1000);
