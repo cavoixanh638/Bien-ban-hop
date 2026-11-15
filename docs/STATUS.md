@@ -10,7 +10,8 @@ Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn*
 
 - Repo: `cavoixanh638/Bien-ban-hop`, nhánh chính `main`.
 - Commit tài liệu V1.2 gốc: `d12e6fe23373c31132fa61c8e0f1dd51eacfd743`.
-- Lần này: tinh gọn **11 → 8 tệp Markdown**; bản cũ được giữ trong lịch sử Git.
+- Bộ tài liệu đã được tinh gọn **11 → 8 tệp Markdown** tại commit `2bb1c8c3189cfb3c1401eac5a753f255f9bbda9f`; bản cũ được giữ trong lịch sử Git.
+- Ngày 15/11/2026 bổ sung **tệp nghiên cứu công nghệ thứ 9:** [TECHNICAL_OPTIONS.md](TECHNICAL_OPTIONS.md) — 17 nhóm, 4 phương án/nhóm, có nguồn tham khảo và bốn gói PoC. **Đây là khuyến nghị kỹ thuật, không phải triển khai hoặc benchmark PASS.**
 - Mã nguồn ứng dụng chạy thực tế: **chưa có trong repo** tại thời điểm lập status.
 - PoC và chứng cứ test Gói 1.1–1.6: **chưa có**.
 - Bản phát hành/PWA đã nghiệm thu: **chưa có**.
@@ -44,8 +45,13 @@ Trạng thái hợp lệ: `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `READY_FOR_RE
 | D07 | Thu âm thanh hệ thống/họp online | CONDITIONAL | Test OS/browser/ứng dụng thật; không chặn lõi micro |
 | D08 | PWA offline, cache/migration an toàn | DESIGN_ACCEPTED | Test nâng cấp/khôi phục ở Gói 1.5 |
 | D09 | DOCX/TXT/Markdown/CSV và backup .mochop | DESIGN_ACCEPTED | Test xuất/restore trên máy khác |
+| D10 | Origin phát hành riêng cho dữ liệu cuộc họp | DESIGN_PREFERRED | Chưa thiết lập DNS/HTTPS; phải xác minh origin trước dữ liệu thật |
+| D11 | Thu PCM trước, cân nhắc Opus lưu lâu dài | OPEN | Chọn format sau PoC và test độ chính xác, quota, restore |
+| D12 | Player nghe chậm 0,75×/0,9× phải rõ và ít biến giọng | OPEN | PoC Gói 1.4, đối chứng Web Audio và phương án pitch preservation |
+| D13 | fflate streaming cho gói .mochop | PROPOSED_FOR_POC | Test xuất + nhập khối lượng lớn, ZIP64, checksum và bộ nhớ |
+| D14 | Clock input monotonic + sample/segment mapping | PROPOSED_FOR_POC | PoC 1.2–1.3, tín hiệu đo, drift/pause/gap |
 
-**DESIGN_ACCEPTED** = nguyên tắc/thiết kế đã chọn trong kế hoạch, **không** phải chức năng đã code hoặc test PASS. Mọi quyết định công nghệ quan trọng sau PoC phải có commit + phép đo/test và cập nhật đúng bảng này.
+**DESIGN_ACCEPTED / DESIGN_PREFERRED / PROPOSED_FOR_POC** = trạng thái đề xuất/chấp nhận ở mức thiết kế, **không** phải chức năng đã code hoặc test PASS. Mọi quyết định công nghệ quan trọng sau PoC phải có commit + phép đo/test và cập nhật đúng bảng này.
 
 ## 4. Vấn đề đang chặn và rủi ro
 

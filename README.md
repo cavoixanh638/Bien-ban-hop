@@ -4,7 +4,7 @@
 
 > **Trạng thái thực tế:** Hiện repo chủ yếu chứa **tài liệu thiết kế Giai đoạn 1**. Chưa có WebApp hoặc bộ kiểm thử được nghiệm thu. Xem [STATUS](docs/STATUS.md) trước khi nhận công việc.
 
-## Bộ tài liệu tối giản — 8 tệp
+## Bộ tài liệu gọn — 9 tệp
 
 | Đọc khi cần | Tệp chính thức |
 |---|---|
@@ -14,6 +14,7 @@
 | Kiến trúc, hợp đồng module và **mô hình dữ liệu** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Quy tắc `timeSpan`, gõ tiếng Việt, sửa/dán và thời gian | [docs/TIMELINE_RULES.md](docs/TIMELINE_RULES.md) |
 | Ghi âm an toàn, lựa chọn engine và phát đa đoạn | [docs/AUDIO_DESIGN.md](docs/AUDIO_DESIGN.md) |
+| **Nghiên cứu 17 nhóm lựa chọn công nghệ (4 phương án/nhóm), căn cứ và PoC** | **[docs/TECHNICAL_OPTIONS.md](docs/TECHNICAL_OPTIONS.md)** |
 | Danh sách và bằng chứng nghiệm thu TC01–TC38 | [docs/ACCEPTANCE_TESTS.md](docs/ACCEPTANCE_TESTS.md) |
 | Công việc hiện tại, mức hoàn thành, quyết định và blocker | [docs/STATUS.md](docs/STATUS.md) |
 
@@ -31,4 +32,4 @@
 
 ## Lịch sử
 
-Bộ tài liệu gốc gồm 11 tệp đã được hợp nhất thành 8 tệp để giảm trùng lặp. Git vẫn giữ nội dung cũ trong lịch sử commit; **không duy trì song song các bản V1.0/V1.1 hoặc các tệp chuyên môn bị thay thế**.
+Bộ tài liệu gốc gồm 11 tệp đã được hợp nhất thành 8 tệp để giảm trùng lặp. Sau đó bổ sung **tệp nghiên cứu lựa chọn kỹ thuật thứ 9** theo yêu cầu; không tạo thêm hệ thống hồ sơ điều phối mới. Git vẫn giữ nội dung cũ trong lịch sử commit; **không duy trì song song các bản V1.0/V1.1 hoặc các tệp chuyên môn bị thay thế**.

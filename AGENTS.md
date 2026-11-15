@@ -6,7 +6,8 @@
 2. [docs/PLAN_V1_2.md](docs/PLAN_V1_2.md): **sản phẩm, yêu cầu, UX, phạm vi, 6 gói**.
 3. [docs/STATUS.md](docs/STATUS.md): **đã làm gì, ai đang làm, kết quả và việc tiếp theo**. Đọc phiên bản mới nhất trước khi nhận việc hoặc báo hoàn thành.
 4. Đọc **tài liệu chuyên trách** của đúng module: [ARCHITECTURE](docs/ARCHITECTURE.md) / [TIMELINE_RULES](docs/TIMELINE_RULES.md) / [AUDIO_DESIGN](docs/AUDIO_DESIGN.md).
-5. [docs/ACCEPTANCE_TESTS.md](docs/ACCEPTANCE_TESTS.md): các TC01–TC38 và chứng cứ PASS.
+5. [docs/TECHNICAL_OPTIONS.md](docs/TECHNICAL_OPTIONS.md): so sánh 3–4 lựa chọn, lý do khuyến nghị và điều kiện PoC. **Khuyến nghị không phải kết quả thử nghiệm hay quyết định production.**
+6. [docs/ACCEPTANCE_TESTS.md](docs/ACCEPTANCE_TESTS.md): các TC01–TC38 và chứng cứ PASS.
 
 Không đọc tên tệp để suy luận tính năng đã chạy. **Kế hoạch ≠ code ≠ test đã PASS ≠ bản phát hành.** Nếu dữ liệu hiện tại xung đột tài liệu, báo cụ thể và phân biệt điều đã xác minh với ý định thiết kế.
 
@@ -40,6 +41,7 @@ Không đọc tên tệp để suy luận tính năng đã chạy. **Kế hoạc
 - Đổi **thu, lưu hoặc phát âm thanh** → AUDIO_DESIGN.md.
 - Đổi **tiêu chí/test** → ACCEPTANCE_TESTS.md.
 - Đổi **tiến độ, bằng chứng, quyết định đã thử/chốt** → STATUS.md.
+- Khi so sánh phương án/có bằng chứng mới làm thay đổi khuyến nghị kỹ thuật → TECHNICAL_OPTIONS.md; nếu thay đổi hợp đồng triển khai thì cập nhật ARCHITECTURE/TIMELINE_RULES/AUDIO_DESIGN tương ứng. Không dùng tài liệu nghiên cứu để tự đánh dấu PASS.
 - README chỉ làm mục lục; không tạo bản sao thứ hai của một quy định.
 
 Không tạo thêm `SYSTEM.md`, `WORKBOARD.md`, `DATA_MODEL.md`, `AUDIO_ENGINE_DECISION.md` khi cùng nội dung đã có nguồn chính thức. Chỉ tách tệp mới nếu số lượng bằng chứng/phạm vi thực tế khiến việc tách rõ ràng có lợi.

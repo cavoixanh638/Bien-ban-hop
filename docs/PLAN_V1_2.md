@@ -10,7 +10,7 @@
 | Trạng thái | Kế hoạch triển khai; chưa có ứng dụng được nghiệm thu |
 | Môi trường | Windows, Chrome/Edge, WebApp/PWA |
 
-> **Cấu trúc tài liệu tinh gọn:** đây là nguồn chính thức cho *sản phẩm, yêu cầu chức năng, phạm vi và lộ trình*. Schema/module thuộc [ARCHITECTURE.md](ARCHITECTURE.md); quy tắc gõ và thời gian thuộc [TIMELINE_RULES.md](TIMELINE_RULES.md); thu/phát âm thanh thuộc [AUDIO_DESIGN.md](AUDIO_DESIGN.md). Trạng thái thực tế và quyết định đã chốt chỉ ghi tại [STATUS.md](STATUS.md). **Tất cả mới là kế hoạch, chưa có PoC hay nghiệm thu.**
+> **Cấu trúc tài liệu tinh gọn:** đây là nguồn chính thức cho *sản phẩm, yêu cầu chức năng, phạm vi và lộ trình*. Schema/module thuộc [ARCHITECTURE.md](ARCHITECTURE.md); quy tắc gõ và thời gian thuộc [TIMELINE_RULES.md](TIMELINE_RULES.md); thu/phát âm thanh thuộc [AUDIO_DESIGN.md](AUDIO_DESIGN.md). Căn cứ so sánh công nghệ (17 nhóm, mỗi nhóm 4 phương án) tại [TECHNICAL_OPTIONS.md](TECHNICAL_OPTIONS.md); chỉ các quyết định có bằng chứng mới chuyển sang trạng thái đã kiểm chứng trong [STATUS.md](STATUS.md). **Tất cả mới là kế hoạch, chưa có PoC hay nghiệm thu.**
 
 ## I. Mục tiêu
 
@@ -142,6 +142,7 @@ Rủi ro chính: bộ gõ backspace burst, Mark sai sau transaction, PCM dung l�
 | Bộ ghi âm, lưu an toàn, checkpoint, player đa đoạn | [AUDIO_DESIGN.md](AUDIO_DESIGN.md) |
 | Tiêu chuẩn TC01–TC38, bằng chứng và phép đo | [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md) |
 | Tiến độ thực tế, tác vụ, checkpoint và quyết định có bằng chứng | [STATUS.md](STATUS.md) |
+| So sánh phương án công nghệ, căn cứ lựa chọn và cổng PoC | [TECHNICAL_OPTIONS.md](TECHNICAL_OPTIONS.md) |
 | Hướng dẫn AI/Codex | [../AGENTS.md](../AGENTS.md) |
 
 **Điều kiện hoàn thành:** Có bản chạy được, gõ tiếng Việt và mốc đúng sau mọi thao tác thường gặp; ghi được nhiều giờ và khôi phục được phần đã lưu; nghe lại xuyên file; sao lưu/khôi phục dữ liệu; không còn lỗi Critical/High; có commit cùng bằng chứng nghiệm thu. Không gọi PoC là sản phẩm hoàn thiện.

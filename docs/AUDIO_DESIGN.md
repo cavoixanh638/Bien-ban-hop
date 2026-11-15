@@ -2,7 +2,7 @@
 
 **Trạng thái:** Đặc tả thử nghiệm, **chưa lựa chọn engine production**, chưa có kết quả benchmark. Tài liệu này hợp nhất kế hoạch lựa chọn bộ ghi âm và thiết kế Virtual Multi-Segment Player; thông tin PASS/FAIL thực tế thuộc [STATUS.md](STATUS.md).
 
-**Phạm vi tài liệu:** audio capture, lưu bền vững/checkpoint/khôi phục, nguồn micro và âm thanh máy tính, Virtual Timeline, phát/tua qua các file. Quy tắc liên kết chữ với mốc thuộc [TIMELINE_RULES.md](TIMELINE_RULES.md); schema/manifest thuộc [ARCHITECTURE.md](ARCHITECTURE.md).
+**Phạm vi tài liệu:** audio capture, lưu bền vững/checkpoint/khôi phục, nguồn micro và âm thanh máy tính, Virtual Timeline, phát/tua qua các file. So sánh bốn công nghệ và căn cứ lựa chọn tại [TECHNICAL_OPTIONS.md](TECHNICAL_OPTIONS.md); quyết định production vẫn phải dựa benchmark Gói 1.2. Quy tắc liên kết chữ với mốc thuộc [TIMELINE_RULES.md](TIMELINE_RULES.md); schema/manifest thuộc [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## I. Thu, lưu và lựa chọn bộ ghi âm
 
