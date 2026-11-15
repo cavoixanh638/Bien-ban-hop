@@ -1,0 +1,72 @@
+{
+  "environment": {
+    "platform": "Linux",
+    "kind": "Linux headless Chromium, synthetic sine tones (NOT speech)",
+    "chromium": "144.0.7559.96",
+    "chromiumProcessIDs": [
+      2139,
+      2183,
+      2188,
+      2207
+    ],
+    "rssScope": "chromium processes observed by CDP (not page-only)"
+  },
+  "measurements": [
+    {
+      "status": "measured",
+      "dominantFundamentalHz": 220.0,
+      "frames": 36864,
+      "rms": 0.1105,
+      "sampleRate": 16000,
+      "engine": "C1",
+      "rate": 0.75,
+      "rssBytesSnapshot": 229994496,
+      "rssBytesInitial": 229433344,
+      "urlCount": 2,
+      "maxPending": null,
+      "errors": []
+    },
+    {
+      "status": "measured",
+      "dominantFundamentalHz": 220.0,
+      "frames": 36864,
+      "rms": 0.1105,
+      "sampleRate": 16000,
+      "engine": "C1",
+      "rate": 0.9,
+      "rssBytesSnapshot": 236167168,
+      "rssBytesInitial": 233521152,
+      "urlCount": 2,
+      "maxPending": null,
+      "errors": []
+    },
+    {
+      "status": "measured",
+      "dominantFundamentalHz": 165.0,
+      "frames": 35840,
+      "rms": 0.1104,
+      "sampleRate": 16000,
+      "engine": "C2",
+      "rate": 0.75,
+      "rssBytesSnapshot": 231497728,
+      "rssBytesInitial": 231657472,
+      "urlCount": null,
+      "maxPending": 6,
+      "errors": []
+    },
+    {
+      "status": "measured",
+      "dominantFundamentalHz": 198.0,
+      "frames": 35840,
+      "rms": 0.1104,
+      "sampleRate": 16000,
+      "engine": "C2",
+      "rate": 0.9,
+      "rssBytesSnapshot": 232570880,
+      "rssBytesInitial": 232054784,
+      "urlCount": null,
+      "maxPending": 6,
+      "errors": []
+    }
+  ]
+}
