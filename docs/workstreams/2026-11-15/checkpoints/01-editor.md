@@ -3,12 +3,12 @@
 - Chủ sở hữu: ChatGPT tiếp quản luồng Editor được giao cho 01-editor
 - Nhánh duy nhất: `gemini/20261115-01-editor`
 - Baseline: `6142f56a6efdb27aa9445920c9321f7930c0d5fd`
-- HEAD sau bàn giao: `ed232d33db6178e6f8b137b59e476cb8f84c3770` (trước commit checkpoint này)
-- Code SHA: `ad777fe1281d45130e382ac56ad603054f4d1559`
-- Evidence SHA: `ed232d33db6178e6f8b137b59e476cb8f84c3770`
-- Tested source: `ad777fe1281d45130e382ac56ad603054f4d1559` **CHỈ CHO PURE POLICY TEST**; chạy trên bản sao độc lập của đúng các tệp source/test đã push, không phải checkout GitHub sạch
+- HEAD sau bàn giao: `6db17bdb68b791c04eeb7a4a72d980da02aaaee9` (trước commit checkpoint này)
+- Code SHA: `6db17bdb68b791c04eeb7a4a72d980da02aaaee9`
+- Evidence SHA: `6db17bdb68b791c04eeb7a4a72d980da02aaaee9`
+- Tested source: `6db17bdb68b791c04eeb7a4a72d980da02aaaee9` **CHỈ CHO PURE POLICY TEST**; chạy trên bản sao độc lập của đúng các tệp source/test đã push, không phải checkout GitHub sạch
 - Trạng thái: **IN_PROGRESS (KHÔNG READY_FOR_REVIEW)** — bắt buộc có Windows + UniKey/EVKey thực và browser verification
-- Node policy test: **PASS 23/23** (Linux sandbox Node `v22.16.0`, npm `10.9.2`); syntax check 5 tệp **PASS**
+- Node policy test: **PASS 24/24** (Linux sandbox Node `v22.16.0`, npm `10.9.2`); syntax check 5 tệp **PASS**
 - Tiptap build, Playwright browser, Windows Chrome/Edge UniKey/EVKey Telex/VNI: **NOT_RUN**
 - Mốc P95 nhập trên Windows (<100ms), TextNode/Mark/DOM trên browser và 2 phút gõ thật: **NOT_RUN**
 
@@ -16,11 +16,11 @@ Entrypoint: [01-editor.md](https://github.com/cavoixanh638/Bien-ban-hop/blob/gem
 
 ## Đã triển khai và push
 
-1. [Demo độc lập + README](../../../..//poc/01-editor/README.md) tại `poc/01-editor/`: Tiptap/ProseMirror, toolbar, editor tự gắn `timeSpan` trên nhiều cụm cùng một đoạn, mốc tại con trỏ, fake audio context/coverage, xuất NoteDocument và trace lược nội dung.
+1. [Demo độc lập + README](../../../../poc/01-editor/README.md) tại `poc/01-editor/`: Tiptap/ProseMirror, toolbar, editor tự gắn `timeSpan` trên nhiều cụm cùng một đoạn, mốc tại con trỏ, fake audio context/coverage, xuất NoteDocument và trace lược nội dung.
 2. [InputTracker](../../../../poc/01-editor/src/tracker.mjs) và [pure policy](../../../../poc/01-editor/src/policy.mjs): MarkSpec `inclusive:false`, `excludes:'timeSpan'`, `spanning:true`; kiểm tất cả attrs, phân loại StepMap/selection/word, beforeinput/input/composition, heuristic Backspace+Insert, format, clipboard provenance + allow-list recordingId, Undo/Redo do ProseMirror history quản lý.
-3. [Bộ kiểm thử Node](../../../../poc/01-editor/tests/policy.test.mjs) (23 test) và [browser Playwright](../../../../poc/01-editor/tests/editor.spec.mjs) (đã viết, NOT_RUN), [fixture](../../../../poc/01-editor/fixtures/synthetic-note.json), [trace validator](../../../../poc/01-editor/scripts/check-trace.mjs).
+3. [Bộ kiểm thử Node](../../../../poc/01-editor/tests/policy.test.mjs) (24 test) và [browser Playwright](../../../../poc/01-editor/tests/editor.spec.mjs) (đã viết, NOT_RUN), [fixture](../../../../poc/01-editor/fixtures/synthetic-note.json), [trace validator](../../../../poc/01-editor/scripts/check-trace.mjs).
 4. [Bảng TC01–TC11 + trạng thái](../../../../poc/01-editor/evidence/RESULTS.md) và [TAP log](../../../../poc/01-editor/evidence/policy-node22.tap.md). Kết quả fixture chỉ minh chứng phép thử policy; **không coi là TC của editor đạt**.
-5. Đã kiểm GitHub diff commit code trước push: 14 tệp mới đều trong `poc/01-editor/`; commit evidence tiếp theo chỉ đổi/đặt hai tệp trong cùng phạm vi.
+5. Rà soát an toàn trace: lược mọi phím in được thành `[printable]`, giữ phím điều khiển để quan sát Backspace/Insert, bổ sung 1 test privacy; **24/24 PASS** và cập nhật TAP log. Đã kiểm GitHub diff commit code trước push: 14 tệp mới đều trong `poc/01-editor/`; commit evidence tiếp theo chỉ đổi/đặt hai tệp trong cùng phạm vi.
 
 ## Lệnh đã chạy
 
@@ -33,7 +33,7 @@ node --check scripts/check-trace.mjs
 node --test tests/policy.test.mjs
 ```
 
-- Kết quả Node policy (bản sao isolated của đúng source/test): **23 PASS, 0 FAIL, exit 0**. Log: `poc/01-editor/evidence/policy-node22.tap.md`.
+- Kết quả Node policy (bản sao isolated của đúng source/test): **24 PASS, 0 FAIL, exit 0**. Log: `poc/01-editor/evidence/policy-node22.tap.md`.
 - `npm install` bị chặn vì sandbox không resolve `registry.npmjs.org`; không thử `npm run build`/Playwright khi thiếu dependency. Không ghi PASS cho phần chưa chạy.
 - Máy dùng thật trong đợt này là Linux container; không có UniKey/EVKey/Windows. Không có dấu hiệu test IME đã chạy, không dựng trace giả mạo.
 
@@ -43,7 +43,7 @@ node --test tests/policy.test.mjs
 |---|---|---|---|---|
 | TC01 | PASS | NOT_RUN | NOT_RUN | NOT_RUN |
 | TC02 | PASS synthetic (không phải gõ 120s) | NOT_RUN | NOT_RUN | NOT_RUN |
-| TC03 | không áp dụng | NOT_RUN | NOT_RUN | NOT_RUN |
+| TC03 | PASS (trace redaction policy; không phải IME) | NOT_RUN | NOT_RUN | NOT_RUN |
 | TC04–TC11 | PASS subcase policy | NOT_RUN | NOT_RUN | NOT_RUN |
 
 ## Còn thiếu / giới hạn có chủ đích
