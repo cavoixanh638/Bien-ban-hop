@@ -46,3 +46,9 @@ WIP/chưa push: không (mọi artifact được push qua GitHub connector). **Ch
 - **04-timeline** READY_FOR_REVIEW ở phạm vi fixture (16/16 local), chưa có clean checkout/livedata. **01/03/05/06/07/08** đã push PoC, còn các cổng runtime hoặc exact SHA. **02** chưa có code trên nhánh khi quan sát.
 - **09-pwa** cập nhật checkpoint trong lúc rà soát: mock Node 10/10, mã PoC vẫn **LOCAL_ONLY**, Git-tree HEAD `ea60179c` chưa có `poc/09-pwa/`. Chưa đánh dấu bàn giao.
 - Không chốt production C1/C2, không PASS Gói 1.1–1.6 và không merge/deploy. Lượt sau kiểm lại HEAD trước nhận bằng chứng mới, đặc biệt 09 đang push.
+
+## 09-pwa cập nhật từ bàn giao mới
+
+- Đã kiểm nhánh `gemini/20261115-09-pwa` HEAD `4cdde5a51909e1db016bfe880097944a3c26ea06`, commit mã `46e82448d03c710eef8f1feeb74fb073d9b13737`: **đã push đủ 22 file PoC**, `READY_FOR_REVIEW`. Node 10/10 mock local, 7 Playwright scenarios **NOT_RUN** do Chromium URLBlocklist; Pages/Windows cũng **NOT_RUN**.
+- Code review phát hiện 4 vấn đề phải xem lại: **G09-ADD-01** start/release race trước ACK OPFS; **G09-ADD-02** release khi autosave pending làm mất dirty text; **G09-ADD-03** migration bị kẹt bởi lock từ cuộc họp khác do BroadcastChannel chỉ lọc meetingId; **G09-ADD-04** SW nhận activate message mà không tự xác minh gate. Các phát hiện được ghi cùng file, reproducer, yêu cầu test vào [TRACKER.md](TRACKER.md), commit `3eeab917`.
+- Review mã là phân tích luồng logic, chưa có test runtime mới trên các race; các nhánh worker chỉ được owner tự sửa. Không đổi COMMON, không nhập/bật Pages, không coi code đã push là nghiệm thu Gói 1.5.
