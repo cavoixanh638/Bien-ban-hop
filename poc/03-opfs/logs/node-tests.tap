@@ -1,0 +1,164 @@
+
+> test
+> node --test test.mjs test-extended.mjs test-worker.mjs
+
+TAP version 13
+# Subtest: pending seek does not mutate OPFS and cannot reconcile active writes
+ok 1 - pending seek does not mutate OPFS and cannot reconcile active writes
+  ---
+  duration_ms: 14.028289
+  type: 'test'
+  ...
+# Subtest: old durable bytes readable while append pending, without truncation
+ok 2 - old durable bytes readable while append pending, without truncation
+  ---
+  duration_ms: 10.25846
+  type: 'test'
+  ...
+# Subtest: truncate extra bytes not recorded in IDB; preserve committed valid samples
+ok 3 - truncate extra bytes not recorded in IDB; preserve committed valid samples
+  ---
+  duration_ms: 3.132906
+  type: 'test'
+  ...
+# Subtest: recover after lost file, never overwrite previous segment, append to new file
+ok 4 - recover after lost file, never overwrite previous segment, append to new file
+  ---
+  duration_ms: 5.466205
+  type: 'test'
+  ...
+# Subtest: post-reconcile corruption detected on targeted seek without scanning all files
+ok 5 - post-reconcile corruption detected on targeted seek without scanning all files
+  ---
+  duration_ms: 3.82235
+  type: 'test'
+  ...
+# Subtest: post-reconcile file disappearance cannot synthesize missing bytes
+ok 6 - post-reconcile file disappearance cannot synthesize missing bytes
+  ---
+  duration_ms: 2.090063
+  type: 'test'
+  ...
+# Subtest: partial checksum failure and header damage recover other valid interval
+ok 7 - partial checksum failure and header damage recover other valid interval
+  ---
+  duration_ms: 3.172846
+  type: 'test'
+  ...
+# Subtest: invalid sample/sequence, nonfinite payload and cross-recording injection rejected
+ok 8 - invalid sample/sequence, nonfinite payload and cross-recording injection rejected
+  ---
+  duration_ms: 6.102524
+  type: 'test'
+  ...
+# Subtest: audio manifest carries recorded/ gap / unavailable interval with file refs and reasons
+ok 9 - audio manifest carries recorded/ gap / unavailable interval with file refs and reasons
+  ---
+  duration_ms: 5.006194
+  type: 'test'
+  ...
+# Subtest: worker-style failure at append prevents later false ACK; can reopen committed prefix
+ok 10 - worker-style failure at append prevents later false ACK; can reopen committed prefix
+  ---
+  duration_ms: 2.716943
+  type: 'test'
+  ...
+# Subtest: stereo boundary sample and WAV header width accepted
+ok 11 - stereo boundary sample and WAV header width accepted
+  ---
+  duration_ms: 5.822919
+  type: 'test'
+  ...
+# Subtest: duplicate recording create fails rather than silently replace existing journal
+ok 12 - duplicate recording create fails rather than silently replace existing journal
+  ---
+  duration_ms: 3.159446
+  type: 'test'
+  ...
+# Subtest: worker termination/reopen after after_buffer_release
+ok 13 - worker termination/reopen after after_buffer_release
+  ---
+  duration_ms: 151.356753
+  type: 'test'
+  ...
+# Subtest: worker termination/reopen after afterOpfsFlush
+ok 14 - worker termination/reopen after afterOpfsFlush
+  ---
+  duration_ms: 110.520571
+  type: 'test'
+  ...
+# Subtest: worker termination/reopen after afterJournalCommit
+ok 15 - worker termination/reopen after afterJournalCommit
+  ---
+  duration_ms: 117.134416
+  type: 'test'
+  ...
+# Subtest: flush is the only point of durable ACK and seek sample accurate
+ok 16 - flush is the only point of durable ACK and seek sample accurate
+  ---
+  duration_ms: 13.947659
+  type: 'test'
+  ...
+# Subtest: crash after OPFS flush before IndexedDB: uncommitted tail truncated
+ok 17 - crash after OPFS flush before IndexedDB: uncommitted tail truncated
+  ---
+  duration_ms: 8.782917
+  type: 'test'
+  ...
+# Subtest: crash after journal commit preserves committed audio
+ok 18 - crash after journal commit preserves committed audio
+  ---
+  duration_ms: 2.50845
+  type: 'test'
+  ...
+# Subtest: missing file reported unavailable, never replaced with next file
+ok 19 - missing file reported unavailable, never replaced with next file
+  ---
+  duration_ms: 12.613198
+  type: 'test'
+  ...
+# Subtest: header corruption repair only after full slice validation
+ok 20 - header corruption repair only after full slice validation
+  ---
+  duration_ms: 3.06159
+  type: 'test'
+  ...
+# Subtest: truncated file and checksum corruption are unavailable
+ok 21 - truncated file and checksum corruption are unavailable
+  ---
+  duration_ms: 2.692937
+  type: 'test'
+  ...
+# Subtest: duplicate rejected; missing sequence and sample range preserved as gap
+ok 22 - duplicate rejected; missing sequence and sample range preserved as gap
+  ---
+  duration_ms: 3.804263
+  type: 'test'
+  ...
+# Subtest: quota errors never mark unflushed audio durable
+ok 23 - quota errors never mark unflushed audio durable
+  ---
+  duration_ms: 1.462011
+  type: 'test'
+  ...
+# Subtest: journal transaction failure after flush is rolled back
+ok 24 - journal transaction failure after flush is rolled back
+  ---
+  duration_ms: 1.516052
+  type: 'test'
+  ...
+# Subtest: three hour index boundary represented without allocating whole PCM
+ok 25 - three hour index boundary represented without allocating whole PCM
+  ---
+  duration_ms: 134.674379
+  type: 'test'
+  ...
+1..25
+# tests 25
+# suites 0
+# pass 25
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 442.510704
