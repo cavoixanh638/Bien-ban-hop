@@ -1,0 +1,19 @@
+{
+  "name": "Mốc Họp — G10 thử nghiệm",
+  "short_name": "Mốc Họp",
+  "description": "Ghi chú trong lúc ghi âm và nghe lại theo mốc",
+  "display": "standalone",
+  "start_url": "./",
+  "scope": "./",
+  "background_color": "#eef2f2",
+  "theme_color": "#152b35",
+  "lang": "vi",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
