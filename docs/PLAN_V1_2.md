@@ -10,6 +10,8 @@
 | Trạng thái | Kế hoạch triển khai; chưa có ứng dụng được nghiệm thu |
 | Môi trường | Windows, Chrome/Edge, WebApp/PWA |
 
+> **Cấu trúc tài liệu tinh gọn:** đây là nguồn chính thức cho *sản phẩm, yêu cầu chức năng, phạm vi và lộ trình*. Schema/module thuộc [ARCHITECTURE.md](ARCHITECTURE.md); quy tắc gõ và thời gian thuộc [TIMELINE_RULES.md](TIMELINE_RULES.md); thu/phát âm thanh thuộc [AUDIO_DESIGN.md](AUDIO_DESIGN.md). Trạng thái thực tế và quyết định đã chốt chỉ ghi tại [STATUS.md](STATUS.md). **Tất cả mới là kế hoạch, chưa có PoC hay nghiệm thu.**
+
 ## I. Mục tiêu
 
 **Nội dung người dùng tự gõ là trung tâm.** Mốc Họp là trình soạn thảo giống Word có khả năng tự liên kết phần chữ với thời điểm trong bản ghi âm, không phải phần mềm ghi âm có thêm ô nhập. Người dùng tự chọn ý quan trọng để ghi; ứng dụng không cố ghi lại mọi lời nói.
@@ -51,54 +53,52 @@ Mỗi phần văn bản được gõ khi có nguồn âm thanh phù hợp tự g
 
 Một trang gồm thanh trên cùng rất gọn (cuộc họp, ghi âm, thời lượng, trạng thái lưu), vùng soạn thảo lớn, thanh phát lại thu gọn. Không hiện các nút KL/GV/SL/DX/KT hoặc bộ lọc chiếm không gian mặc định. Nhấp thường đặt con trỏ; phát bằng Alt + nhấp, phím tắt hoặc pill ▶ nhỏ. Phím tắt phải thử tránh xung đột Windows/Chrome/Edge/Unikey/EVKey; không mặc định Alt + Space. Hover hiển thị mốc của vùng có audio; vùng không liên kết không giả nút phát. Không tô sáng karaoke vì chưa có căn chỉnh lời nói.
 
-## VI. Kiến trúc và dữ liệu
+## VI. Danh mục yêu cầu chức năng chính
 
-| Thành phần | Định hướng |
+Bảng sau hợp nhất các yêu cầu trong phiên bản tài liệu cũ `REQUIREMENTS.md`. **Mọi mục Must thuộc Giai đoạn 1**; các chức năng Conditional chỉ triển khai sau khi lõi đã đạt và môi trường hỗ trợ.
+
+| Mã | Nhóm | Yêu cầu bắt buộc |
+|---|---|---|
+| REQ-01 | Soạn thảo là trung tâm | Vùng viết lớn; văn bản, tiêu đề, đậm/nghiêng, danh sách, thụt dòng, copy/cut/paste, Undo/Redo và tìm kiếm; không phải bấm Save hay tạo thẻ |
+| REQ-02 | Mốc tự động | Gắn theo từ/cụm trong cùng đoạn, không phụ thuộc Enter; phân biệt thời điểm gõ với thời điểm nói; chữ không có audio phải được ghi rõ là unlinked |
+| REQ-03 | Nghe lại và sửa | Nhấp thường đặt con trỏ; nghe tại chữ qua Alt + Click/phím tắt/▶ ngữ cảnh, tua/tốc độ 0,5–2×/A–B/pre-roll; không chuyển Xem/Sửa |
+| REQ-04 | Gõ Việt và chỉnh sửa | Unikey/EVKey Telex/VNI; đổi dấu không mất anchor từ; sửa/cắt/dán/di chuyển/Undo/Redo giữ liên kết còn hợp lệ |
+| REQ-05 | Thu và nhập file | Chọn và kiểm tra micro, ghi/pause/resume/stop, ghi dài và lưu định kỳ; nhập MP3/WAV/WebM/M4A nếu decoder hỗ trợ; audio online là Conditional |
+| REQ-06 | Timeline và player | Một dòng thời gian logic qua nhiều segment, tua/phát xuyên file; phân biệt pause, gap và file missing; không phát sai nguồn |
+| REQ-07 | Quản lý/lưu | Nhiều cuộc họp, tìm toàn văn; xác nhận lưu text/audio độc lập, cảnh báo mic/quota; bảo vệ nhiều tab cùng ghi |
+| REQ-08 | Sao lưu/xuất | Gói .mochop streaming gồm tài liệu/Mark/audio/manifest/checksum; khôi phục có kiểm tra; DOCX/TXT/Markdown/CSV, xuất sạch hoặc kèm mốc |
+| REQ-09 | Offline và nâng cấp | PWA ngoại tuyến sau lần tải đầu; Service Worker không tự reload khi ghi; migration kiểm thử; Wake Lock chỉ là hỗ trợ |
+
+### Ngoại lệ cần xử lý
+
+| Tình huống | Hành vi mong đợi |
 |---|---|
-| Frontend | React + TypeScript + Vite |
-| Editor | Tiptap/ProseMirror, Custom Mark **timeSpan** trong NoteDocument |
-| Nội dung Mark | anchorId, recordingId, audioOffsetMs, typedAt, source, schemaVersion |
-| Trạng thái audio | Suy ra từ Audio Manifest/Storage, **không lưu anchorStatus thay đổi liên tục trong Mark** |
-| Bộ gõ | Transaction/diff + events/IME nếu có + chuỗi xóa/chèn nhanh |
-| Ghi âm | Ưu tiên PoC AudioWorklet + PCM, so sánh PoC MediaRecorder trước khi chọn production |
-| Lưu cấu trúc | IndexedDB |
-| Lưu âm thanh | OPFS qua Dedicated Worker, định kỳ checkpoint/flush |
-| Phát | Virtual Timeline + Multi-Segment Player |
-| Đa tab | Web Locks + BroadcastChannel |
-| Sao lưu | Streaming ZIP có manifest, schema version, checksum |
-| PWA | Service Worker + cache có phiên bản + update/migration an toàn |
+| Micro bị rút/hết quyền | Cảnh báo, đánh dấu khoảng mất âm thanh, vẫn cho gõ |
+| Hết quota | Cảnh báo trước; khi ghi thất bại không báo đã lưu |
+| Đóng tab giữa lúc ghi | Khôi phục phần audio/text đã xác nhận ghi; phần còn thiếu được báo rõ |
+| Hai tab cùng mở | Chỉ một tab ghi; không overwrite |
+| Dán đoạn từ ngoài | Không tạo fake per-word audio timestamps |
+| Sửa mốc cũ | Giữ bản chất nguồn và chỉ đổi vị trí khi người dùng chủ động |
+| Nhấp vào vùng không có âm thanh | Không play, giải thích liên kết thiếu |
+| Cập nhật PWA khi đang thu | Hoãn kích hoạt/reload đến lúc an toàn |
 
-Editor không phụ thuộc trực tiếp vào engine thu. Timeline ánh xạ thời gian nhập ↔ audio source/segment. Player dựa manifest, không dùng currentTime của một file làm thời gian toàn cuộc họp. Marks chỉ lưu liên kết tương đối ổn định; trạng thái valid/pending/missing/gap/unlinked là dẫn xuất, không tạo transaction editor khi Worker flush.
+### Ưu tiên và giới hạn
 
-## VII. Thời gian, chỉnh sửa và gõ tiếng Việt
+- **Must:** REQ-01–REQ-09, ngoại trừ các thành phần đã ghi Conditional; không có tính năng nào được “PASS” khi mới có mô tả hay nút UI.
+- **Conditional/Should:** thu âm thanh hệ thống và trộn micro khi Chrome/Edge/Windows có audio track; nhãn/người nói thủ công, waveform, xuất đoạn âm.
+- **Ngoài Giai đoạn 1:** AI chép lời, nhận diện người nói, tóm tắt, tự soạn biên bản/thông báo kết luận, backend/cloud/tài khoản bắt buộc.
 
-Phân biệt Wall Time, Input Time, Meeting Timeline, Media Timeline. Ghi trực tiếp dựa đồng hồ đơn điệu và các checkpoint với audio thực; khi nhập file thì lấy media playback. Pre-roll chỉ thay đổi điểm **bắt đầu phát**, không thay đổi audioOffsetMs.
+## VII. Cách sử dụng dự kiến (chưa phải hướng dẫn bản chạy)
 
-Bộ gõ Windows có thể phát chuỗi xóa/chèn để đổi dấu thay vì composition. Theo dõi từ đang gõ, con trỏ, transaction, nội dung trước/sau, sự kiện và thời gian để phân biệt đổi dấu với sửa chủ động. Không nhận diện chỉ bằng ngưỡng 30–50 ms, không chặn transaction nhập liệu chỉ vì nghi là thao tác Unikey. Phải kiểm thử với bàn phím và bộ gõ thật.
+1. Tạo cuộc họp, cấp quyền micro và bấm **Bắt đầu ghi âm**; có thể chuẩn bị nội dung trước khi ghi nhưng phần đó không được tự gắn audio giả.
+2. **Chỉ cần gõ như Word.** Ứng dụng tự ghi mốc và lưu. Trong cuộc họp không yêu cầu gán nhãn, người nói hay nút Lưu.
+3. Kết thúc thu, vẫn sửa văn bản ngay trên cùng trang. Nghe tại con trỏ bằng phím tắt, Alt + nhấp hoặc ▶ nhỏ khi hover; nhấp thường đặt con trỏ.
+4. Có thể nhập file âm thanh có sẵn; nếu đang phát hoặc pause, mốc mới lấy từ vị trí audio đang chọn. Tua đến chỗ khác rồi gõ sẽ lấy vị trí mới.
+5. Tìm kiếm, xuất DOCX khi cần soạn biên bản; định kỳ xuất **.mochop** ra ngoài trình duyệt để giữ cả audio và mốc. DOCX không thay thế bản sao lưu tương tác.
 
-Sửa chính tả/đổi dấu từ cũ giữ mốc cũ; chèn ý mới thực sự trong lúc ghi có mốc mới; dán từ ngoài không giả các thời điểm chữ được nói; cắt/di chuyển trong cuộc họp giữ nguồn; dán từ cuộc họp khác không trỏ nhầm audio; Undo/Redo khôi phục cả chữ và liên kết. Trường hợp chưa chắc, ưu tiên giữ nguồn và đánh dấu cần xác minh.
+**Trường hợp bất thường:** Mất micro, bộ nhớ đầy, trình duyệt/tài liệu bị đóng hoặc máy Sleep phải được thông báo trung thực; chỉ phần đã lưu thành công mới có thể khôi phục. Screen Wake Lock không cam kết ngăn Windows Sleep.
 
-## VIII. Ghi âm và phát nhiều đoạn
-
-AudioWorklet/PCM là phương án thử nghiệm ưu tiên vì thuận lợi đếm mẫu và khôi phục, nhưng phải đo CPU/RAM/quota và tình trạng mất mẫu. PCM mono 16-bit xấp xỉ 115 MB/giờ ở 16 kHz, 173 MB/giờ ở 24 kHz, 346 MB/giờ ở 48 kHz. Nhận đúng sample rate thực tế, không mặc định micro thu trực tiếp 16/24 kHz.
-
-MediaRecorder/WebM là phương án đối chứng: Blob timeslice không mặc nhiên là file độc lập, cần xem xét seek metadata/remux, khởi động lại recorder có thể sinh khoảng hở. Không làm hai engine production song song.
-
-Ghi các đoạn logic khoảng 2–5 phút nhưng flush/checkpoint thường xuyên trong mỗi đoạn (mục tiêu thử nghiệm 1–2 giây). Đoạn đã hoàn tất phải phát độc lập; đoạn đang ghi phải có metadata/phương án khôi phục. WAV cập nhật header không bảo đảm 100% sau mất điện. Chỉ báo âm thanh “đã lưu” khi kết quả ghi thực sự được xác nhận.
-
-Virtual Timeline ánh xạ nguồn, segment, vị trí cục bộ, khoảng pause và gap; Player đọc trước/lập lịch hoặc dùng công nghệ thích hợp với codec. Phải kiểm thử seek/lặp A–B/phát qua boundary và không tự khẳng định hai thẻ audio bảo đảm liền mạch.
-
-Nguồn thu: micro mặc định. Thu audio hệ thống hoặc trộn micro chỉ khi getDisplayMedia và hệ điều hành thực sự trả audio track; phải kiểm tra quyền, thiết bị và thu trùng. Screen Wake Lock có thể bị thu hồi và không bảo đảm ngăn mọi trạng thái Sleep của Windows.
-
-## IX. Lưu trữ, sao lưu, nâng cấp
-
-IndexedDB quản lý NoteDocument/cuộc họp/manifest/nhật ký; OPFS lưu âm thanh. Không có transaction nguyên tử chung, nên cần journal/manifest, reconciliation, derived link status. Web Locks ngăn hai tab cùng ghi, BroadcastChannel thông báo; tab sau đọc-only hoặc có cảnh báo.
-
-Gói sao lưu .mochop là ZIP theo luồng chứa manifest/version/checksum, tài liệu, mốc, metadata và audio; không gom toàn bộ file dài vào RAM. Khôi phục vào vùng tạm, kiểm tra trước khi thay dữ liệu đang dùng. OPFS/IndexedDB không thay thế bản sao ngoài trình duyệt.
-
-PWA trên GitHub Pages cần base path/scope đúng; index HTML có chiến lược kiểm tra phiên bản với fallback offline, asset hash cache theo version. Không dùng skipWaiting/reload ép khi đang ghi. Migration phải có schema version, thử trên backup/dữ liệu cũ, không xóa dữ liệu trước khi kiểm chứng.
-
-## X. Sáu gói thực hiện và cổng nghiệm thu
+## VIII. Sáu gói thực hiện và cổng nghiệm thu
 
 | Gói | Công việc | Điều kiện qua cổng |
 |---|---|---|
@@ -111,7 +111,7 @@ PWA trên GitHub Pages cần base path/scope đúng; index HTML có chiến lư�
 
 Chưa có gói nào được báo cáo PASS ở thời điểm soạn tài liệu. Cần commit/checkpoint và chứng cứ test sau mỗi gói; không xây toàn bộ app trước khi Gói 1.1 đạt.
 
-## XI. Tiêu chí và mục tiêu đo
+## IX. Tiêu chí và mục tiêu đo
 
 Bộ kiểm thử chi tiết: [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md), TC01–TC38.
 
@@ -124,7 +124,7 @@ Bộ kiểm thử chi tiết: [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md), TC01�
 - Mục tiêu tổn thất **dữ liệu chưa xác nhận lưu** trong sự cố giả lập: văn bản khoảng 2 giây, âm thanh khoảng 10 giây; không cam kết tuyệt đối.
 - Backup/checksum/migration/đa tab/offline đạt test. Thu âm online chỉ nghiệm thu theo các môi trường được công bố.
 
-## XII. Rủi ro và chất lượng
+## X. Rủi ro và chất lượng
 
 Critical: mất dữ liệu đã xác nhận lưu, phát nhầm nguồn, hỏng dữ liệu không thể khôi phục. High: lỗi gõ Việt, sai mốc, không ghi/phát chức năng cốt lõi. Không phát hành khi có Critical hoặc High.
 
@@ -132,15 +132,18 @@ Rủi ro chính: bộ gõ backspace burst, Mark sai sau transaction, PCM dung l�
 
 **Đích nghiệm thu V1.2:** người dùng chỉ tập trung nghe và gõ nội dung thấy quan trọng; mỗi phần chữ có mốc hoặc được nhận diện rõ là chưa liên kết, có thể nghe lại đúng nguồn mà không phải chuyển chế độ hay ghi thời gian thủ công.
 
-## XIII. Tài liệu triển khai
+## XI. Phân công nguồn tài liệu và chuẩn hoàn thành
 
-- [REQUIREMENTS.md](REQUIREMENTS.md): hành vi người dùng và UX.
-- [ARCHITECTURE.md](ARCHITECTURE.md): module và hợp đồng kỹ thuật.
-- [DATA_MODEL.md](DATA_MODEL.md): Mark, Audio Manifest, lưu trữ, migration.
-- [TIMELINE_RULES.md](TIMELINE_RULES.md): nhập/sửa/IME/paste/mapping.
-- [AUDIO_ENGINE_DECISION.md](AUDIO_ENGINE_DECISION.md): thử nghiệm và tiêu chí chọn engine, **chưa có kết quả**.
-- [PLAYBACK_DESIGN.md](PLAYBACK_DESIGN.md): phát đa đoạn.
-- [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md): TC01–TC38.
-- [USER_GUIDE.md](USER_GUIDE.md): quy trình thao tác dự kiến.
+| Nội dung | Nguồn chính thức |
+|---|---|
+| Mục tiêu, nguyên tắc bất biến, yêu cầu, phạm vi và gói triển khai | **PLAN_V1_2.md** |
+| Module, hợp đồng, dữ liệu, OPFS/IndexedDB, backup schema, migration | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Các tình huống nhập/sửa, Unikey/EVKey và ánh xạ thời gian | [TIMELINE_RULES.md](TIMELINE_RULES.md) |
+| Bộ ghi âm, lưu an toàn, checkpoint, player đa đoạn | [AUDIO_DESIGN.md](AUDIO_DESIGN.md) |
+| Tiêu chuẩn TC01–TC38, bằng chứng và phép đo | [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md) |
+| Tiến độ thực tế, tác vụ, checkpoint và quyết định có bằng chứng | [STATUS.md](STATUS.md) |
+| Hướng dẫn AI/Codex | [../AGENTS.md](../AGENTS.md) |
 
-*Tài liệu này là kế hoạch hiện hành; chưa có bằng chứng rằng chức năng đã được triển khai trên repo.*
+**Điều kiện hoàn thành:** Có bản chạy được, gõ tiếng Việt và mốc đúng sau mọi thao tác thường gặp; ghi được nhiều giờ và khôi phục được phần đã lưu; nghe lại xuyên file; sao lưu/khôi phục dữ liệu; không còn lỗi Critical/High; có commit cùng bằng chứng nghiệm thu. Không gọi PoC là sản phẩm hoàn thiện.
+
+*Cập nhật cấu trúc tài liệu, **không thay đổi mục tiêu V1.2**. Mọi kết quả triển khai phải ghi tại STATUS.md thay vì sửa kế hoạch thành báo cáo tiến độ.*

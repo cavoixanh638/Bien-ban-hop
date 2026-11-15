@@ -1,32 +1,34 @@
 # Mốc Họp — Biên bản họp
 
-Repository riêng cho tài liệu và mã nguồn **Mốc Họp**: trình soạn thảo ghi chú có mốc âm thanh tự động.
+**Mốc Họp** là ứng dụng dự kiến cho việc **gõ ghi chú như Word và tự gắn mốc âm thanh**, để nghe lại đúng đoạn từ chính chữ người dùng đã ghi. Không bắt tạo dấu mốc, chọn nhãn hoặc bấm Lưu khi đang ghi chú.
 
-> **Trạng thái ngày 15/11/2026:** Mới hoàn thiện **kế hoạch V1.2**, chưa triển khai và chưa nghiệm thu WebApp. Mọi giao diện/quy trình dưới đây đều là đặc tả dự kiến.
+> **Trạng thái thực tế:** Hiện repo chủ yếu chứa **tài liệu thiết kế Giai đoạn 1**. Chưa có WebApp hoặc bộ kiểm thử được nghiệm thu. Xem [STATUS](docs/STATUS.md) trước khi nhận công việc.
 
-## Tài liệu
+## Bộ tài liệu tối giản — 8 tệp
 
-- **[Kế hoạch tổng thể V1.2](docs/PLAN_V1_2.md)** — nguồn phạm vi chính thức, thay thế các bản V1.0 và V1.1.
-- [Yêu cầu và luồng sử dụng](docs/REQUIREMENTS.md)
-- [Kiến trúc kỹ thuật](docs/ARCHITECTURE.md)
-- [Mô hình dữ liệu](docs/DATA_MODEL.md)
-- [Quy tắc liên kết thời gian, gõ tiếng Việt và chỉnh sửa](docs/TIMELINE_RULES.md)
-- [Phương án thử nghiệm/chọn bộ ghi âm](docs/AUDIO_ENGINE_DECISION.md)
-- [Thiết kế phát âm thanh đa đoạn](docs/PLAYBACK_DESIGN.md)
-- [Bộ tiêu chí nghiệm thu TC01–TC38](docs/ACCEPTANCE_TESTS.md)
-- [Hướng dẫn sử dụng dự kiến](docs/USER_GUIDE.md)
-- [Quy tắc làm việc cho AI/Codex](AGENTS.md)
+| Đọc khi cần | Tệp chính thức |
+|---|---|
+| Hiểu ngay dự án và cách tìm tài liệu | README.md (tệp này) |
+| Bàn giao và quy tắc ChatGPT/Codex | [AGENTS.md](AGENTS.md) |
+| Mục tiêu, quy trình, yêu cầu V1.2 và 6 gói triển khai | [docs/PLAN_V1_2.md](docs/PLAN_V1_2.md) |
+| Kiến trúc, hợp đồng module và **mô hình dữ liệu** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Quy tắc `timeSpan`, gõ tiếng Việt, sửa/dán và thời gian | [docs/TIMELINE_RULES.md](docs/TIMELINE_RULES.md) |
+| Ghi âm an toàn, lựa chọn engine và phát đa đoạn | [docs/AUDIO_DESIGN.md](docs/AUDIO_DESIGN.md) |
+| Danh sách và bằng chứng nghiệm thu TC01–TC38 | [docs/ACCEPTANCE_TESTS.md](docs/ACCEPTANCE_TESTS.md) |
+| Công việc hiện tại, mức hoàn thành, quyết định và blocker | [docs/STATUS.md](docs/STATUS.md) |
 
-## Nguyên tắc sản phẩm
+## Khởi đầu công việc
 
-**Ghi chú là trung tâm.** Người dùng gõ như Word; mọi phần chữ mới nhập khi có nguồn âm thanh phù hợp được gắn mốc tự động, không cần tạo ghi chú, chọn nhãn, gán người nói hoặc bấm Lưu. Nhấp thường dùng để sửa văn bản; nghe lại qua phím tắt/Alt + nhấp/nút ▶ ngữ cảnh, không phải chuyển Xem/Sửa. Mốc phản ánh thời điểm gõ, không phải căn chỉnh lời nói.
+1. Đọc **PLAN_V1_2.md** và **STATUS.md**.
+2. Bắt đầu từ Gói 1.1: PoC editor `timeSpan`, kiểm thử Unikey/EVKey trên Windows thật.
+3. Làm từng gói, chỉ ghi PASS khi có mã nguồn và bằng chứng kiểm thử.
+4. Cập nhật **STATUS.md** với commit, test, lỗi và bước tiếp theo.
+5. Không coi hướng dẫn dự kiến hoặc PoC là ứng dụng đã phát hành.
 
-Ghi âm nhiều giờ phải lưu định kỳ, có thể khôi phục phần đã lưu; hệ thống cho phép nghe liền mạch qua nhiều file và sao lưu độc lập ngoài trình duyệt.
+**Chỉ Giai đoạn 1:** chưa làm AI chép lời/người nói/tóm tắt/soạn biên bản; không cần backend hay cloud.
 
-## Lộ trình
+**Dữ liệu:** không commit ghi âm cuộc họp, tài liệu nội bộ nhạy cảm, token hoặc bản backup thật lên GitHub. OPFS/IndexedDB là lưu trữ cục bộ, không thay bản sao lưu độc lập.
 
-Gói 1.1 Editor/Mark → 1.2 Thu âm/lưu → 1.3 Timeline → 1.4 Phát/UI → 1.5 Quản lý/backup → 1.6 Nghiệm thu/phát hành.
+## Lịch sử
 
-**Ngoài phạm vi V1.2:** AI chép lời, AI người nói, AI tóm tắt và soạn thông báo kết luận, backend và cloud bắt buộc.
-
-Không đưa file ghi âm họp thật hoặc thông tin nhạy cảm vào GitHub. Các quyết định chưa kiểm thử phải ghi rõ là **chưa chốt**.
+Bộ tài liệu gốc gồm 11 tệp đã được hợp nhất thành 8 tệp để giảm trùng lặp. Git vẫn giữ nội dung cũ trong lịch sử commit; **không duy trì song song các bản V1.0/V1.1 hoặc các tệp chuyên môn bị thay thế**.

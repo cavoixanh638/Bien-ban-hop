@@ -1,6 +1,6 @@
 # QUY TẮC THỜI GIAN, GÕ TIẾNG VIỆT VÀ CHỈNH SỬA — V1.2
 
-**Đặc tả hành vi chuẩn** cho InputTracking, timeSpan Mark và Timeline. Mọi trường hợp chưa thể nhận diện chắc chắn phải **giữ nguồn hoặc đánh dấu không liên kết**, không bịa thời điểm audio.
+**Nguồn quy tắc thao tác nhập/mốc chính thức** cho InputTracking, timeSpan Mark và Timeline. Mọi trường hợp chưa thể nhận diện chắc chắn phải **giữ nguồn hoặc đánh dấu không liên kết**, không bịa thời điểm audio.
 
 ## 1. Định nghĩa mốc
 
@@ -120,4 +120,6 @@ Không bắt chuyển Xem/Sửa, không áp đặt gán nhãn hay người nói.
 
 Đo lệch mốc bằng tín hiệu kiểm thử; mục tiêu ≤1 giây trong bộ thử chuẩn. Không tuyên bố đây là độ chính xác từng từ phát biểu.
 
-Xem [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md) và [DATA_MODEL.md](DATA_MODEL.md).
+Xem [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md) và [ARCHITECTURE.md](ARCHITECTURE.md).
+
+> Trạng thái thử nghiệm và các quyết định đã xác nhận được cập nhật trong [STATUS.md](STATUS.md). Các mốc/gợi ý về thời gian tại đây vẫn là tiêu chí thiết kế cho đến khi có bằng chứng kiểm thử.

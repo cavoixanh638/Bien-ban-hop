@@ -1,6 +1,6 @@
 # BỘ NGHIỆM THU V1.2 — TC01–TC38
 
-**Trạng thái:** Bộ tiêu chí dự kiến, **chưa chạy test**, không có kết quả PASS được kế thừa. Nguồn phạm vi: [PLAN_V1_2.md](PLAN_V1_2.md).
+**Trạng thái:** Bộ tiêu chí dự kiến, **chưa chạy test**, không có kết quả PASS được kế thừa. Nguồn phạm vi: [PLAN_V1_2.md](PLAN_V1_2.md); **trạng thái thực tế và dẫn chứng chỉ ghi tại [STATUS.md](STATUS.md)**. Tài liệu kiểm thử này không tự thể hiện một ca đã PASS chỉ vì tiêu chí đã được viết.
 
 ## Nguyên tắc
 
@@ -105,3 +105,5 @@ Kiểm thử tổng thể Gói 1.1–1.5 trên Windows/Chrome/Edge; một số p
 ## Quy định phát hành
 
 Critical: mất chữ/audio đã báo lưu, phát nhầm nguồn, backup không thể khôi phục phần hợp lệ. High: gõ Việt hỏng, mốc lệch, ghi/phát cốt lõi hỏng. **Không phát hành khi có Critical/High**. Mỗi gói cần checkpoint và hồ sơ bằng chứng riêng.
+
+> Khi bắt đầu triển khai, giữ mã TC01–TC38 ổn định. Mỗi kết quả kiểm thử dẫn commit SHA, môi trường, fixture và báo cáo bằng chứng ở STATUS.md hoặc đường dẫn tới CI/PR. Không tạo bản sao khác của bảng TC.
