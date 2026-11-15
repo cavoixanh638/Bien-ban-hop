@@ -1,49 +1,52 @@
-# Checkpoint · G07-backup — 15/11/2026
+# Checkpoint · G07-backup — tiếp tục 15/11/2026
 
-- **Nhánh (duy nhất):** `gemini/20261115-07-backup`; baseline `6142f56a6efdb27aa9445920c9321f7930c0d5fd`.
-- **Trạng thái:** **IN_PROGRESS / READY_FOR_REVIEW phần PoC độc lập, CHƯA DONE theo entrypoint**. Không có nghiệm thu ứng dụng tích hợp/Gói 1.5.
-- **Code SHA:** [`d9ed3ca5783ffe746016966880e5321282ae9be6`](https://github.com/cavoixanh638/Bien-ban-hop/commit/d9ed3ca5783ffe746016966880e5321282ae9be6).
-- **Tested source SHA:** `d9ed3ca5783ffe746016966880e5321282ae9be6` **theo đối chiếu 19/19 Git blob SHA khớp byte với mã local đã chạy**, không phải kết quả `git clone` sạch từ remote; riêng bước `clean checkout`: **NOT_RUN** (container không phân giải được DNS GitHub).
-- **Môi trường:** Debian GNU/Linux 13 x86_64; Node 22.16.0; Python 3.13.5; Chromium 144.0.7559.96 bị policy chặn điều hướng; fixture tổng hợp, không dùng bản ghi họp thực.
-- **Phạm vi diff:** chỉ `poc/07-backup/` và checkpoint này; không chỉnh COMMON.md, TRACKER.md, nhánh khác; không merge/deploy.
+- **Owner:** G07 Sao lưu/khôi phục .mochop. **Branch:** `gemini/20261115-07-backup`. Baseline: `6142f56a6efdb27aa9445920c9321f7930c0d5fd`.
+- **Trạng thái:** **PARTIAL / READY_FOR_REVIEW phần reference PoC; NOT_DONE theo entrypoint**. Không gọi Gói 1.5 hoặc V1.2 tích hợp PASS.
+- **Code SHA (sau fix):** [`4b6ebd2b26dc35ab9a7e60455ff7bb1c85e776a6`](https://github.com/cavoixanh638/Bien-ban-hop/commit/4b6ebd2b26dc35ab9a7e60455ff7bb1c85e776a6).
+- **Tested SHA:** `4b6ebd2b26dc35ab9a7e60455ff7bb1c85e776a6` **theo đối chiếu 5/5 blob SHA GitHub trùng byte nguồn đã chạy `npm test`**; lưu ý **clean remote checkout: NOT_RUN** vì terminal không phân giải GitHub DNS.
+- **Evidence/HEAD trước checkpoint:** [`8b505ffe84090eed25d9357a75edbfd635d6e4b0`](https://github.com/cavoixanh638/Bien-ban-hop/commit/8b505ffe84090eed25d9357a75edbfd635d6e4b0), 6/6 blob báo cáo/log khớp. Checkpoint commit cuối cùng ghi ở lịch sử nhánh.
+- **Môi trường:** Linux Debian 13 x86_64, Node v22.16.0, Python v3.13.5, fixture tổng hợp; không có audio họp thật. Chrome/Edge Windows và máy vật lý khác: NOT_RUN.
 
-## Kết quả PASS trên PoC độc lập
+## G00 TRACKER và nhiệm vụ mới
 
-| Bài | Lệnh/đầu vào | Actual / evidence |
+- Đã kiểm TRACKER của G00 cả lần cuối: blob SHA `5392405ee4b941b8d483d4a27950acd8e74ddb1d`. **Không có ADD mới riêng cho G07.** Phần còn thiếu vẫn là đo ba package npm thật, browser/OPFS, chuyển máy và D13. G00 chưa cho tích hợp/merge/deploy.
+- Khi kiểm chủ động phát hiện lỗi riêng của G07: **`manifest.json` bị sửa byte nhưng CRC trung tâm không đổi vẫn được JS import trước khi vá** (`TAMPER_REPRODUCED_AND_ACCEPTED`). Sửa `mochop-web.mjs/readLimited()` để so kích thước và CRC32 theo luồng **trước parse/staging/publish**. Thêm negative regression không để stage hoặc index sót.
+- Cứng hóa path: JS + Python chặn `CON`, `NUL`, `COM1`, `LPT9`, dấu `:` (Windows alternate stream), dấu cách/chấm cuối tên, Unicode không NFC; không đổi COMMON.md.
+
+## Test trên đúng byte nguồn của Code SHA
+
+| Phạm vi | Status | Bằng chứng và ghi chú |
 |---|---|---|
-| JavaScript core ZIP64 + staging | `npm test` → `node --test test-web.mjs` | **23/23 PASS**, `logs/npm-test-local-final.txt`: CRC32/SHA256, ProseMirror timeSpan, checksum, schema, traversal, zip bomb, casefold/collision, missing audio, abort/quota, rollback, hai writer, slow sink |
-| Python oracle | `npm test` → `python3 -m unittest -v test_mochop.py` | **13/13 PASS**, `logs/npm-test-local-final.txt` (bao gồm khóa/publish song song) |
-| Khả năng đọc chéo | `npm test` → `python3 interop-check.py` | **2/2 PASS**: Python zipfile → Node staging/restore; Node ZIP64 → Python zipfile/testzip/restore; `logs/interop-cross-runtime.json` (hai runtime cùng Linux, **không phải hai máy**) |
-| 0,5 GiB | `node bench.mjs --bytes 536870912 --output logs/bench-node-512MiB-final.json` | **PASS**; xuất **13,669s**, khôi phục **12,392s**, ZIP **536.873.368 B**, peak RSS Node **120.410.112 B**; `logs/bench-node-512MiB-final.json` |
-| 2 GiB | `node bench.mjs --bytes 2147483648 --output logs/bench-node-2GiB-final.json` | **PASS**; xuất **51,349s**, khôi phục **50,074s**, ZIP **2.147.486.105 B**, peak RSS Node **99.033.088 B**; `logs/bench-node-2GiB-final.json` |
-| ZIP64 bắt buộc riêng | `node bench.mjs --zip64-count 65536` + Python zipfile đọc lại | **PASS định dạng ZIP64**: **65.536 entry**, ZIP64 EOCD, Python đọc được toàn bộ; **6,323s**; `logs/bench-zip64-65536.json`, `logs/zip64-python-cross.txt`. Không phải test thành công import 65k entry (giới hạn an toàn 10k) |
-| Bounded streaming/backpressure mock | 256 KiB/chunk, slow sink trong test | **PASS mock:** một lần ghi bất đồng bộ chờ tại mỗi thời điểm; không suy ra backpressure thực của ba thư viện khác |
+| JS ZIP64 streaming, checksum, malicious archive, rollback, missing audio, backpressure | **26/26 PASS — fixture Node** | `poc/07-backup/logs/npm-test-exact-git-blobs-20261115.txt`; gồm 3 subcase CRC/length manifest và Windows path mới |
+| Python oracle, ZIP/checksum/rollback/Windows path | **14/14 PASS — fixture Python** | Cùng log, không phải browser |
+| Python → Node / Node → Python | **2/2 PASS** | Cùng log; hai runtime trên một máy Linux, **không phải** hai máy |
+| 0,5 GiB xuất/nhập | **PASS reference từ vòng trước** | 13,669/12,392 s; peak Node RSS 120.410.112 B, `logs/bench-node-512MiB-final.json`; đo trên Code SHA cũ `d9ed3ca5`, không giả là bench của `4b6e` |
+| 2 GiB xuất/nhập | **PASS reference từ vòng trước** | 51,349/50,074 s; peak Node RSS 99.033.088 B, `logs/bench-node-2GiB-final.json`; Code SHA cũ `d9ed3ca5` |
+| ZIP64 65.536 entry + Python parser | **PASS định dạng từ vòng trước** | 6,323 s, Python đọc đủ entry; không cố import 65k vì guard 10k |
+| **ZIP64 một audio entry 4 GiB + 1 byte** | **PASS Node reference vòng này** | 4.294.967.297 B, ZIP 4.294.969.754 B, xuất **102,081 s**, khôi phục **106,843 s**, peak RSS **72.871.936 B**, peak chunk 256 KiB, missing=0; `logs/bench-node-zip64-single4GiB-20261115.json` |
 
-Kiểm thử đã chạy từ các tệp local với SHA Git object được liệt kê ở `poc/07-backup/logs/source-blob-shas.txt`. GitHub API kiểm blob SHA **19/19 khớp**, không phụ thuộc suy đoán code tương đương. Peak RSS là **Node process Linux**, không phải RAM Chrome/Edge/OPFS. Dữ liệu 512MiB/2GiB là byte giả tổng hợp, không phải PCM hợp lệ. `RESULTS.md` ghi lệnh, giới hạn và biên bản đo.
+**Chú thích SHA của benchmark >4GiB:** khởi động sau vá CRC nhưng trước thay đổi chỉ-riêng-kiểm-tên NFC trong `fileName`; logic ZIP64/manifest giống source sau push. Vì vậy bài này là PASS cho đường dữ liệu tham chiếu ở bản chạy, **không** tuyên bố full exact-commit performance. Test 26+14+2 đã chạy trên source byte-identical với commit `4b6ebd2`.
 
-## Đã tạo mã và fixture tự chủ, không đợi worker khác
+## NOT_RUN / cổng nghiệm thu còn thiếu
 
-- `zip-stream.mjs`: writer ZIP64 STORED streaming, ZIP64 Central Directory/random-access reader, CRC32/SHA256, 256 KiB read chunks; sửa lookup tên O(N²) thành Set để đáp ứng 65k entry.
-- `mochop-web.mjs`: export/import hợp đồng COMMON, schema/version, manifest, checksum, bounded metadata, staging/publish/rollback, TC38 audio missing giữ nguyên note/timeSpan.
-- `node-adapter.mjs`: stage file và index hard-link atomic chống hai import ghi đè; `browser-opfs.mjs` + `browser-run.mjs`: adapter OPFS và IndexedDB index atomic tự chứa cho bài browser.
-- `mochop.py` + `test_mochop.py`: Python reference tăng cường chống collision/path và publish lock.
-- `candidates.mjs` + `bench-candidates.mjs`: mã adapter dùng package thật `fflate@0.8.3`, `client-zip@2.5.1`, `@zip.js/zip.js@2.25.0` đã pin version trong `package.json`, không đổi nhãn sang fake; `client-zip` chỉ xuất, phải ghép zip.js để nhập. **Runtime các adapter này chưa có PASS**.
-- `README.md`, `RESULTS.md`, test, scripts tạo fixture/benchmark, log lỗi môi trường và tệp hash nguồn có trên nhánh.
+1. **fflate@0.8.3 / client-zip@2.5.1 / @zip.js/zip.js@2.25.0 thực:** `npm view`/`npm install` tiếp tục `EAI_AGAIN registry.npmjs.org`; adapter và bench script có sẵn nhưng **cả 3 ứng viên, ZIP64 cross-library, peak RAM/backpressure thật: NOT_RUN**. Chưa có package-lock integrity. Không mạo nhận các số Node reference là benchmark package.
+2. **Chrome/Edge/Windows + browser OPFS/IndexedDB/staging/crash/quota:** Chromium Playwright bị policy `ERR_BLOCKED_BY_ADMINISTRATOR` trước điều hướng, **NOT_RUN**. Mã browser adapter sẵn nhưng chưa có xác nhận thực địa.
+3. **Khôi phục trên thiết bị/máy khác:** NOT_RUN. Python ↔ Node cùng Linux không thay được bài vật lý.
+4. **Nghiệm thu app tích hợp/TỔNG Gói 1.5:** NOT_RUN, vì chỉ PoC theo COMMON, không sửa repo/app luồng khác.
+5. **Thử ZIP64 >4 GiB bằng cả ba thư viện**, ngắt điện/crash thật, bảo vệ quota và tốc độ Windows: NOT_RUN.
 
-## NOT_RUN / chặn bên ngoài — điều kiện chưa đáp ứng để báo DONE
+## Cổng TC30, TC31, TC38
 
-1. **TC31 ba thư viện thật:** `npm install` / `npm view` lỗi `EAI_AGAIN registry.npmjs.org`; **fflate / client-zip / zip.js benchmark cả hai chiều 0,5–2 GiB: NOT_RUN**. Adapter có mã nhưng chưa chạy, thiếu package-lock integrity. Xem `logs/npm-probe.stderr`.
-2. **Browser OPFS/IndexedDB thật:** Chromium Playwright bị `ERR_BLOCKED_BY_ADMINISTRATOR` ngay từ navigation HTTPS/localhost/file, không tải được PoC. **TC30/31/38 trên browser: NOT_RUN**; xem `logs/browser-blocked.stderr`. Chạy lại `python3 browser-check.py` trên origin thật, Chrome/Edge Windows.
-3. **ZIP64 >4 GiB một entry, quota/browser crash, worker queue dài, bảo mật ZIP đa định dạng và resume khi interrupted:** **NOT_RUN** trên browser/thiết bị.
-4. **Restore máy khác Windows Chrome/Edge:** **NOT_RUN**. Python↔Node PASS là tương thích khác runtime cùng máy Linux, không thay thế kiểm thực địa.
-5. **Clean remote checkout `npm test`: NOT_RUN** do GitHub DNS trong terminal; byte-identical source từ GitHub đã được kiểm 19/19 blob SHA, nhưng cần người có checkout trực tiếp lặp test.
-6. **Tích hợp với meeting repo/IndexedDB/OPFS thật của app:** **NOT_RUN**; dùng fixture độc lập như COMMON yêu cầu.
+- **TC30:** PASS fixture Python↔Node (text/marks/checksum/audio), app browser và cross-machine **NOT_RUN**.
+- **TC31:** PASS reference 512MiB/2GiB, ZIP64 65.536 entry và >4GiB một entry; ba ứng viên npm/browser/Windows **NOT_RUN**.
+- **TC38:** PASS fixture thiếu audio giữ nguyên text/timeSpan, app UI/OPFS thực **NOT_RUN**.
+- **D13 thư viện ZIP:** **OPEN**; chưa thể chọn production khi thiếu số đo thư viện thật.
 
-## Trạng thái các TC
+## Các đường dẫn bàn giao
 
-- **TC30:** **PASS trên fixture ZIP64 + Python↔Node; app/browser/máy khác NOT_RUN.**
-- **TC31:** **PASS reference JS Node 0,5/2 GiB + ZIP64 count; NOT_RUN ba library benchmark và browser/Windows.**
-- **TC38:** **PASS fixture** thiếu audio được phép, Mark/văn bản giữ nguyên; **app/browser NOT_RUN.**
-- **Nghiệm thu G07 theo entrypoint:** **NOT DONE**, vì không có bằng chứng chạy ba ứng viên npm và môi trường khác; tuyệt đối không nâng trạng thái thành PASS của sản phẩm.
+- Mã: `poc/07-backup/zip-stream.mjs`, `mochop-web.mjs`, `mochop.py`, `test-web.mjs`, `test_mochop.py`; adapters `candidates.mjs`, `browser-opfs.mjs`.
+- Hướng dẫn: [`README.md`](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-07-backup/poc/07-backup/README.md). Số đo/giới hạn: [`RESULTS.md`](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-07-backup/poc/07-backup/RESULTS.md).
+- Trace: `logs/npm-test-exact-git-blobs-20261115.txt`, `logs/source-blobs-after-fix.txt`, `logs/bench-node-zip64-single4GiB-20261115.json`.
+- Phạm vi diff xác nhận chỉ `poc/07-backup/` và checkpoint này; không đụng COMMON/TRACKER/nhánh khác, không merge main, không deploy.
 
-**Bước tiếp:** trên môi trường có npm và browser được phép: `cd poc/07-backup && npm install --include=optional --ignore-scripts && npm test`, sau đó `node bench-candidates.mjs --candidate fflate|client-zip|zip.js --bytes 536870912` (lặp `2147483648`), `python3 browser-check.py`, thử ZIP64 >4 GiB và chuyển gói qua máy khác. Khi đó đối chiếu peak RAM/backpressure/ZIP64 và quyết định D13, ghi Code/Tested SHA mới, không kế thừa PASS không đúng SHA.
+**Bước cần môi trường ngoài:** có npm và browser được phép thì chạy `npm install --include=optional --ignore-scripts && npm test`, sau đó ba candidate với `node bench-candidates.mjs --candidate ... --bytes 536870912|2147483648`, kiểm ZIP64 độc lập và cross-device restore, ghi đúng tested SHA/version/RAM. Trước khi có bằng chứng, vẫn giữ **NOT_DONE**.
