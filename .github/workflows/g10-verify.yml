@@ -1,0 +1,41 @@
+name: G10 integration verification (no deployment)
+on:
+  push:
+    branches:
+      - integration/20261115-g10-v1.2
+  pull_request:
+    paths:
+      - "app/**"
+      - "poc/**"
+      - ".github/workflows/g10-verify.yml"
+permissions:
+  contents: read
+jobs:
+  contracts:
+    name: G10 contract + Vite build (Linux/Windows)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test G10 adapters without npm dependencies
+        run: node --test app/tests/core.test.mjs
+      - name: Install exact-version Tiptap/Vite dependencies
+        run: npm install --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Build integrated application
+        run: npm run build --prefix app
+      - name: Test G01 and G02 logic on imported sources
+        run: |
+          npm run test:unit --prefix poc/01-editor
+          npm test --prefix poc/02-capture
+      - name: Test remaining standalone source contracts
+        run: |
+          npm test --prefix poc/03-opfs
+          npm test --prefix poc/05-player
+          npm test --prefix poc/07-backup
+          npm test --prefix poc/08-export
