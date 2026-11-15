@@ -69,3 +69,10 @@ WIP/chưa push: không (mọi artifact được push qua GitHub connector). **Ch
 - Code/Tested SHA của G01 trong checkpoint cũ **chưa phản ánh** sửa source 41-test; đã giao cập nhật lại SHA cho G01 ở tracker. G07 chưa đủ điều kiện `DONE` theo entrypoint vì thiếu so sánh 3 npm packages thật.
 - **Kết luận tổng chỉ huy:** 10/10 luồng đều có mã bàn giao, nhưng **không phải 10/10 DONE**, chưa ghép app và chưa nghiệm thu TC01–TC38. `main/docs/STATUS.md` vẫn PLANNING, không có ứng dụng đã nghiệm thu. G00 tự có V8 mock 17/17 nhưng `npm test` từ checkout GitHub sạch còn `NOT_RUN`. Giữ `READY_FOR_REVIEW`; Windows/Chrome/Edge/địa chỉ HTTPS/3h thu thật/thiết bị audio và restore máy khác còn cần kiểm.
 - Không có thay đổi mã, merge, deploy hay sửa worker. Lượt kiểm này chỉ cập nhật `TRACKER.md` và checkpoint G00.
+
+## G02-capture — review sau 36/36 PASS (15/11/2026)
+
+- G02 HEAD `c4845450d2ef6cc3d24fe22a9a445c588229b942`, code source `0083a670e5537952899afb247949bc71442b46b8`. Checkpoint xác nhận G02-ADD-01..05 đã xử lý (Node 36/36), đã push đầy đủ; không yêu cầu làm lại.
+- Chạy review JavaScript đúng blob GitHub qua V8 fake: (a) `CaptureClockMapper.resolveInput(1500)` trả `unlinked` khi cuộc thu vẫn active và điểm gần nhất t=1000, chuyển `valid/sampleIndex=72000` khi progress t=2000; t=1000 đúng điểm cuối cũng trả `unlinked`; (b) `stop()` khi `getUserMedia()` không settle khiến cả Start/Stop vẫn pending, state `stopping` sau nhiều microtask.
+- Giao **G02-ADD-06** live clock phải có `pending` và không làm mất mốc chữ; **G02-ADD-07** cách hủy/timeout prompt micro không settle và dọn quyền cấp muộn; reproducer và tiêu chí regression cụ thể trong [TRACKER.md](TRACKER.md), commit `f64a7835`.
+- Không tự sửa code G02, không đổi COMMON. Kết quả V8 là source-level mock, không thay Chrome/Edge Windows, micro thật, 3 giờ real-time và test tích hợp `NOT_RUN`.
