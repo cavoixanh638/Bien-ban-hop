@@ -15,7 +15,7 @@ Baseline `6142f56a6efdb27aa9445920c9321f7930c0d5fd`. Trạng thái dòng này l�
 | Gemini 06-notes | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-06-notes/docs/workstreams/2026-11-15/checkpoints/06-notes.md) | IN_PROGRESS | `ed272d05` | — | V8 memory fixture 9/9 | IndexedDB browser + two-tab/quota/crash NOT_RUN |
 | Gemini 07-backup | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-07-backup/docs/workstreams/2026-11-15/checkpoints/07-backup.md) | IN_PROGRESS | `80af80db` | — | Python ref 10/10 local | 512MiB/2GiB benchmark Python không thay được 3 ZIP JS; clean SHA/browser NOT_RUN |
 | Gemini 08-export | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-08-export/docs/workstreams/2026-11-15/checkpoints/08-export.md) | IN_PROGRESS | `9b71d4d9` | — | Node ref 20/20 local | Mã GitHub đã sửa sau run; cần test exact SHA, Word/Chrome/Edge |
-| Gemini 09-pwa | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-09-pwa/docs/workstreams/2026-11-15/checkpoints/09-pwa.md) | IN_PROGRESS | `3f77fd56` | — | NOT_RUN | Chưa có poc/09-pwa/ trên HEAD; cần commit service worker/lock/migration + test |
+| Gemini 09-pwa | [Đọc](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-09-pwa/docs/workstreams/2026-11-15/checkpoints/09-pwa.md) | IN_PROGRESS | `ea60179c` | — | Node mock 10/10 LOCAL_ONLY | Chưa có poc/09-pwa/ trên HEAD; worker đang push, browser NOT_RUN |
 
 ## Giao lại theo bằng chứng
 
@@ -73,3 +73,5 @@ Kiểm cổng Gói 1.1 và bằng chứng thực trên từng SHA. Chốt các a
 - **09-pwa:** bổ sung `poc/09-pwa/` và kiểm Web Locks/SW offline/update/migration; không reload khi ghi, `crossOriginIsolated=false`.
 
 **Ưu tiên điều phối:** (1) 05 sửa lỗi timeline sai nguồn/false gap; (2) 02 và 09 phải có mã nguồn thực; (3) 01 qua cổng Windows IME; (4) 00/04/03/06/08/07 chốt lại exact SHA và chạy môi trường phù hợp; (5) sau đủ gate mới tích hợp, chưa merge/deploy.
+
+- **09-pwa bổ sung trong lúc rà soát:** HEAD `ea60179c8cf1b4ad4802c597508772e45599ec3b` chỉ vừa cập nhật checkpoint; báo code và test Node 10/10 **LOCAL_ONLY**, `poc/09-pwa/` chưa có trên Git-tree. Vì thế chỉ ghi `IN_PROGRESS`, không ghi tested SHA hoặc bàn giao.
