@@ -78,3 +78,13 @@ Trace có thể được sinh trong demo trên máy không phải Windows; kiể
 | 11 | Node metrics/P95, Playwright DOM metrics | Unit PASS; real P95/large document NOT_RUN |
 
 Chi tiết kiểm thử hiện có: [`evidence/RESULTS.md`](evidence/RESULTS.md). **Tất cả TC01–TC11 tổng thể vẫn NOT_RUN/CHƯA NGHIỆM THU** vì chưa có đủ thử nghiệm browser/Windows. Không dùng Unit PASS để đánh dấu Gói 1.1 PASS.
+
+## Bổ sung 15/11/2026 — theo TRACKER G00 mới nhất (blob e4d613ac)
+
+- Mã mới/Code SHA đã push: `78aa598d423bba2ebc3bba3562e6bcbea2c2f644`.
+- G00 phát hiện checkpoint G01 thiếu Code SHA/Tested SHA sau cập nhật 41 tests. Đã bổ sung test hồi quy và chốt mốc trong checkpoint commit kế tiếp.
+- **Cụ thể ba lỗi đã sửa:** (1) Undo/Redo bị lọc khỏi collectTextChanges trước khi `InputTracker` reset burst và paste — thao tác gõ sau history có thể tái dùng mốc cũ; (2) con trỏ tại biên linked/unlinked hoặc foreign-invalid trả nhầm mốc bên cạnh thay vì `ambiguous`; (3) HTML copy ra ứng dụng ngoài mang `data-time-*` tiết lộ recordingId/audioOffsetMs — đã strip các thuộc tính trên HTML ngoài và giữ immutable Slice trong token store nội bộ.
+- **PASS:** `npm run test:unit` Node v22.16.0, Linux x86_64, 45/45 bài, 0 FAIL, exit 0. `node --check` mọi `src/*.mjs`, `tests/*.mjs`, `scripts/*.mjs`: PASS. Bài mới chỉ sử dụng fixture + ProseMirror-like mock, không chứng minh hoạt động Tiptap.
+- **NOT_RUN:** Tiptap build/Vite/Playwright editor E2E vì không có npm package cache, registry DNS không truy cập được (thử `npm install --offline --package-lock-only` nhận `ENOTCACHED`). Windows Chrome/Edge + 4 tổ hợp UniKey/EVKey × Telex/VNI, 120 giây gõ thật, Word clipboard, P95 trên máy người dùng vẫn **NOT_RUN**.
+- Đã viết thêm **2 browser E2E specs** về cursor linked/unlinked và clipboard HTML để chạy khi có dependency; chưa có runtime browser PASS.
+- Log ngắn: [`evidence/node22-45-summary.md`](evidence/node22-45-summary.md). SHA source được đối chiếu theo Git blob 4/4 trước push; không báo là chạy Node từ `git clone` sạch.

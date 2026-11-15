@@ -1,80 +1,61 @@
-# Checkpoint · 01-editor (PoC A / Gói 1.1)
+# Checkpoint · 01-editor — Gói 1.1 / PoC A
 
-- Chủ sở hữu: ChatGPT tiếp quản luồng Editor được giao cho 01-editor
-- Nhánh duy nhất: `gemini/20261115-01-editor`
-- Baseline: `6142f56a6efdb27aa9445920c9321f7930c0d5fd`
-- HEAD sau bàn giao: `6db17bdb68b791c04eeb7a4a72d980da02aaaee9` (trước commit checkpoint này)
-- Code SHA: `6db17bdb68b791c04eeb7a4a72d980da02aaaee9`
-- Evidence SHA: `6db17bdb68b791c04eeb7a4a72d980da02aaaee9`
-- Tested source: `6db17bdb68b791c04eeb7a4a72d980da02aaaee9` **CHỈ CHO PURE POLICY TEST**; chạy trên bản sao độc lập của đúng các tệp source/test đã push, không phải checkout GitHub sạch
-- Trạng thái: **IN_PROGRESS (KHÔNG READY_FOR_REVIEW)** — bắt buộc có Windows + UniKey/EVKey thực và browser verification
-- Node policy test: **PASS 24/24** (Linux sandbox Node `v22.16.0`, npm `10.9.2`); syntax check 5 tệp **PASS**
-- Tiptap build, Playwright browser, Windows Chrome/Edge UniKey/EVKey Telex/VNI: **NOT_RUN**
-- Mốc P95 nhập trên Windows (<100ms), TextNode/Mark/DOM trên browser và 2 phút gõ thật: **NOT_RUN**
+- **Owner/nhánh duy nhất:** `01-editor`, `gemini/20261115-01-editor`
+- **Baseline chung:** `6142f56a6efdb27aa9445920c9321f7930c0d5fd`
+- **HEAD bắt đầu lượt mới:** `71595a60626396fa07f04e539c12c9e7fb0da675`
+- **Code SHA:** `78aa598d423bba2ebc3bba3562e6bcbea2c2f644`
+- **Tested SHA (mã chính; blob-equivalent 4/4):** `78aa598d423bba2ebc3bba3562e6bcbea2c2f644` — Node test đã chạy trên bản local có 4 tệp source/test đổi mới **khớp chính xác Git blobs SHA** ở commit, không phải chạy qua `git clone`/Node sạch đúng SHA. Các tệp còn lại kế thừa từ 41 tests tại HEAD cũ.
+- **Test:** **PASS 45/45**, 0 FAIL, exit 0, Linux x86_64, Node 22.16.0; `node --check` src/tests/scripts PASS. E2E Tiptap NOT_RUN; Windows IME NOT_RUN.
+- **Trạng thái:** `IN_PROGRESS / GATE_1_1_HOLD`; **chưa DONE hoặc READY_FOR_REVIEW**.
 
-Entrypoint: [01-editor.md](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/01-editor.md) · [COMMON.md](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/COMMON.md).
+[Entrypoint](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/01-editor.md) · [COMMON.md](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/COMMON.md) · [TRACKER G00](https://github.com/cavoixanh638/Bien-ban-hop/blob/gemini/20261115-00-command/docs/workstreams/2026-11-15/TRACKER.md).
 
-## Đã triển khai và push
+## Đã đọc G00 và giải quyết phần mới
 
-1. [Demo độc lập + README](../../../../poc/01-editor/README.md) tại `poc/01-editor/`: Tiptap/ProseMirror, toolbar, editor tự gắn `timeSpan` trên nhiều cụm cùng một đoạn, mốc tại con trỏ, fake audio context/coverage, xuất NoteDocument và trace lược nội dung.
-2. [InputTracker](../../../../poc/01-editor/src/tracker.mjs) và [pure policy](../../../../poc/01-editor/src/policy.mjs): MarkSpec `inclusive:false`, `excludes:'timeSpan'`, `spanning:true`; kiểm tất cả attrs, phân loại StepMap/selection/word, beforeinput/input/composition, heuristic Backspace+Insert, format, clipboard provenance + allow-list recordingId, Undo/Redo do ProseMirror history quản lý.
-3. [Bộ kiểm thử Node](../../../../poc/01-editor/tests/policy.test.mjs) (24 test) và [browser Playwright](../../../../poc/01-editor/tests/editor.spec.mjs) (đã viết, NOT_RUN), [fixture](../../../../poc/01-editor/fixtures/synthetic-note.json), [trace validator](../../../../poc/01-editor/scripts/check-trace.mjs).
-4. [Bảng TC01–TC11 + trạng thái](../../../../poc/01-editor/evidence/RESULTS.md) và [TAP log](../../../../poc/01-editor/evidence/policy-node22.tap.md). Kết quả fixture chỉ minh chứng phép thử policy; **không coi là TC của editor đạt**.
-5. Rà soát an toàn trace: lược mọi phím in được thành `[printable]`, giữ phím điều khiển để quan sát Backspace/Insert, bổ sung 1 test privacy; **24/24 PASS** và cập nhật TAP log. Đã kiểm GitHub diff commit code trước push: 14 tệp mới đều trong `poc/01-editor/`; commit evidence tiếp theo chỉ đổi/đặt hai tệp trong cùng phạm vi.
+TRACKER hiện hành blob `e4d613ac6af6ed58a1d257fac6405379a878d9dc` ghi G01 thiếu Code SHA/Tested SHA mới khi code đã đạt 41 mock tests; bổ sung thông tin SHA trên checkpoint này. G00 **không giao bug runtime Editor cụ thể mới**; cổng thiếu là `npm install/build/test:e2e` trên browser và UniKey/EVKey Windows thực.
 
-## Lệnh đã chạy
+Đã tự rà ra và sửa ba vấn đề trong `poc/01-editor/`:
+1. **Undo/Redo:** việc lọc transaction history trong collector xảy ra trước reset burst; giờ phát hiện `history$` **trước** collectTextChanges, xóa active, pendingDeletion, pendingPaste, lastIntent. Test đảm bảo gõ sau Undo dùng audio context mới, không kế thừa mốc cũ.
+2. **Mốc tại con trỏ:** tại ranh giới linked/unlinked hoặc linked/foreign-invalid, không chọn ngầm mốc bên cạnh; trả `ambiguous`, UI hướng dẫn đặt con trỏ trong chữ. Đầu thực của tài liệu vẫn trả mốc liên kết hợp lệ.
+3. **Clipboard:** HTML gửi ra ứng dụng ngoài strip `data-time-*`; copy trong cùng phiên giữ nguyên immutable ProseMirror Slice trong token store, dán nội bộ không bị đánh tráo audio metadata. Hai browser E2E specs mới đã viết nhưng NOT_RUN.
 
-```sh
-node --check src/policy.mjs
-node --check src/tracker.mjs
-node --check src/main.mjs
-node --check tests/editor.spec.mjs
-node --check scripts/check-trace.mjs
-node --test tests/policy.test.mjs
-```
+## Bằng chứng
 
-- Kết quả Node policy (bản sao isolated của đúng source/test): **24 PASS, 0 FAIL, exit 0**. Log: `poc/01-editor/evidence/policy-node22.tap.md`.
-- `npm install` bị chặn vì sandbox không resolve `registry.npmjs.org`; không thử `npm run build`/Playwright khi thiếu dependency. Không ghi PASS cho phần chưa chạy.
-- Máy dùng thật trong đợt này là Linux container; không có UniKey/EVKey/Windows. Không có dấu hiệu test IME đã chạy, không dựng trace giả mạo.
+| Bài | Kết quả | Nguồn |
+|---|---|---|
+| `npm run test:unit` | **PASS 45/45** | Node v22.16.0, Linux, bản local trùng Git blob của tệp thay đổi; [log tóm tắt](../../../../poc/01-editor/evidence/node22-45-summary.md) |
+| `node --check` source + test + scripts | **PASS** | Node 22.16.0 |
+| `npm install --offline --package-lock-only` | **FAIL do môi trường `ENOTCACHED`** | Không có cache `@playwright/test` |
+| `npm run build` / Tiptap Playwright E2E | **NOT_RUN** | Npm registry không phân giải DNS; không xác nhận runtime |
+| Linux Chromium native input (lượt trước) | PASS phạm vi ASCII event baseline, 56 events | **Không phải** Tiptap/Windows/IME thật |
+| Windows Chrome/Edge UniKey × Telex/VNI và EVKey × Telex/VNI | **NOT_RUN** | Không có Windows hoặc IME được cấp quyền |
+| 120 giây nhập thật không Enter + Backspace/Insert, sửa dấu muộn, paste Word, Undo/Redo, máy tải nặng | **NOT_RUN** | Không thể chứng minh từ fixture |
+| P95 editor <100ms + TextNode/Mark/DOM/JSON dài trên máy Windows | **NOT_RUN** | Chưa có browser runtime |
 
-## Bảng gate
+**TC01–TC11 tổng thể: chưa nghiệm thu; giữ NOT_RUN/HOLD.** Các bài fixture PASS không thay điều kiện thực địa. Mốc và nguồn audio trong PoC đều synthetic.
 
-| TC | Unit policy | Browser runtime | Windows IME | Trạng thái TC tổng thể |
-|---|---|---|---|---|
-| TC01 | PASS | NOT_RUN | NOT_RUN | NOT_RUN |
-| TC02 | PASS synthetic (không phải gõ 120s) | NOT_RUN | NOT_RUN | NOT_RUN |
-| TC03 | PASS (trace redaction policy; không phải IME) | NOT_RUN | NOT_RUN | NOT_RUN |
-| TC04–TC11 | PASS subcase policy | NOT_RUN | NOT_RUN | NOT_RUN |
+## Liên kết/tài liệu
 
-## Còn thiếu / giới hạn có chủ đích
+- [Demo / README](../../../../poc/01-editor/README.md), [policy](../../../../poc/01-editor/src/policy.mjs), [tracker](../../../../poc/01-editor/src/tracker.mjs), [Playwright](../../../../poc/01-editor/tests/editor.spec.mjs), [ma trận TC01–TC11](../../../../poc/01-editor/evidence/RESULTS.md).
+- [TAP log trước đây 41/41](../../../../poc/01-editor/evidence/node22-41-tests.tap); [45/45 summary](../../../../poc/01-editor/evidence/node22-45-summary.md).
 
-- **Bắt buộc Windows thực:** 4 tổ hợp UniKey/EVKey × Telex/VNI, trace `Backspace+Insert` không composition, đổi dấu muộn, gõ nhanh/chậm, máy tải nặng, định dạng và 120 giây không Enter.
-- **Browser + QA:** cài dependency, khóa lockfile, build Vite/Chrome-Edge, chạy Playwright, kiểm sát mark theo từng thao tác, Undo/Redo, clipboard từ Word/web/cross-meeting, số TextNode/DOM/JSON, độ trễ P95 <100ms trên cấu hình công bố; sửa kết quả FAIL trước review.
-- **Giới hạn heuristic:** burst có thể nhận sai một thao tác xóa rồi gõ thật thành sửa dấu; clipboard thiếu MIME custom rơi về unlinked để an toàn; khi con trỏ ở ranh giới hai mốc trả `ambiguous`, không đoán nguồn; `compositionend` deferred cần test browser/IME thật.
-- Demo không thu audio, không autosave bền vững, không có player; các phần này thuộc workstream khác/đợt tích hợp. Không đưa trạng thái Gói 1.1 về PASS và không sửa tracker/STATUS chung vì chỉ được ghi checkpoint nhánh của mình.
+## Phần việc còn thiếu / cách chạy khi có môi trường Windows
 
-## Tiếp tục từ HEAD
+Tại checkout sạch nhánh `gemini/20261115-01-editor`:
 
 ```sh
-git fetch origin
-git switch gemini/20261115-01-editor
 cd poc/01-editor
 npm install
 npm run test:unit
+npm run build
 npx playwright install chromium
 npm run test:e2e
-npm run build
 npm run dev
 ```
 
-Sau thử Windows: lưu trace đã lược chữ + NoteDocument/screenshot/cấu hình máy; đối chiếu bảng TC, sửa lỗi nếu phát hiện và cập nhật checkpoint theo tested SHA mới. Chỉ đổi `READY_FOR_REVIEW` khi **toàn bộ bằng chứng bắt buộc** Gói 1.1 có thể kiểm độc lập.
+Sau đó thử **Windows Chrome và Edge**, đủ **UniKey/EVKey × Telex/VNI**, gõ thật 120 giây không Enter; chữ `trường`, `tiếng`, đổi dấu muộn, gõ nhanh/chậm, Backspace+Insert không composition, tải nặng, định dạng, cut/paste nội bộ/ngoài/cross-meeting, Undo/Redo. Thu trace đã lược ký tự, marks đầu/giữa/cuối, P95, TextNode/Mark/DOM/JSON bytes, thông tin phiên bản Windows/browser/IME. Test lỗi phải sửa trước khi xét READY_FOR_REVIEW.
 
-WIP/chưa push: **không** · Chặn bên ngoài: **cài npm/browser tại máy có mạng; chạy IME Windows thật**.
-
-## Tiếp tục theo G00 TRACKER — lượt kiểm 15/11/2026
-
-- **HEAD trước sửa:** `f3b5a436ea8b9a3735156391dca16281b28e9205`; 15 Git blobs trong `poc/01-editor/` đối chiếu bằng `git hash-object` với GitHub tree đều trùng.
-- Đọc trực tiếp `TRACKER.md` G00 trên nhánh 00: không có bug logic cụ thể mới gán cho 01, nhưng yêu cầu build/e2e/IME Windows thật, 120 giây một đoạn, dấu tiếng Việt và mốc trước/sau. Không đổi COMMON hoặc STATUS.
-- Node `v22.16.0` trên bản source local có Git blob trùng HEAD: `node --test tests/policy.test.mjs` **24 PASS / 0 FAIL / exit 0**; không kế thừa cho Tiptap runtime.
-- Git clone/npm registry trong Linux sandbox hiện **không phân giải DNS ngoài**; Tiptap dependencies/chạy Playwright Tiptap đang **NOT_RUN**. Có Chromium và Python Playwright, có thể bổ sung browser-native event probe độc lập; không thay cho Windows/UniKey/EVKey.
-- Đang harden timeSpan provenance, clipboard bất biến/trust, multi-step mapping, trace privacy; sẽ chạy hồi quy theo source SHA mới và push đúng phạm vi.
+- **Hạn chế:** lịch sử ProseMirror và IME thật chưa chạy; heuristic burst vẫn có nguy cơ false positive. Copy nếu trình duyệt loại custom MIME sẽ trở thành unlinked (fail closed). Browser typed text không thể kiểm với Node mocks.
+- **Ranh giới:** không sửa G00 TRACKER/COMMON, STATUS, nhánh khác; không merge `main`, không deploy.
+- **Working tree/diff:** đã xem trước push code `78aa598d423bba2ebc3bba3562e6bcbea2c2f644`, chỉ 4 file trong `poc/01-editor/`; commit tài liệu này chỉ sửa checkpoint + README/RESULTS + thêm log tóm tắt.
+- **WIP/chưa push:** không sau khi commit tài liệu thành công.
