@@ -109,3 +109,48 @@ test('Mock lease stale release cannot revoke a new owner',async()=>{
  assert.equal(now.held,true);assert.equal(await leases.acquire('meeting'),null);now.release();
  assert.ok(await leases.acquire('meeting'));
 });
+
+test('Fake IndexedDB: simulated mid-transaction crash leaves only committed revision',async()=>{
+  const fake=createFakeIndexedDB({commitDelayMs:20}),db=await openIndexedDB('crash-fixture',fake);
+  const repo=new NotesRepository(db),m=await repo.createMeeting();
+  await repo.saveNote(m.noteDocumentId,doc('Đã xác nhận'),0);
+  const inFlight=repo.saveNote(m.noteDocumentId,doc('Chưa xác nhận'),1);
+  await sleep(25);
+  fake.simulateCrash('crash-fixture');
+  await assert.rejects(inFlight);
+  db.close();
+  const reopened=await openIndexedDB('crash-fixture',fake),after=new NotesRepository(reopened);
+  assert.equal((await after.getNote(m.noteDocumentId)).revision,1);
+  assert.equal((await after.getJournal(m.noteDocumentId)).length,1);
+  assert.equal((await after.getNote(m.noteDocumentId)).content.content[0].content[0].text,'Đã xác nhận');
+  reopened.close();
+});
+
+test('Fake IndexedDB: index/key error after writing snapshot aborts whole transaction',async()=>{
+  const fake=createFakeIndexedDB(),db=await openIndexedDB('index-fixture',fake);
+  const repo=new NotesRepository(db),m=await repo.createMeeting();
+  await assert.rejects(db.run(['notes','journals'],'readwrite',async tx=>{
+    await tx.put('notes',{noteDocumentId:m.noteDocumentId,revision:1,schemaVersion:1,content:doc('Không được ghi')});
+    await tx.put('journals',{content:doc('Thiếu journalId')});
+  }));
+  assert.equal((await repo.getNote(m.noteDocumentId)).revision,0);
+  assert.equal((await repo.getJournal(m.noteDocumentId)).length,0);
+  db.close();
+});
+
+test('Shared note reference and multiple timeSpan marks survive independent meeting lifecycle',async()=>{
+  const r=new NotesRepository(createMemoryDB()),a=await r.createMeeting('Cuộc họp A'),b=await r.createMeeting('Cuộc họp B');
+  await r.db.run(['meetings'],'readwrite',async tx=>{
+    const other=await tx.get('meetings',b.meetingId);other.noteDocumentId=a.noteDocumentId;await tx.put('meetings',other);
+  });
+  const spans={type:'doc',content:[{type:'paragraph',content:[
+    {type:'text',text:'Phần một',marks:[{type:'timeSpan',attrs:{anchorId:'A',recordingId:'R1',audioOffsetMs:1000,typedAt:100,source:'live_recording',schemaVersion:1}}]},
+    {type:'text',text:' / không liên kết '},
+    {type:'text',text:'phần hai',marks:[{type:'bold'},{type:'timeSpan',attrs:{anchorId:'A',recordingId:'R2',audioOffsetMs:5000,typedAt:200,source:'imported_playback',schemaVersion:1}}]}
+  ]}]};
+  await r.saveNote(a.noteDocumentId,spans,0);
+  await r.deleteMeeting(a.meetingId);
+  assert.deepEqual((await r.getNote(a.noteDocumentId)).content,spans);
+  await r.deleteMeeting(b.meetingId);
+  assert.equal(await r.getNote(a.noteDocumentId),null);
+});
