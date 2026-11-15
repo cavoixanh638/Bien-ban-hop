@@ -18,6 +18,12 @@ AudioWorklet thu mẫu ở sample rate thực, đếm mẫu và chuyển block q
 
 Cập nhật WAV header/flush định kỳ **không** bảo đảm file 100% hợp lệ khi mất điện. Phải kiểm tra kích thước thực, số mẫu và metadata, có đường khôi phục.
 
+**Thiết kế kênh dữ liệu ưu tiên (phải PoC):** `process()` thường nhận các render quantum 128 frame (khoảng 375 lần/giây tại 48 kHz), nhưng phải dùng `inputs[n][c].length`/kích thước thực chứ không hardcode. Worklet gom vào khối khoảng 2.048 hoặc 4.096 frame (43/85 ms tại 48 kHz) rồi chuyển **Transferable ArrayBuffer**. Main Thread chỉ thiết lập một `MessageChannel` riêng khi khởi tạo: chuyển một port qua `AudioWorkletNode.port.postMessage(..., [port])` để Processor nhận port, chuyển port còn lại tới Dedicated Worker. Không thể gán lại cặp `AudioWorkletProcessor.port` vốn là kênh mặc định giữa Node và Processor. Sau khởi tạo, dữ liệu chạy trên port riêng, không xử lý từng khối qua callback Main Thread.
+
+**Chống nghẽn/mất dữ liệu:** dùng pool buffer hữu hạn, chuyển quyền sở hữu và trả buffer để tái dùng; đánh số `sequenceNo`, `firstSample`, `sampleCount`, `recordingId`, `format` để nhận diện mất/trùng/gap; đo độ sâu hàng đợi và tốc độ Worker flush. Worklet không được cấp phát vô hạn hay chờ blocking file I/O trong luồng audio. Khi queue đầy phải báo lỗi/drop/gap đúng, không coi khối chưa ghi là đã lưu. Thử thay đổi kích thước khối, chuyển tab, CPU load, micro dừng và sự cố Worker.
+
+**SharedArrayBuffer là phương án dự phòng, không phải yêu cầu V1.2:** truyền SAB giữa ngữ cảnh đòi cross-origin isolation/COOP-COEP phù hợp. `FileSystemSyncAccessHandle` trong Dedicated Worker không phụ thuộc SAB hay các header đó. Không áp dụng workaround Service Worker chỉ để giả lập header khi chưa có bài đo cho thấy transferable không đáp ứng.
+
 ### 3. Phương án B (đối chứng tối thiểu): MediaRecorder
 
 Dùng MIME được trình duyệt hỗ trợ, thường WebM/Opus. Blob timeslice không mặc nhiên phát độc lập hoặc có chỉ mục seek. Nếu dừng/khởi động lại recorder theo file, đo mất/đúp mẫu tại ranh giới; nếu remux, đo chi phí CPU/RAM và khả năng sửa file sau crash.
@@ -64,19 +70,25 @@ Giải quyết một mốc: xác minh recordingId → tìm recorded interval →
 - Một thanh thời gian cho cả cuộc họp; phát/tạm dừng/tua/tốc độ 0,5–2×/A–B.
 - Tải trước hoặc lập lịch đoạn kế tiếp; không mất/đúp tiếng bất thường ở ranh giới.
 - Không decode toàn bộ PCM ba giờ vào RAM; có giới hạn buffer và giải phóng tài nguyên.
-- Pre-roll 5 giây khi ghi trực tiếp/đang phát file, 10 giây khi file pause, 0 giây cho mốc người dùng chỉnh (giá trị có thể đổi); không sửa mốc gốc.
+- Pre-roll **đề xuất ban đầu**: 5 giây khi ghi trực tiếp, 5 giây khi đang phát file, **5 giây khi file đang Pause**, 0 giây khi mốc đã chỉnh thủ công. Giá trị cấu hình 0–30 giây; phải thử 0/3/5/10 giây với người dùng. Không sửa mốc gốc.
 - Nhấp thường để sửa chữ; Alt + nhấp, phím tắt tại con trỏ hoặc ▶ ngữ cảnh để play.
 
 ### 4. Phương án phát có thể chọn
 
-| Định dạng | Ứng viên |
-|---|---|
-| PCM/WAV | Web Audio API + schedule AudioBuffer liên tục |
-| PCM dài | AudioWorklet playback với hàng đợi/bộ đệm |
-| WebM/Opus | Media Source Extensions nếu container/codec hỗ trợ |
-| MP3/M4A nhập | Audio element/giải mã thích hợp + Virtual Timeline |
+| Phương án | Khi nào dùng | Điểm phải kiểm chứng |
+|---|---|---|
+| **C1 — Hai HTMLAudioElement, đọc trước WAV segment** | Ưu tiên thử trước vì có `preservesPitch = true`, hữu ích khi nghe chậm | Phát qua biên không mất/lặp, clock giữa hai phần tử, quản lý Blob URL từ OPFS và peak RAM |
+| **C2 — Web Audio API, buffer PCM nhỏ được lập lịch** | Đối chứng với C1, có ưu điểm về điều khiển điểm bắt đầu | Khi giảm playbackRate, cao độ có thể đổi; tránh giải mã cả segment/bản ghi lớn |
+| C3 — AudioWorklet playback theo luồng | Dự phòng nếu C1/C2 không đạt đồng thời độ liền mạch và chất lượng nghe | Ring buffer, mất mẫu, thời gian seek và chi phí bảo trì |
+| C4 — MSE với chuỗi media segment hợp lệ | Khi production chọn codec/container nén tương thích | MSE codec/segment support, metadata seek và tốc độ phát |
 
-Hai thẻ audio thay src hoặc preload **không tự bảo đảm gapless**. Lựa chọn cần kết quả đo sau Gói 1.2.
+**Lưu ý:** Không mặc định hai thẻ audio tự phát không gap; `MediaElementAudioSourceNode` và prebuffer cũng không tự tạo clock nối sample-accurate. Không crossfade 10–20 ms vô điều kiện giữa các segment **không có vùng audio chồng lấn** vì có thể làm mất/hòa trộn tiếng nói. Không mặc định dùng kiến trúc lai HTMLAudioElement + AudioBufferSourceNode quanh ±200 ms ranh giới, vì sẽ phát sinh đồng bộ hai engine.
+
+**Tối ưu RAM:** `getFile()`/Blob URL có thể dùng để cấp nguồn cho audio element; phải `URL.revokeObjectURL()` khi không sử dụng. `decodeAudioData()` cả một segment WAV mono 5 phút/48 kHz thành Float32 đã cần khoảng 57,6 MB thập phân, chưa kể buffer phụ; chỉ đọc các cửa sổ có giới hạn.
+
+**Nghe chậm là chức năng cốt lõi:** kiểm thử 0,75× và 0,9×. HTMLMediaElement mặc định giữ cao độ qua `preservesPitch`; AudioBufferSourceNode.playbackRate không có pitch-preserving time-stretch. Không vội tự viết WSOLA/Phase Vocoder ở V1.2; chốt engine sau khi nghe giọng nói thực tế.
+
+Xem [TECHNICAL_OPTIONS.md](TECHNICAL_OPTIONS.md) mục 11 cho so sánh và điều kiện PoC.
 
 ### 5. Test nghiệm thu
 
@@ -86,6 +98,8 @@ Hai thẻ audio thay src hoặc preload **không tự bảo đảm gapless**. L�
 - Pause/resume rồi seek vào gap: phải báo thiếu, không phát sai.
 - Thiếu một file trong backup: vẫn giữ chữ/mốc, báo missing.
 - Restore rồi phát/tua đúng như trước; không tăng RAM vô hạn.
+- So sánh C1 và C2: độ trễ/gap ở biên, mất/trùng tiếng, seek, peak RAM, giọng ở 0,75×/0,9×. Không dùng crossfade để che lỗi trong bài đo gốc.
+- Kiểm thử Worklet: 128-frame quanta theo dữ liệu thực, block 2.048/4.096, pool buffer/sequence/queue backpressure, CPU stress, Worker ghi chậm, không có `SharedArrayBuffer` và không có COOP/COEP.
 
 Công nghệ cuối và giới hạn trình duyệt phải ghi trong kết quả nghiệm thu Gói 1.3–1.4.
 

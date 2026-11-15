@@ -53,6 +53,8 @@ Nguồn tham khảo: [PWA — web.dev](https://web.dev/learn/pwa/), [Electron](h
 
 **Căn cứ lựa chọn B:** OPFS, IndexedDB và quyền browser được phân theo **origin (scheme + host + port)**, không phân theo thư mục dự án. Một site tại tên miền phụ riêng giúp tránh dùng chung origin với các WebApp Pages không liên quan. Nó **không thay thế** sao lưu, mã hóa thiết bị hoặc quản lý quyền truy cập máy.
 
+**Ràng buộc SharedArrayBuffer:** Subdomain riêng chỉ cô lập IndexedDB/OPFS, **không tự bật cross-origin isolation**. SharedArrayBuffer truyền giữa ngữ cảnh cần chính sách COOP/COEP và `crossOriginIsolated`; GitHub Pages chuẩn không có cơ chế cấu hình HTTP response header tùy ý. Vì V1.2 chỉ cần transfer ArrayBuffer/MessageChannel và OPFS Worker, **không buộc SharedArrayBuffer hay đổi hosting vì tính năng này**. Nếu sau PoC cần SAB, mới đánh giá hosting cho phép đặt header (ví dụ Cloudflare Pages), kiểm tra phụ thuộc iframe/cross-origin và bảo mật.
+
 **Điều kiện bắt buộc:** Không commit hoặc deploy ghi âm, bản sao lưu và dữ liệu cuộc họp lên Pages. Website Pages phải được xem là trang phát hành mã frontend, không phải nơi lưu dữ liệu người dùng. GitHub Pages của repository riêng tư **không mặc nhiên biến website thành riêng tư**. Nếu đổi origin sau khi có dữ liệu, phải có quy trình xuất và khôi phục; dữ liệu IndexedDB/OPFS không tự chuyển giữa origin.
 
 Nguồn: [MDN — Origin](https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy), [MDN — OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system), [GitHub Pages custom domain](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/about-custom-domains-and-github-pages), [About GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/about-github-pages).
@@ -96,9 +98,9 @@ Nguồn: [ProseMirror schema và Mark](https://prosemirror.net/docs/ref/#model.M
 | **C. Inline timeSpan Mark** | Text và thông tin liên kết di chuyển cùng tài liệu | Cần rõ quy tắc biên, stored marks, paste, IME | **POC_REQUIRED, ưu tiên C** |
 | D. Event log từng phím rồi tái dựng mapping | Giữ toàn bộ lịch sử ban đầu | Phức tạp và tốn công tái dựng từ chữ sau khi chỉnh sửa | Chỉ làm journal hỗ trợ |
 
-**Đề xuất:** timeSpan Mark lưu anchorId, recordingId, audioOffsetMs, typedAt, source, schemaVersion. Một anchorId định danh mốc, không bắt buộc duy nhất cho mỗi mảnh text sau split. **Không lưu pending/valid/missing trong Mark** vì status thay đổi khi worker flush; tính trạng thái từ Audio Manifest và chỉ vẽ dấu hiệu qua decorations.
+**Đề xuất:** timeSpan Mark lưu anchorId, recordingId, audioOffsetMs, typedAt, source, schemaVersion. Cấu hình thử MarkSpec: `inclusive: false`, `excludes: "timeSpan"` (làm rõ không chồng hai mốc cùng loại) và `spanning: true` (mặc định; quyết định bọc DOM, **không** tự gộp model TextNode). **Khi gộp một cụm, toàn bộ thuộc tính Mark — kể cả anchorId và typedAt — phải giống nhau; typedAt là lúc bắt đầu cụm, không phải đồng hồ riêng cho từng ký tự.** Một anchorId định danh mốc, không bắt buộc duy nhất cho mỗi mảnh text sau split. **Không lưu pending/valid/missing trong Mark** vì status thay đổi khi worker flush; tính trạng thái từ Audio Manifest và chỉ vẽ dấu hiệu qua decorations.
 
-**Độ phân giải:** ưu tiên mốc theo từ/cụm ngắn, thử nhóm thao tác ở mức khoảng 0,5–2 giây tùy tốc độ gõ. Không chốt 1–2 giây khi chưa đo. Gộp để giảm JSON không được làm giảm khả năng tìm nghe lại.
+**Độ phân giải:** ưu tiên mốc theo từ/cụm ngắn, thử nhóm thao tác ở mức khoảng 0,5–2 giây tùy tốc độ gõ. Không đổi typedAt/audioOffsetMs cho từng ký tự nhưng vẫn kỳ vọng ProseMirror gộp Mark; kiểm thử độ phân mảnh/JSON/DOM khi gõ dài. Không chốt 1–2 giây khi chưa đo. Gộp để giảm JSON không được làm giảm khả năng tìm nghe lại.
 
 **Quy tắc clipboard:** copy/cut/move trong cuộc họp giữ liên kết; paste từ ngoài không bịa thời điểm nói; paste sang Word không đưa metadata nội bộ nếu không cần; paste sang cuộc họp khác không tự trỏ tới nguồn audio sai.
 
@@ -131,6 +133,8 @@ Nguồn: [MDN input events](https://developer.mozilla.org/en-US/docs/Web/API/Inp
 **Vì sao ưu tiên B:** Ghi chú nhiều giờ gắn mốc cần biết phần âm thanh nào **đã thu và lưu thực tế**. AudioWorklet có khả năng nắm số mẫu/khối tốt hơn cơ chế timeslice mang tính sự kiện của MediaRecorder. Nó cũng giúp tổ chức đoạn thô/checkpoint và phục hồi khi browser gặp sự cố.
 
 **Không được khẳng định:** “AudioWorklet không mất mẫu”, “MediaRecorder chắc chắn mất vài trăm ms”, hay “WAV cập nhật header sau flush luôn hợp lệ 100%”. Có thể mất khối do tải, trục trặc thiết bị, crash giữa các thao tác ghi; flush **không** biến nhiều lần ghi thành giao dịch nguyên tử.
+
+**Đường truyền ưu tiên PoC:** AudioWorklet gom các render quantum (thường 128 frame nhưng không hardcode), thử khối 2.048/4.096 frame trước khi gửi. Main Thread chỉ **chuyển giao MessageChannel hai đầu** khi khởi tạo: một port cấp cho WorkletProcessor qua `AudioWorkletNode.port`, port kia cấp cho Storage Worker; sau đó chuyển buffer bằng Transferable ArrayBuffer, pool hữu hạn, sequence/sample counters và xử lý queue chậm. **Không gán lại `AudioWorkletProcessor.port` mặc định** hoặc gọi postMessage từng 128 mẫu. Chưa cần SharedArrayBuffer/COOP-COEP. Chi tiết hợp đồng tại [AUDIO_DESIGN.md](AUDIO_DESIGN.md).
 
 **Bộ thử lựa chọn:** cùng micro và phiên Windows Chrome/Edge, ghi 3 giờ, CPU/RAM/dung lượng, sample-drop/gap, pause/resume, kill tab, mất micro, hết quota, seek và recovery. Nếu A đáp ứng yêu cầu với đơn giản hơn B, có thể chọn A. Không làm hai engine production.
 
@@ -174,20 +178,22 @@ Nguồn: [MDN IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/Indexe
 
 | Phương án | Ưu điểm | Rủi ro | Kết luận |
 |---|---|---|---|
-| A. Hai thẻ audio chuyển src/preload | Dễ thử | Không bảo đảm không khựng ở ranh giới, khó sync chính xác | Chỉ fallback |
-| **B. Web Audio API, lập lịch các buffer nhỏ** | Điều khiển mốc và ranh giới PCM tốt | Cần giới hạn buffer, prefetch, xử lý tốc độ phát | **POC_REQUIRED, ưu tiên PCM** |
-| C. AudioWorklet playback streaming | Phát luồng PCM lớn linh hoạt | Tốn công xây engine/buffering | Dự phòng nếu B không đạt |
-| D. Media Source Extensions | Hợp với đoạn nén hỗ trợ bởi MSE | Không hỗ trợ mọi codec/container và segment | Ứng viên nếu dùng Opus/WebM |
+| **A. Hai HTMLAudioElement đọc trước, preservesPitch** | Giữ cao độ khi nghe chậm theo engine trình duyệt; không cần tự triển khai time-stretch; lấy File/Blob URL từ OPFS | Bắt đầu phần tử thứ hai có thể khựng, lặp hoặc thiếu mẫu; chưa bảo đảm sample-accurate | **PoC C1 ưu tiên về UX, không mặc định đạt** |
+| **B. Web Audio API, lập lịch buffer PCM nhỏ** | Kiểm soát chính xác điểm biên và đồng hồ audio; không cần decode toàn bộ bản ghi | Thay tốc độ bằng playbackRate có thể đổi cao độ; phải giới hạn bộ đệm và lập lịch | **PoC C2 bắt buộc đối chứng** |
+| C. AudioWorklet playback streaming | Có thể kiểm soát luồng mẫu và bộ nhớ cho PCM dài | Cần tự quản lý ring buffer, time-stretch và seek nếu yêu cầu | Dự phòng khi A/B không đạt |
+| D. Media Source Extensions (MSE) | Thích hợp chuỗi segment có container/codec tương thích | Điều kiện codec/segment/mapping và cách phát thay tốc độ cần test | Ứng viên nếu lựa chọn âm thanh nén |
 
-**Ưu tiên B cho file PCM do ứng dụng ghi.** Dùng Virtual Timeline ánh xạ toàn cuộc họp → recording/segment/local offset và interval recorded/paused/gap. Đọc trước một số đoạn nhỏ, lập lịch phát qua boundary; không nạp toàn bộ 3 giờ vào RAM.
+**Thay đổi thứ tự nghiên cứu:** Không mặc định B là engine phát chính. PoC C1 thử HTMLAudioElement đôi với `preservesPitch = true`, đọc trước segment kế tiếp và điều phối Virtual Timeline. PoC C2 thử AudioBufferSourceNode lập lịch các buffer PCM ngắn; đo cùng điều kiện với C1. Chỉ chốt production khi **đồng thời** đạt độ toàn vẹn âm thanh qua biên, seek chính xác, nghe chậm rõ và RAM có giới hạn.
 
-**Lưu ý nghe chậm:** AudioBufferSourceNode.playbackRate thay đổi tốc độ bằng resampling **có thể đổi cao độ**. HTMLMediaElement có preservesPitch để giữ cao độ mặc định. Với ghi chú cần nghe 0,75×/0,9×, phải đánh giá độ tự nhiên của giọng; nếu B phát chậm không đạt thì thêm time-stretch phù hợp hoặc dùng engine khác. **Không** chốt player chỉ vì seek/boundary tốt.
+**Cẩn trọng:** Hai thẻ `<audio>` không mặc nhiên gapless. Không crossfade 10–20 ms một cách vô điều kiện giữa hai segment vốn không chồng lấn mẫu, vì có thể hòa trộn hoặc làm mất thông tin lời nói. Không trộn HTMLAudioElement và AudioBufferSourceNode chỉ trong ±200 ms biên ở bản đầu: hai engine có clock/latency khác nhau, cần PoC riêng nếu thực sự cần.
 
-**File nhập MP3/M4A:** có thể dùng HTMLAudioElement + Virtual Timeline; không cần giải mã tất cả sang PCM. Test nhiều định dạng thực tế và báo thiếu codec.
+**Bộ nhớ:** `decodeAudioData` cả một WAV mono Float32 5 phút/48 kHz cần ~57,6 MB (thập phân) chỉ cho sample Float32; không dùng cách này cho toàn bộ phiên ba giờ. Đọc trước theo cửa sổ/segment và giải phóng tài nguyên, đo peak RAM thực tế.
 
-**Test:** phát 04:58→05:02 xuyên segment 5 phút, seek 01:30:00 và 02:59:59, loop A–B xuyên file, một đoạn missing, nhập file, phát chậm giữ độ rõ, RAM không tăng vô hạn.
+**Nghe chậm:** HTMLMediaElement.playbackRate thường được sửa cao độ theo `preservesPitch` (mặc định true), còn AudioBufferSourceNode.playbackRate resample và có thể làm giọng thấp đi. Phải đánh giá thực tế tại 0,75× và 0,9×; không triển khai WSOLA/Phase Vocoder tự viết ở V1.2 nếu chưa chứng minh bắt buộc.
 
-Nguồn: [AudioBufferSourceNode](https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode), [Media Source Extensions](https://developer.mozilla.org/en-US/docs/Web/API/Media_Source_Extensions_API), [HTMLMediaElement preservesPitch](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/preservesPitch), [AUDIO_DESIGN.md](AUDIO_DESIGN.md).
+**Test:** Phát 04:58→05:02 xuyên segment, seek 01:30:00/02:59:59, A–B xuyên file, file missing, nghe chậm, đo drop/duplicate sample/độ trễ, RAM đỉnh và chất lượng tiếng. Không tuyên bố “không có gap” khi chưa đo.
+
+Nguồn: [MDN preservesPitch](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/preservesPitch), [AudioBufferSourceNode playbackRate](https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/playbackRate), [Media Source Extensions](https://developer.mozilla.org/en-US/docs/Web/API/Media_Source_Extensions_API), [AUDIO_DESIGN.md](AUDIO_DESIGN.md).
 
 ## 12. Đồng hồ và ánh xạ mốc gõ ↔ âm thanh — so sánh 4 phương án
 
@@ -208,18 +214,22 @@ Nguồn: [Performance.now](https://developer.mozilla.org/en-US/docs/Web/API/Perf
 
 ## 13. Sao lưu và khôi phục — so sánh 4 phương án
 
-| Phương án | Lợi thế | Hạn chế | Kết luận |
+| Phương án | Lợi thế | Rủi ro | Kết luận |
 |---|---|---|---|
-| A. JSZip qua generateAsync thông thường | Dễ lập trình | Có thể phải giữ toàn bộ gói kết quả trong RAM | Không chọn đường mặc định cho file lớn |
-| **B. fflate streaming** | ZIP streaming và khả năng giải nén trong cùng thư viện | Phải kiểm tra giới hạn size/ZIP64, backpressure và streaming restore thực | **POC_REQUIRED, ưu tiên** |
-| C. client-zip streaming | Xuất ZIP kiểu stream, hỗ trợ ZIP64 | Không có unzip đi kèm, phải kết hợp thư viện nhập | Phương án thay thế khi file lớn |
-| D. Xuất một thư mục nhiều file | Không cần ZIP | Dễ thiếu manifest hoặc một audio segment khi sao chép | Chỉ fallback chuyên biệt |
+| A. fflate streaming ZIP/Unzip | Một thư viện có cả tạo và giải ZIP theo luồng | API push cần backpressure; phải đo buffer/ZIP64 và restore thật | **Ứng viên PoC D** |
+| B. client-zip streaming + thư viện đọc ZIP | Hợp với export STORE lớn, ReadableStream và ZIP64 | Không có unzip đi kèm; thêm phụ thuộc và pipeline nhập | **Ứng viên PoC D (export)** |
+| C. zip.js ZipWriter/ZipReader | Một thư viện cho đọc/ghi, có ZIP64, hỗ trợ truy cập entry theo Central Directory với nguồn thích hợp | API/worker/cache và mức RAM thực phải thử nghiệm | **Ứng viên PoC D (export + import)** |
+| D. JSZip thông thường | Dễ sử dụng, có hệ sinh thái rộng | Luồng generateAsync thông dụng có thể giữ kết quả lớn trong RAM | Chỉ baseline đối chứng; không ưu tiên file lớn |
 
-**Chọn thử B** để giảm phụ thuộc, nhưng chỉ khi qua test restore thực tế. Nếu nhu cầu backup vượt giới hạn định dạng/thư viện hoặc nhiều GB, đối chứng C với bộ giải nén chuyên trách. Không khẳng định “xuất 200 MB trong 1–2 giây”.
+**Chưa chốt thư viện.** So sánh A/B/C trên cùng file .mochop chứa hàng trăm segment audio, với file 0,5–2 GB; D là baseline. Ưu tiên một giải pháp vừa xuất vừa nhập thực, có **mức RAM tăng được khống chế**, giữ checksum/mapping và ít mã tự viết nhất. Không suy luận “fflate.Unzip luôn nạp toàn bộ file” vì thư viện có cơ chế streaming; **nhưng streaming không tự bảo đảm backpressure**.
 
-**Gói .mochop:** ZIP có manifest version/schema, danh mục audio, checksum, NoteDocument/Mark, mapping; audio đã nén lưu chế độ STORE khi phù hợp. Export theo stream tới file ngoài browser nếu được cấp quyền; restore vào vùng tạm, kiểm checksum và tham chiếu trước khi áp dụng.
+**Export:** Đọc mỗi file audio từ OPFS theo chunk và nối sang writer của gói ZIP qua WritableStream/đích lưu. Tốc độ đọc/ZIP phải bị giới hạn bởi tốc độ ghi (backpressure), không push đồng loạt rồi để pending writes đầy RAM. Với audio nén dùng STORE khi phù hợp; theo dõi ZIP64 khi gói lớn.
 
-Nguồn: [fflate](https://github.com/101arrowz/fflate), [client-zip](https://github.com/Touffy/client-zip), [JSZip](https://stuk.github.io/jszip/).
+**Import:** File được người dùng chọn cho phép `slice(start, end)` để đọc phần cần thiết; một ZIP reader thích hợp có thể tra Central Directory/ZIP64 và truy cập từng entry, thay vì đọc cả gói vào RAM. Nếu dùng streaming unzip thì phải giới hạn hàng đợi và giải nén từng entry xuống vùng OPFS tạm. Cả hai đường đều phải kiểm tra path traversal/ZIP slip, size bom nén, checksum, schema, trùng id và dữ liệu chưa hoàn chỉnh trước khi nhập chính thức.
+
+**Không cam kết dưới 10 MB RAM cho gói 2 GB hoặc tốc độ 1–2 giây** trước phép đo: bộ nhớ giải nén/checksum/write phụ thuộc chunk, thư viện và trình duyệt. Tiêu chí đúng là **RAM được giới hạn và không tăng gần tuyến tính theo dung lượng gói**.
+
+Nguồn: [fflate](https://github.com/101arrowz/fflate), [client-zip](https://github.com/Touffy/client-zip), [zip.js](https://gildas-lormeau.github.io/zip.js/), [JSZip](https://stuk.github.io/jszip/).
 
 ## 14. Xuất Word/DOCX — so sánh 4 phương án
 
@@ -303,8 +313,8 @@ Nguồn: [Vitest](https://vitest.dev/), [Playwright](https://playwright.dev/).
 | Lưu dài hạn | WAV trước; Opus khi đã xác minh | CONDITIONAL | Mapping, codec/seek/quality/quota |
 | Storage | IndexedDB + OPFS | DESIGN_PREFERRED | Crash reconciliation/quota/restore |
 | Clock mapping | Đồng hồ đơn điệu + điểm đồng bộ khối/mẫu | **POC_REQUIRED** | Sai lệch mốc/độ trôi/gap/pause thực |
-| Playback | Web Audio theo buffer nhỏ cho PCM | **POC_REQUIRED** | Gapless, seek, pitch khi nghe chậm |
-| Backup | fflate streaming, client-zip dự phòng | **POC_REQUIRED** | Zip size/restore/stream memory |
+| Playback | PoC C1 HTMLAudioElement preservesPitch vs C2 Web Audio buffer PCM | **POC_REQUIRED** | Seek, biên, không mất/lặp nội dung, giọng tự nhiên ở 0,75×/0,9× |
+| Backup | So sánh fflate, client-zip và zip.js | **POC_REQUIRED** | Backpressure, ZIP64, random-access/stream restore, checksum, bounded RAM |
 | DOCX | docx.js | DESIGN_PREFERRED | Xuất chuẩn tiếng Việt/list/format |
 | Online audio | getDisplayMedia khi có track | CONDITIONAL | Windows/browser/app compatibility |
 | Multi-tab | Web Locks + BroadcastChannel | DESIGN_PREFERRED | Crash/lock/reopen test |
@@ -331,12 +341,12 @@ Nguồn: [Vitest](https://vitest.dev/), [Playwright](https://playwright.dev/).
 ### PoC C — Player và chất lượng nghe lại
 
 - Phát qua boundary (ví dụ 04:58→05:02), seek phút 90/170, A–B xuyên file, file missing, tốc độ 0,75×/0,9×.
-- So sánh Web Audio scheduled buffers với phương án thay thế nếu pitch/gián đoạn không đạt.
+- So sánh C1 (hai HTMLAudioElement đọc trước, preservesPitch) với C2 (Web Audio scheduled PCM nhỏ); không dùng crossfade hoặc engine lai để che lỗi chưa đo.
 - **Pass gate:** không mất/lặp âm bất thường; nghe chậm đủ rõ; không load cả bản ghi vào RAM.
 
 ### PoC D — Backup, restore, PWA và an toàn origin
 
-- Gói nhiều file lớn, streaming ZIP, checksum, restore sang môi trường khác, test hạn mức/quota.
+- Gói nhiều file lớn, đo 3 thư viện fflate/client-zip/zip.js với backpressure và ZIP64, checksum, random-access hoặc streaming restore sang môi trường khác, đo peak RAM và quota.
 - Thử Web Locks hai tab, SW update khi đang thu và migration; kiểm tra origin riêng.
 - **Pass gate:** khôi phục liên kết và audio đúng; update không cắt phiên ghi; không báo saved sai.
 
@@ -350,6 +360,8 @@ Kết quả của mỗi PoC phải có **môi trường, commit, log, phép đo 
 - **Không ép tất cả thành một file audio lớn** hoặc ngược lại giả định nhiều Blob timeslice đều phát được.
 - **Không nâng cao tính tiện dùng bằng cách làm sai mốc**: người dùng muốn gõ như Word trước, nghe lại với pre-roll sau.
 - **Không làm nổ số lượng tài liệu**: file này chỉ lưu **so sánh, căn cứ và khuyến nghị**; kiến trúc/how-to ở ARCHITECTURE/AUDIO_DESIGN/TIMELINE_RULES, tiến độ/bằng chứng ở STATUS.
+
+**Ghi chú triển khai:** truyền `MessageChannel + Transferable ArrayBuffer` là đường ưu tiên không yêu cầu SharedArrayBuffer/crossOriginIsolated; phải đo buffer backpressure. `playback_paused` có độ lùi đề xuất **5 giây**, thử các mức 0/3/5/10 giây với người dùng; mốc gốc không đổi.
 
 **Kết luận:** Hướng thiết kế ưu tiên là **PWA origin riêng + React/TypeScript + Tiptap/timeSpan + IndexedDB/OPFS + AudioWorklet/PCM thử nghiệm + Virtual Multi-Segment Player + backup streaming**. Trong đó, **editor/IME, capture audio và player là ba quyết định tuyệt đối không được chốt production nếu chưa có PoC**.
 

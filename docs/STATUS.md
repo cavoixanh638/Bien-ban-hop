@@ -23,11 +23,11 @@ Trạng thái hợp lệ: `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `READY_FOR_RE
 
 | Gói | Nội dung | Trạng thái | Phụ trách | Bằng chứng/commit thực thi | Việc tiếp theo |
 |---|---|---|---|---|---|
-| 1.1 | Editor timeSpan, Unikey/EVKey, chỉnh sửa | NOT_STARTED | Chưa giao | Chưa có | PoC + trace/test Windows |
-| 1.2 | Thu âm, Worker/OPFS, checkpoint | NOT_STARTED | Chưa giao | Chưa có | So sánh AudioWorklet vs MediaRecorder |
+| 1.1 | Editor timeSpan, Unikey/EVKey, chỉnh sửa | NOT_STARTED | Chưa giao | Chưa có | PoC MarkSpec/coalescing + trace/test Windows |
+| 1.2 | Thu âm, Worker/OPFS, checkpoint | NOT_STARTED | Chưa giao | Chưa có | Đối chứng capture + batching/MessageChannel/backpressure |
 | 1.3 | Timeline, mapping, gap/pause | NOT_STARTED | Chưa giao | Chưa có | Chờ đầu ra 1.1 và 1.2 |
-| 1.4 | MultiSegment Player và UI | NOT_STARTED | Chưa giao | Chưa có | Chờ hợp đồng timeline/audio |
-| 1.5 | Quản lý, autosave, backup, PWA | NOT_STARTED | Chưa giao | Chưa có | Xây sau lõi, kiểm thử restore |
+| 1.4 | MultiSegment Player và UI | NOT_STARTED | Chưa giao | Chưa có | PoC C1 HTMLAudio preservesPitch vs C2 Web Audio |
+| 1.5 | Quản lý, autosave, backup, PWA | NOT_STARTED | Chưa giao | Chưa có | So sánh ZIP/restore/backpressure, PWA origin riêng |
 | 1.6 | Tích hợp, QA, phát hành | NOT_STARTED | Chưa giao | Chưa có | TC01–TC38 và báo cáo nghiệm thu |
 
 **Gói ưu tiên chuẩn bị:** 1.1. **Chưa có AI/nhân sự nào được giao chính thức trong bảng trên.**
@@ -47,17 +47,23 @@ Trạng thái hợp lệ: `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `READY_FOR_RE
 | D09 | DOCX/TXT/Markdown/CSV và backup .mochop | DESIGN_ACCEPTED | Test xuất/restore trên máy khác |
 | D10 | Origin phát hành riêng cho dữ liệu cuộc họp | DESIGN_PREFERRED | Chưa thiết lập DNS/HTTPS; phải xác minh origin trước dữ liệu thật |
 | D11 | Thu PCM trước, cân nhắc Opus lưu lâu dài | OPEN | Chọn format sau PoC và test độ chính xác, quota, restore |
-| D12 | Player nghe chậm 0,75×/0,9× phải rõ và ít biến giọng | OPEN | PoC Gói 1.4, đối chứng Web Audio và phương án pitch preservation |
-| D13 | fflate streaming cho gói .mochop | PROPOSED_FOR_POC | Test xuất + nhập khối lượng lớn, ZIP64, checksum và bộ nhớ |
+| D12 | Player nghe chậm 0,75×/0,9× phải rõ và ít biến giọng | OPEN | PoC C1 HTMLAudioElement đôi với preservesPitch vs C2 Web Audio buffer nhỏ; đo biên, cao độ, RAM; không mặc định crossfade/hybrid |
+| D13 | Lựa chọn thư viện .mochop: fflate / client-zip / zip.js | OPEN | PoC nhập/xuất 0,5–2 GB, streaming hoặc random-access, backpressure, ZIP64, checksum, peak RAM; chưa chốt fflate |
 | D14 | Clock input monotonic + sample/segment mapping | PROPOSED_FOR_POC | PoC 1.2–1.3, tín hiệu đo, drift/pause/gap |
+| D15 | MarkSpec: inclusive:false, excludes:timeSpan, spanning:true; coalescing attrs đồng nhất | DESIGN_PREFERRED | PoC 1.1 xác minh Unikey/EVKey, model vs DOM, typedAt đầu cụm, P95/JSON/TextNode |
+| D16 | AudioWorklet dùng MessageChannel riêng + transferable, batch 2.048/4.096 | PROPOSED_FOR_POC | PoC 1.2 đo buffer pool, sequence/sample count, queue backpressure, crash; chưa dùng SAB |
+| D17 | playback_paused pre-roll tham khảo 5 giây, cho phép tùy chỉnh | DESIGN_PREFERRED | Thử UX 0/3/5/10 giây Gói 1.4; không thay mốc gốc |
+| D18 | SharedArrayBuffer/COOP-COEP không bắt buộc ở V1.2 | DESIGN_PREFERRED | Test transferable/Worker khi crossOriginIsolated=false; chỉ xét SAB và hosting header khi PoC chứng minh cần |
+| D19 | Không crossfade vô điều kiện tại ranh giới audio | DESIGN_ACCEPTED | PoC C1/C2 kiểm chứng không mất/trùng tiếng khi phát qua segment |
 
-**DESIGN_ACCEPTED / DESIGN_PREFERRED / PROPOSED_FOR_POC** = trạng thái đề xuất/chấp nhận ở mức thiết kế, **không** phải chức năng đã code hoặc test PASS. Mọi quyết định công nghệ quan trọng sau PoC phải có commit + phép đo/test và cập nhật đúng bảng này.
+**DESIGN_ACCEPTED / DESIGN_PREFERRED / PROPOSED_FOR_POC / OPEN** = trạng thái chấp nhận/ưu tiên/cần thử **ở mức thiết kế**, **không** phải đã code hoặc test PASS. Mỗi quyết định chọn production phải có commit và phép đo để chuyển trạng thái; không dựa vào suy luận AI. Mọi quyết định công nghệ quan trọng sau PoC phải có commit + phép đo/test và cập nhật đúng bảng này.
 
 ## 4. Vấn đề đang chặn và rủi ro
 
 - Chưa có kết quả chạy bộ gõ Unikey/EVKey thật trên Windows.
 - Chưa có benchmark/audio crash/segment/seek để chọn engine chính thức.
 - Chưa có bản chạy, CI, dữ liệu mẫu hoặc báo cáo test trên repository.
+- Đã nghiên cứu sáu nhận xét kỹ thuật mới (15/11/2026), điều chỉnh thiết kế và bổ sung subcase kiểm thử **nhưng chưa có PoC PASS**. Trạng thái của mọi gói vẫn NOT_STARTED; không nhầm nghiên cứu/commit tài liệu với code hoàn thành.
 - Vấn đề về nguồn thu online, quota, đa tab và PWA chưa được chứng minh bằng test.
 
 Các nội dung trên là việc cần thử khi triển khai, **không phải lỗi đã quan sát từ một ứng dụng hiện có**.

@@ -24,8 +24,8 @@
 | TC08 | Undo/Redo | Khôi phục cả chữ và mốc |
 | TC09 | Định dạng | Không phá link |
 | TC10 | Dán ngoài | Không bịa per-word timestamp |
-| TC11 | Tài liệu dài | Không giật nghiêm trọng; đo P95 nhập |
-| TC12 | Ghi 3 giờ | Phát và tua toàn bộ phần hợp lệ |
+| TC11 | Tài liệu dài | Đo P95 nhập, độ phân mảnh Mark/TextNode/DOM, JSON và coalescing thuộc tính đồng nhất |
+| TC12 | Ghi 3 giờ | Phát/tua toàn bộ phần hợp lệ; đo worklet chunk/queue/backpressure, sample drop |
 | TC13 | Pause/resume | Timeline không bị cộng nhầm pause |
 | TC14 | Mất micro | Có cảnh báo và gap rõ ràng |
 | TC15 | Đóng tab đột ngột | Khôi phục phần đã lưu |
@@ -36,15 +36,15 @@
 | TC20 | Wake Lock thu hồi | Hiển thị đúng, không hứa ngăn Sleep |
 | TC21 | Audio online | Chỉ PASS môi trường được kiểm chứng |
 | TC22 | Phát từ con trỏ | Đúng link và pre-roll |
-| TC23 | Phát xuyên boundary | Không mất/lặp âm bất thường |
+| TC23 | Phát xuyên boundary | So sánh C1/C2; không mất/lặp lời nói; không dùng crossfade để che lỗi đo |
 | TC24 | Seek đầu/giữa/cuối | Virtual Timeline tìm đúng đoạn |
 | TC25 | A-B xuyên file | Phát lặp đúng khoảng |
 | TC26 | Vừa sửa vừa nghe | Không cần đổi chế độ |
 | TC27 | Nhập file có sẵn | Mốc theo vị trí phát |
-| TC28 | Pause file rồi ghi | Giữ mốc tại pause |
+| TC28 | Pause file rồi ghi | Giữ mốc tại Pause, pre-roll mặc định thử 5 giây, chỉnh 0/3/5/10 mà không đổi mốc |
 | TC29 | Auto-save | Không đòi Save; xác nhận lưu thực |
 | TC30 | Backup/restore | Giữ chữ, marks, audio, checksum |
-| TC31 | Backup file lớn | Streaming, không nạp hết RAM |
+| TC31 | Backup file lớn | So sánh fflate/client-zip/zip.js, backpressure, ZIP64, restore, RAM có giới hạn |
 | TC32 | Hai tab | Chỉ một writer, không ghi đè |
 | TC33 | Offline | Sau tải ban đầu vẫn ghi/soạn |
 | TC34 | PWA update | Không reload phiên ghi |
@@ -72,6 +72,24 @@ TC29–TC38: auto-save được xác nhận, restore .mochop, dữ liệu lớn 
 
 ### 1.6 — Tổng hợp và thực địa
 Kiểm thử tổng thể Gói 1.1–1.5 trên Windows/Chrome/Edge; một số phiên họp thử dài; sao lưu ra máy khác và mở lại. Chưa có evidence thì **không được** ghi PASS.
+
+
+## Bộ kiểm thử chuyên sâu sau phản biện kỹ thuật 15/11/2026
+
+**Giữ nguyên mã TC01–TC38** để không phá bảng quản lý hiện có. Các tình huống bên dưới là subcase bắt buộc của TC tương ứng, **không phải PASS**. Ghi môi trường Windows/Chrome/Edge, commit SHA, log, fixture và cách đo.
+
+| TC liên quan | Subcase bổ sung | Điều kiện đạt / dữ liệu cần lưu |
+|---|---|---|
+| **TC03, TC04, TC06, TC08, TC11** | MarkSpec `inclusive:false`, `excludes:"timeSpan"`, `spanning:true` và Mark coalescing | Một ký tự không mang hai timeSpan, vẫn có bold/italic; cụm gộp phải có **tất cả attrs giống nhau**, `typedAt` là lúc đầu cụm. Kiểm số TextNode/Mark/DOM span/JSON/P95 trên đoạn dài và sau Undo/Redo. Không nhầm spanning DOM với gộp model |
+| **TC12, TC14, TC15, TC17, TC19** | AudioWorklet quantum/batching/port riêng | Đo số render quantum thực (không hardcode 128), thử batch 2.048/4.096 frame, buffer pool `Transferable ArrayBuffer`, message/s, sequenceNo/firstSample/sampleCount, Worker chậm, queue đầy và phần committed sau crash; missing/gap được báo, không báo saved giả |
+| **TC16, TC22–TC26** | PoC C1 HTMLAudioElement đọc trước, `preservesPitch` so với C2 Web Audio buffer nhỏ | Phát 04:58→05:02, seek phút 90/170, A–B qua biên, đo gap/drop/duplicate, độ rõ cao độ ở 0,75× và 0,9×, peak RAM. Không khẳng định hai thẻ audio gapless hoặc crossfade vô hại |
+| **TC27, TC28** | Playback đang Pause rồi gõ và đổi độ lùi | Mốc chữ giữ chính xác tại playback head khi Pause; thử pre-roll 0/3/5/10 giây (giá trị đề xuất ban đầu **5 giây**); thay pre-roll không sửa Mark gốc |
+| **TC30, TC31, TC38** | .mochop export/import 0,5 GB và 2 GB; 3 ứng viên ZIP | So sánh fflate/client-zip/zip.js; bounded RAM/backpressure, ZIP64, Central Directory/random-access hoặc streaming unzip, checksum; kiểm path traversal, ZIP bomb, file thiếu và rollback vùng tạm; không đặt ngưỡng RAM <10 MB hay tốc độ cố định khi chưa đo |
+| **TC32–TC35** | PWA trên origin GitHub Pages không có COOP/COEP; cập nhật/khôi phục | Thu bằng MessageChannel + Transferable **không cần SharedArrayBuffer**; đo hoạt động khi `crossOriginIsolated === false`. Không ép reload đang thu; kiểm Web Locks, scope, origin riêng và migration |
+
+**Biểu mẫu bằng chứng cho subcase:** `TC/subcase | commit | Chrome/Edge version | Windows/device | fixture | expected | actual | measured latency/CPU/RAM/drop count | log link | PASS/FAIL/NOT_RUN`.
+
+Không dùng `AudioBufferSourceNode.playbackRate` làm bằng chứng nghe chậm giữ cao độ khi chưa có xử lý pitch. Không khẳng định `fflate.Unzip` tự nạp cả gói vào RAM, nhưng phải đo queue/backpressure ở pipeline thực.
 
 ## Ngưỡng đo tham khảo
 

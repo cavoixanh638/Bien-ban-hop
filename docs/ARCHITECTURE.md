@@ -42,6 +42,9 @@ Không dùng một bảng from/to độc lập làm nguồn sự thật; nếu c
 
 ### AudioCapture
 - Giao diện điển hình: start(config), pause(), resume(), stop(), onStatus(), onChunk(), onError().
+- **PoC ưu tiên AudioWorklet → Storage Worker:** Main Thread tạo `MessageChannel`, chuyển một port tới WorkletProcessor bằng `AudioWorkletNode.port` và port còn lại tới Dedicated Worker. Cặp `AudioWorkletProcessor.port` / `AudioWorkletNode.port` mặc định không thể “gán lại”; nó chỉ dùng truyền port lúc khởi tạo/điều khiển.
+- Worklet gom render quantum (thường 128 frame, không hardcode) thành khối thử 2.048/4.096 frame; chuyển `Transferable ArrayBuffer` có sequence number, firstSample, sampleCount; quản lý buffer pool và giới hạn queue/backpressure. Không xử lý OPFS hay đợi I/O trong luồng xử lý audio.
+- SharedArrayBuffer **không phải yêu cầu V1.2**; chỉ đánh giá sau khi có số liệu bottleneck thực và môi trường cross-origin isolated.
 - Cung cấp mã phiên, thời điểm bắt đầu, sample rate thực, sample count hoặc điểm thời gian tương đương; không kết luận file phát được từ riêng Blob timeslice.
 - Ghi âm micro mặc định; audio hệ thống/online chỉ khi có quyền và audio track.
 
@@ -60,6 +63,7 @@ Các hàm khái niệm (tên chính thức chốt khi code):
 
 ### PlaybackModule
 - Các lệnh: loadMeeting, playAt(recordingId,offsetMs,preRollMs), pause, seekMeeting, setSpeed, loopRange, stop.
+- **Chưa chốt engine production**: PoC C1 HTMLAudioElement đôi đọc trước (`preservesPitch`) so với C2 Web Audio PCM buffer nhỏ được lập lịch. Đo sai lệch boundary, không mất/lặp lời nói, seek, peak RAM và giọng nghe chậm 0,75×/0,9×. Không crossfade vô điều kiện hoặc trộn hai engine chỉ để che lỗi.
 - Đọc manifest qua Timeline; chọn engine phù hợp PCM/WAV/WebM/MP3/M4A.
 - Phải prebuffer hoặc schedule qua boundary, không giả định việc đổi src là không gap.
 - Trình phát hiển thị một Virtual Timeline cho cả cuộc họp, theo dõi khoảng thiếu audio.
@@ -70,6 +74,7 @@ Các hàm khái niệm (tên chính thức chốt khi code):
 
 ### Backup/Export
 - Xuất gói .mochop streaming ZIP với manifest/version/checksum, âm thanh và tài liệu; xác minh trước khi restore.
+- So sánh `fflate`, `client-zip`, `zip.js` bằng PoC export/import lớn: backpressure và peak RAM có giới hạn, ZIP64, đọc entry theo Central Directory hoặc unzip theo luồng, kiểm checksum. Không chốt thư viện chỉ vì nhãn “streaming”.
 - DOCX/TXT/Markdown/CSV giữ nội dung và thông tin mốc theo chế độ xuất.
 - Không mô tả DOCX thông thường có hành vi bấm chữ phát ngay.
 
@@ -99,14 +104,16 @@ Storage không thể có transaction atomic giữa OPFS và IndexedDB. Đề xu�
 - Asset JS/CSS có hash: cache theo phiên bản; HTML main: kiểm tra phiên bản có fallback offline.
 - Không skipWaiting/reload ép khi đang thu; activation/migration tại trạng thái an toàn.
 - GitHub Pages dùng base path đúng và Service Worker scope phù hợp; không giả định origin root.
+- **Origin riêng** giúp cô lập IndexedDB/OPFS nhưng không tự cung cấp COOP/COEP. Chia sẻ `SharedArrayBuffer` giữa ngữ cảnh đòi `crossOriginIsolated` và header phù hợp; GitHub Pages chuẩn không cho cấu hình trực tiếp HTTP response header tùy ý. **Ưu tiên MessageChannel + Transferable ArrayBuffer** không cần COOP/COEP; `FileSystemSyncAccessHandle` trong Dedicated Worker cũng không phụ thuộc SAB. Nếu phải dùng SAB thì đánh giá lại hosting có thể thiết lập header, không dùng Service Worker workaround như mặc định.
 - Khi schema thay đổi: kiểm tra phiên bản, backup/an toàn hoặc shadow-copy, migrate, validate rồi mới đưa vào sử dụng. Regression với dữ liệu bản cũ.
 
 ## 7. Điểm còn mở và điều kiện chốt
 
 1. Quy tắc grouping timeSpan/Unikey: qua PoC Windows thực.
-2. AudioWorklet/PCM vs MediaRecorder: benchmark/khôi phục/seek/CPU/RAM/quota trên Chrome/Edge, báo cáo trong [AUDIO_DESIGN.md](AUDIO_DESIGN.md).
-3. Player công nghệ cụ thể: tùy codec và độ mượt qua ranh giới, thiết kế tại [AUDIO_DESIGN.md](AUDIO_DESIGN.md).
+2. AudioWorklet/PCM vs MediaRecorder: benchmark/khôi phục/seek/CPU/RAM/quota trên Chrome/Edge, kiểm tra `MessageChannel + Transferable ArrayBuffer`, buffer pool và backpressure; báo cáo trong [AUDIO_DESIGN.md](AUDIO_DESIGN.md).
+3. Player công nghệ cụ thể: đối chứng HTMLAudioElement preservesPitch và Web Audio PCM có lập lịch; chốt dựa chất lượng nghe chậm, sai lệch biên và RAM, thiết kế tại [AUDIO_DESIGN.md](AUDIO_DESIGN.md).
 4. Âm thanh online: theo quyền getDisplayMedia, Windows/browser/app, không coi mọi nguồn là thu được.
+5. ZIP/khôi phục: đánh giá fflate, client-zip và zip.js bằng gói lớn, checksum, ZIP64, bounded RAM và dữ liệu độc hại; chốt thư viện sau PoC.
 
 **Không xây thêm microservices, server, cloud, multiuser hoặc AI ở V1.2.**
 
@@ -160,6 +167,17 @@ Thuộc tính Mark:
 | schemaVersion | số phiên bản của Mark |
 
 Một đoạn bị tách làm hai có thể cùng tham chiếu anchorId. Mark của hai vùng liền kề chỉ được gộp khi thuộc tính và quy tắc thời gian thực sự tương thích; **không** gộp chỉ vì vị trí kề nhau.
+
+**MarkSpec định hướng, phải kiểm chứng qua Gói 1.1:**
+
+```ts
+{ inclusive: false, excludes: "timeSpan", spanning: true }
+```
+
+- `excludes: "timeSpan"`: khai báo tường minh không có hai Mark timeSpan khác nhau trên một ký tự, vẫn có thể kết hợp bold/italic/strike. ProseMirror mặc định cũng loại trừ Mark cùng loại.
+- `spanning: true` (mặc định) điều khiển wrapper DOM/HTML qua node kề nhau, **không phải cơ chế tự gộp các TextNode trong model**.
+- `inclusive: false` giúp quản lý biên nhưng chưa thay transaction plugin/IME logic.
+- Một cụm coalesced phải dùng chung **toàn bộ attrs** `anchorId/recordingId/audioOffsetMs/typedAt/source/schemaVersion`. `typedAt` là thời điểm bắt đầu cụm; EditJournal mới là nơi lưu thay đổi từng thao tác. Không tạo typedAt riêng cho từng ký tự rồi trông chờ các Mark đó được tự hợp nhất.
 
 **Không đưa anchorStatus vào Mark.** Các trạng thái pending/valid/missing/gap/unsupported lấy từ manifest hiện tại. Khi Mark trỏ vào audio chưa flush có thể tạm là pending; nếu file mất là missing, nhưng Mark không bị sửa theo mỗi flush.
 
