@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "decoder": "ffprobe",
+  "stream": {
+    "codec_name": "pcm_f32le",
+    "sample_rate": "48000",
+    "channels": 2,
+    "duration": "1.000000"
+  },
+  "recording": "synthetic one-second stereo f32le WAV"
+}
