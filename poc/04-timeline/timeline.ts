@@ -96,6 +96,7 @@ export function resolve(manifests: readonly Manifest[], recordingId: string|null
   if(errors.length) return fail('unsupported',errors.join('; '),recordingId,audioOffsetMs);
   const meetingHits=m.intervals.filter(i=>i.mediaStartMs!==undefined && i.mediaEndMs!==undefined && audioOffsetMs>=i.mediaStartMs && audioOffsetMs<i.mediaEndMs);
   if(meetingHits.length>1) return fail('unsupported','ambiguous audio interval',recordingId,audioOffsetMs);
+  if(m.intervals.length && !meetingHits.length) return fail('gap','audio offset outside recorded meeting intervals',recordingId,audioOffsetMs);
   if(meetingHits.length && meetingHits[0].kind!=='recorded') return fail('gap',meetingHits[0].reason||'not recorded',recordingId,audioOffsetMs);
   const segments=m.segments.filter(s=>audioOffsetMs>=s.mediaStartMs && audioOffsetMs<s.mediaStartMs+s.mediaDurationMs);
   if(segments.length!==1) return fail(segments.length?'unsupported':'gap',segments.length?'ambiguous segment':'no segment at media offset',recordingId,audioOffsetMs);
@@ -120,11 +121,11 @@ export function createLiveAnchor(m: Manifest, ctx: LiveContext): {anchor: Anchor
   if(sample.status!=='valid') return {anchor,resolution:fail(sample.status,sample.reason,ctx.recordingId)};
   // Cross-check both independent measurements: divergence is a warning/error, not silent source substitution.
   if(Math.abs(sample.audioOffsetMs!-meeting.audioOffsetMs!)>1000) return {anchor,resolution:fail('unsupported','clock and meeting timeline differ by more than 1000ms',ctx.recordingId)};
-  anchor.audioOffsetMs=sample.audioOffsetMs!;
+  anchor.audioOffsetMs=Math.round(sample.audioOffsetMs!);
   return {anchor,resolution:resolve([m],anchor.recordingId,anchor.audioOffsetMs)};
 }
 export function createPlaybackAnchor(manifests: readonly Manifest[], ctx: PlaybackContext): {anchor: Anchor; resolution: Resolution} {
-  const anchor: Anchor={anchorId:ctx.anchorId,recordingId:ctx.recordingId,audioOffsetMs:validNumber(ctx.currentMediaMs)?ctx.currentMediaMs:null,typedAt:ctx.typedAt,source:ctx.paused?'playback_paused':'imported_playback',schemaVersion:1};
+  const anchor: Anchor={anchorId:ctx.anchorId,recordingId:ctx.recordingId,audioOffsetMs:validNumber(ctx.currentMediaMs)?Math.round(ctx.currentMediaMs):null,typedAt:ctx.typedAt,source:ctx.paused?'playback_paused':'imported_playback',schemaVersion:1};
   return {anchor,resolution:resolve(manifests,anchor.recordingId,anchor.audioOffsetMs)};
 }
 export function playbackTarget(manifests: readonly Manifest[], anchor: Pick<Anchor,'recordingId'|'audioOffsetMs'>, preRollMs=5000): {resolution: Resolution; playStartMs?: number} {
