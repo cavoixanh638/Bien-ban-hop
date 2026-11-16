@@ -5,6 +5,7 @@ import {CaptureClockMapper} from '../../poc/02-capture/src/clock-mapper.mjs';
 import {MeetingStore,SaveQueue} from '../src/meeting-store.mjs';
 import {verifiedClickedAnchor} from '../src/anchor-bridge.mjs';
 import {resolvePlaybackStart,selectCommittedPlayback} from '../src/playback-start.mjs';
+import {buildMeetingTimeline,locateMeetingPosition,meetingPositionFor,firstPlayablePosition} from '../src/meeting-timeline.mjs';
 import {contextFor,resolvePending,intervalFor} from '../src/clock-bridge.mjs';
 import {fixture as audioFixture} from '../../poc/05-player/player.js';
 import {resolveMedia,meetingToMedia,choosePreRoll} from '../../poc/05-player/timeline.js';
@@ -174,4 +175,50 @@ test('G10 audio: never bridge a dropped sample interval or a foreign recording',
   assert.equal(right.status,'valid');assert.equal(right.startSample,96000);
   assert.equal(right.endSampleExclusive,144000);
   assert.equal(selectCommittedPlayback(manifest,manifest.recordingId,4000,0).status,'missing');
+});
+
+test('G10 timeline: aggregate two recordings in order, preserve a 1s gap and source boundaries',()=>{
+  const a='rec-timeline-aaaaaaaa',b='rec-timeline-bbbbbbbb';
+  const manifests=new Map([
+    [a,{recordingId:a,sampleRate:10000,sampleRanges:[{sampleStart:0,sampleEndExclusive:10000},
+      {sampleStart:20000,sampleEndExclusive:30000}],intervals:[{kind:'gap',meetingEndMs:2000}]}],
+    [b,{recordingId:b,sampleRate:10000,sampleRanges:[{sampleStart:0,sampleEndExclusive:20000}],intervals:[]}]
+  ]);
+  const timeline=buildMeetingTimeline([a,b],manifests);
+  assert.equal(timeline.totalMs,5000);
+  assert.equal(timeline.sessions.length,2);
+  assert.equal(timeline.unavailableCount,1);
+  assert.equal(locateMeetingPosition(timeline,250).recordingId,a);
+  assert.equal(locateMeetingPosition(timeline,1500).status,'gap');
+  assert.equal(locateMeetingPosition(timeline,2900).session,1);
+  assert.equal(locateMeetingPosition(timeline,3000).recordingId,b);
+  assert.equal(locateMeetingPosition(timeline,4000).localMs,1000);
+  assert.equal(meetingPositionFor(timeline,b,800),3800);
+  assert.equal(locateMeetingPosition(timeline,5000).status,'end');
+});
+test('G10 timeline: no file is substituted at a missing, empty, or foreign timeline point',()=>{
+  const a='rec-timeline-aaaaaaaa',empty='rec-timeline-empty000';
+  const timeline=buildMeetingTimeline([a,empty],new Map([
+    [a,{recordingId:a,sampleRate:48000,sampleRanges:[{sampleStart:48000,sampleEndExclusive:96000}],
+      intervals:[{kind:'gap',meetingEndMs:1000}]}],
+    [empty,{recordingId:empty,sampleRate:48000,sampleRanges:[],intervals:[]}]
+  ]));
+  assert.equal(locateMeetingPosition(timeline,0).status,'gap');
+  assert.equal(locateMeetingPosition(timeline,500).status,'gap');
+  assert.equal(locateMeetingPosition(timeline,1500).recordingId,a);
+  assert.equal(firstPlayablePosition(timeline),1000);
+  assert.equal(meetingPositionFor(timeline,'another',1000),null);
+  assert.equal(locateMeetingPosition(timeline,-1).status,'invalid');
+  assert.throws(()=>buildMeetingTimeline([a],new Map()),/thiếu manifest/);
+});
+test('G10 timeline: a trailing pool-exhausted interval is visible as missing audio',()=>{
+  const id='rec-timeline-aaaaaaaa';
+  const tl=buildMeetingTimeline([id],new Map([[id,{
+    recordingId:id,sampleRate:48000,
+    sampleRanges:[{sampleStart:0,sampleEndExclusive:48000}],
+    intervals:[{kind:'gap',reason:'pool-exhausted',meetingEndMs:2000}]
+  }]]));
+  assert.equal(tl.totalMs,2000);
+  assert.equal(tl.unavailableCount,1);
+  assert.equal(locateMeetingPosition(tl,1200).status,'gap');
 });
