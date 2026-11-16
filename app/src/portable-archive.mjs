@@ -180,3 +180,18 @@ async function hashEntry(reader,entry){
   if(size!==entry.size||crc.digest()!==entry.crc32)fail('manifest CRC không khớp');
   return sha.digestHex();
 }
+
+/** Inspect only the bounded, CRC-validated manifest to route older exports.
+ * Each actual importer independently revalidates the complete ZIP again.
+ */
+export async function probeMochopVersion(blob){
+  const reader=new ZipStoreReader(blobSource(blob),{maxEntries:LIMITS.maxEntries});
+  const entries=await reader.entries();
+  const m=entries.find(e=>e.name==='manifest.json');
+  if(!m||m.size>LIMITS.maxManifest)fail('file không chứa manifest hợp lệ');
+  const digest=await hashEntry(reader,m);
+  const manifest=await loadJson(reader,m,{path:m.name,size:m.size,sha256:digest});
+  if(manifest?.format!=='mochop'||![1,2].includes(manifest.formatVersion))
+    fail('phiên bản .mochop không được hỗ trợ');
+  return manifest.formatVersion;
+}
