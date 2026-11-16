@@ -98,11 +98,14 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
   await editor.click();
   await page.keyboard.type('Mốc thử ghi âm trong lúc soạn biên bản.');
   await expect(editor).toContainText('Mốc thử');
+  await expect(page.locator('.tiptap .note-capture-current')).toBeVisible();
+  await expect(page.locator('#note-follow-status')).toContainText('Đang ghi');
   // The G03 journal flush schedule is 5 s. This is a short synthetic integration test,
   // NOT evidence for 3-hour recording or native Windows IME.
   await page.waitForTimeout(7000);
   await page.locator('#rec-stop').click();
   await expect(page.locator('#rec-label')).toHaveText('Chưa ghi âm',{timeout:25000});
+  await expect(page.locator('.tiptap .note-capture-current')).toHaveCount(0);
   await expect(page.locator('#technical-status')).toContainText('Đã chốt bản ghi',{timeout:15000});
   await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
   await expect(page.locator('#timeline-summary')).toContainText('1 phiên',{timeout:20000});
@@ -146,7 +149,15 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
       throw Error('Playback unavailable: '+toast+'; anchor='+text);
     return text;
   },{timeout:12000,message:'Durable OPFS playback did not start'}).toContain('Đang phát từ');
+  // The cue overlay must be derived from validated marks, not from the text
+  // selection, and must not persist in note JSON after stopping.
+  await expect(page.locator('.tiptap .note-audio-current').first()).toBeVisible({timeout:12000});
+  await expect(page.locator('#note-follow-status')).toContainText('Đang theo mốc');
+  const followedId=await page.locator('.tiptap .note-audio-current').first()
+    .getAttribute('data-time-recording-id');
+  expect(followedId).toBeTruthy();
   await page.locator('#play-stop').click();
+  await expect(page.locator('.tiptap .note-audio-current')).toHaveCount(0);
   await page.reload();
   await expect(page.locator('.tiptap [data-time-recording-id]').first()).toBeVisible({timeout:15000});
   await page.locator('.tiptap [data-time-recording-id]').first().click();
