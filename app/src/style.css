@@ -12,3 +12,15 @@
 .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.controls .primary{grid-column:1/-1;background:#205951;color:white;border-color:#205951;font-weight:700}.controls .primary:hover{background:#164941}.controls button{font-size:12px}.panel-small{font-size:11px;line-height:1.7;color:#6e878a;margin-top:12px}.play-row{display:flex;align-items:center;justify-content:space-between;gap:8px}.play-row label,.field{font-size:12px;color:#5b747b}.field{display:flex;align-items:center;gap:8px;margin:14px 0}.field select,.play-row select{background:#fff;border:1px solid #d7e1e1;border-radius:8px;padding:7px 8px;color:#345159}.field select{margin-left:auto}.anchor-status{border:1px dashed #cbdadb;border-radius:10px;background:#fff;padding:14px;margin-top:13px;min-height:72px;line-height:1.65;color:#5d777c;font-size:12px;word-break:break-word}.exports{display:grid;grid-template-columns:1fr 1fr;gap:7px}.exports button{font-size:12px}.wide{display:block;width:100%;margin-top:12px;font-size:12px;text-align:center}.panel-divider{margin:25px 0;border-top:1px solid #dce6e6}.technical{font-size:11px;white-space:pre-wrap;line-height:1.8;color:#6a8288}.experimental{margin-top:29px;font-size:10px;line-height:1.65;color:#9b7471}
 @keyframes pulse{50%{box-shadow:0 0 0 8px #fce1dc}}@media(max-width:1150px){#app{grid-template-columns:210px minmax(360px,1fr)}.panel{grid-column:2;max-height:none;padding:18px 28px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:8px 18px}.panel-title{grid-column:1/-1;margin-top:14px!important}.panel-divider,.technical,.experimental{grid-column:1/-1}.workspace{max-height:none;min-height:74vh}.paper-wrap{overflow:visible}.sidebar{grid-row:1/3}}
 @media(max-width:720px){#app{display:block}.sidebar{padding:13px 16px}.brand{padding-bottom:13px}.side-section{max-height:165px}.sidebar-foot{display:none}.workspace{min-height:auto}.topbar{padding:17px}.topbar input{font-size:19px}.toolbar{padding:8px 14px}.toolbar-hint{display:none}.paper-wrap{padding:12px}.paper{padding:25px 20px;min-height:360px}.tiptap{font-size:16px}.panel{display:block;padding:20px;max-height:none}.panel-title:not(:first-child){margin-top:22px!important}}
+
+/* Mic test is independent from recording; keep the indicator legible at 24" / 2K. */
+.mic-check{background:#fff;border:1px solid #e1ebea;border-radius:12px;padding:12px;margin:10px 0 12px;display:flex;flex-direction:column;gap:9px}
+.mic-label{color:#54727a;font-size:11px;font-weight:700}
+#mic-device{width:100%;max-width:100%;border:1px solid #d7e1e1;border-radius:8px;background:#fff;padding:8px;color:#345159;font-size:12px}
+#mic-test{margin:0}
+.mic-meter{width:100%;height:12px;background:#e7eeef;border-radius:12px;overflow:hidden;border:1px solid #d5e2e0}
+#mic-level-fill{height:100%;width:0%;background:linear-gradient(90deg,#69c1a0,#2d8973,#ddb35b);transition:width .13s ease-out}
+#mic-test-status{margin-top:0;min-height:34px}
+#recording-path{border-left:3px solid #78aa9d;padding-left:10px;overflow-wrap:anywhere}
+#retry-local-recording{margin-top:8px}
+@media(prefers-reduced-motion:reduce){#mic-level-fill{transition:none}}
