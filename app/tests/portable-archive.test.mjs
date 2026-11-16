@@ -129,4 +129,11 @@ test('G10 v2: unverified pending input is preserved as archive provenance but ne
   const result=remapBundle({...src,pendingState:pending},()=>Math.random().toString(36).slice(2));
   assert.deepEqual(result.archivedPendingState,pending);
   assert.deepEqual(result.pendingState.records,[]);
+  assert.deepEqual(result.history.at(-1).archivedPendingState,pending);
+  let seq=0;
+  const twice=remapBundle({meeting:result.meeting,note:result.note,
+    history:result.history,pendingState:result.pendingState,recordings:result.recordings},
+    ()=>('id-'+(++seq)));
+  assert.deepEqual(twice.history.at(-1).archivedPendingState,pending);
+  assert.deepEqual(twice.pendingState.records,[]);
 });
