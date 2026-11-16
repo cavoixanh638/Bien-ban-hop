@@ -102,21 +102,22 @@ function timing(ms){const s=Math.floor((ms||0)/1000);return [Math.floor(s/3600),
 function setRecordingUI(){
   const run=state.run,rec=run?.capture;
   const active=rec&&['starting','capturing','paused','stopping'].includes(rec.state);
+  const finalizing=!!run?.recordingFinalization;
   const recording=rec?.state==='capturing',paused=rec?.state==='paused';
-  $('rec-start').disabled=!run?.releaseLease||!!active||state.switching;
+  $('rec-start').disabled=!run?.releaseLease||!!active||finalizing||state.switching;
   $('rec-pause').disabled=!recording&&!paused;
   $('rec-pause').textContent=paused?'Tiếp tục':'Tạm dừng';
   $('rec-stop').disabled=!active||rec?.state==='stopping';
-  $('backup').disabled=!!active||!run?.releaseLease||state.switching||transferBusy;
-  $('import-backup').disabled=!!active||state.switching||transferBusy;
+  $('backup').disabled=!!active||finalizing||!run?.releaseLease||state.switching||transferBusy;
+  $('import-backup').disabled=!!active||finalizing||state.switching||transferBusy;
   $('mic-test').disabled=!!active;
   $('mic-device').disabled=!!active||micProbe.state!=='idle';
   $('retry-local-recording').disabled=!!active||localRecordingBusy||!run?.meeting.recordingIds?.length||state.switching;
   $('rec-light').className='rec-light'+(recording?' active':paused?' paused':'');
-  $('rec-label').textContent=recording?'Đang ghi âm':paused?'Đã tạm dừng':rec?.state==='starting'?'Đang xin quyền micro':
+  $('rec-label').textContent=finalizing?'Đang hoàn tất lưu':recording?'Đang ghi âm':paused?'Đã tạm dừng':rec?.state==='starting'?'Đang xin quyền micro':
     rec?.state==='stopping'?'Đang lưu âm thanh':rec?.state==='failed'?'Ghi âm có lỗi':'Chưa ghi âm';
   $('writer-status').textContent=run?.releaseLease?'Có quyền chỉnh sửa':'Chỉ xem / đang có tab khác';
-  timelineUI?.setBusy(!!active||state.switching||transferBusy);
+  timelineUI?.setBusy(!!active||finalizing||state.switching||transferBusy);
 }
 function renderMeetings(){
   const run=state.run,root=$('meeting-list');root.replaceChildren();
@@ -156,6 +157,7 @@ async function safelyCloseCurrent(){
   if(run.capture&&['starting','capturing','paused','stopping'].includes(run.capture.state)){
     throw Error('Hãy kết thúc ghi âm trước khi chuyển cuộc họp');
   }
+  if(run.recordingFinalization)await run.recordingFinalization;
   if(run.releaseLease)await run.queue.close(); // Throws if dirty/error. Do not release/clear unsaved note.
   // Cancel the timeline UI then wait until its OPFS recovery worker has CLOSED
   // every exclusive SyncAccessHandle before changing meetings.
@@ -275,9 +277,12 @@ async function pauseRecording(){
   setRecordingUI();
 }
 async function stopRecording(){
-  const run=state.run,rec=run?.capture;if(!rec)return;
-  $('rec-stop').disabled=true;
-  try{
+  const run=state.run,rec=run?.capture;
+  if(!rec||run.recordingFinalization)return;
+  // The Stop button is not finished when the micro track ends. Keep a durable
+  // finalization barrier through OPFS ACK, note commit, timeline recovery and
+  // optional Windows WAV mirror. No second OPFS reader/backup during this step.
+  const task=(async()=>{
     const result=await rec.stop();
     const finalized=run.tracker.finalizePendingLinks(entry=>rec.pendingResolver(entry));
     if(finalized.applied)run.queue.edit();
@@ -285,11 +290,18 @@ async function stopRecording(){
     $('technical-status').textContent='Đã chốt bản ghi '+rec.recordingId+
       '\nPCM đã commit: '+result.samples?.toLocaleString('vi-VN')+' frame.'+
       (result.permissionPendingCleanup?'\nQuyền micro vẫn đang chờ hệ điều hành.':'');
-    show('Đã dừng; bản lưu OPFS đã được xác nhận.');
     await timelineUI?.refresh(run);
     await saveWavInRecording(rec.recordingId);
-  }catch(e){show('Dừng ghi/lưu chưa hoàn tất: '+e.message,'error');}
-  finally{setRecordingUI();}
+    show('Đã kết thúc và lưu âm thanh. Thanh tua đã được cập nhật.');
+  })();
+  run.recordingFinalization=task;
+  setRecordingUI();
+  try{await task;}
+  catch(e){show('Dừng ghi/lưu chưa hoàn tất: '+e.message,'error');}
+  finally{
+    if(run.recordingFinalization===task)run.recordingFinalization=null;
+    setRecordingUI();
+  }
 }
 async function listenAtCursor(clickedAnchor=null){
   const run=state.run;if(!run?.editor)return;
@@ -331,6 +343,9 @@ async function exportText(format){
 async function backup(){
   const run=state.run;
   if(!run?.releaseLease||transferBusy||state.switching)return;
+  if(run.recordingFinalization){
+    show('Đang hoàn tất lưu âm thanh, chưa thể xuất cuộc họp.','error');return;
+  }
   if(run.capture&&['starting','capturing','paused','stopping'].includes(run.capture.state)){
     show('Kết thúc và chốt dữ liệu âm thanh trước khi xuất gói.','error');return;
   }
@@ -387,6 +402,9 @@ function displayImportProgress(progress){
 }
 async function importSelectedFile(file){
   if(!file||transferBusy)return;
+  if(state.run?.recordingFinalization){
+    show('Đang hoàn tất ghi âm, chưa thể nhập cuộc họp.','error');return;
+  }
   if(file.size<22){show('Tệp sao lưu không hợp lệ hoặc rỗng.','error');return;}
   const active=state.run?.capture;
   if(active&&['starting','capturing','paused','stopping'].includes(active.state)){
