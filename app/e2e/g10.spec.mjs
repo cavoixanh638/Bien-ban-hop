@@ -7,12 +7,17 @@ test('G10: mở ứng dụng, gõ chữ Việt và lưu/reopen bản ghi chú',a
   await expect(page.locator('.tiptap')).toBeVisible();
   await expect(page.locator('#writer-status')).toContainText('Có quyền chỉnh sửa');
   const editor=page.locator('.tiptap');
+  await expect(editor).toHaveAttribute('spellcheck','false');
+  await expect(editor).toHaveAttribute('autocorrect','off');
+  await expect(editor).toHaveAttribute('data-gramm','false');
+  await expect(page.locator('#meeting-title')).toHaveAttribute('spellcheck','false');
   await editor.click();
   await page.keyboard.type('Nội dung họp: rà soát tiến độ, thống nhất giải pháp.');
   await expect(editor).toContainText('Nội dung họp');
   await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
   await page.reload();
   await expect(page.locator('.tiptap')).toContainText('Nội dung họp');
+  await expect(page.locator('.tiptap')).toHaveAttribute('spellcheck','false');
   expect(errors).toEqual([]);
 });
 
@@ -49,6 +54,8 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
   await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
   const marked=page.locator('.tiptap [data-time-recording-id]');
   await expect(marked.first()).toBeVisible({timeout:10000});
+  // A timeSpan remains clickable but has no black/colored underline.
+  await expect.poll(()=>marked.first().evaluate(el=>getComputedStyle(el).textDecorationLine)).toBe('none');
   await marked.first().click();
   // Playback error toasts must fail fast with a diagnostic instead of being
   // silently retried and misreported as a successful end-to-end run.
