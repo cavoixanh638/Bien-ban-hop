@@ -24,3 +24,32 @@
 #recording-path{border-left:3px solid #78aa9d;padding-left:10px;overflow-wrap:anywhere}
 #retry-local-recording{margin-top:8px}
 @media(prefers-reduced-motion:reduce){#mic-level-fill{transition:none}}
+
+/* Meeting-wide playback scrubber lives with the document, not in the narrow
+   right sidebar. Recorded PCM is green, missing samples are gray, and the
+   boundary line separates sessions without fabricating off-record wall time. */
+.timeline-dock{flex:0 0 auto;background:#fff;border-top:1px solid #dbe6e4;padding:14px clamp(14px,3%,36px) 12px;box-shadow:0 -5px 20px #142b350a;z-index:1}
+.timeline-heading{display:flex;align-items:baseline;gap:12px;justify-content:space-between;margin-bottom:8px}
+.timeline-heading strong{font-size:10px;letter-spacing:.1em;color:#2a665c}
+#timeline-summary{font-size:11px;color:#647e81;font-variant-numeric:tabular-nums;text-align:right}
+.timeline-control-row{display:grid;grid-template-columns:auto auto minmax(90px,1fr) auto;align-items:center;gap:12px}
+#timeline-play{min-width:72px;border-color:#b8d6ca;color:#19614f;background:#edf7f2;font-size:12px;font-weight:700;white-space:nowrap}
+#timeline-play:hover:not(:disabled){background:#d8ece4}
+.timeline-time{font-variant-numeric:tabular-nums;font-size:12px;white-space:nowrap;color:#34575c;font-weight:700}
+.timeline-scrub{position:relative;height:26px;min-width:0;display:flex;align-items:center}
+.timeline-bands{position:absolute;left:0;right:0;top:9px;height:9px;background:#e0e8e8;border-radius:6px;overflow:hidden;pointer-events:none}
+.timeline-band{position:absolute;top:0;bottom:0}
+.timeline-band.recorded{background:#48a98a}
+.timeline-band.gap{background:repeating-linear-gradient(45deg,#aebdc0,#aebdc0 4px,#dbe3e4 4px,#dbe3e4 8px)}
+.timeline-boundary{position:absolute;top:0;bottom:0;width:3px;background:#1b4651;border-left:1px solid #fff;border-right:1px solid #fff}
+#timeline-seek{appearance:none;-webkit-appearance:none;position:relative;width:100%;margin:0;padding:0;height:26px;background:transparent;cursor:pointer;outline-offset:3px}
+#timeline-seek::-webkit-slider-runnable-track{background:transparent;border:0;height:9px}
+#timeline-seek::-moz-range-track{background:transparent;border:0;height:9px}
+#timeline-seek::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;background:#fff;border:2px solid #176652;width:16px;height:16px;border-radius:50%;box-shadow:0 1px 4px #0003;margin-top:-3.5px}
+#timeline-seek::-moz-range-thumb{background:#fff;border:2px solid #176652;width:13px;height:13px;border-radius:50%;box-shadow:0 1px 4px #0003}
+#timeline-seek:disabled{cursor:not-allowed;opacity:.55}
+.timeline-sessions{display:flex;gap:7px;flex-wrap:wrap;margin-top:5px}
+.timeline-session{font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #d7e4e1;background:#f4f8f7;color:#376760}
+.timeline-notice{min-height:16px;font-size:10px;line-height:1.35;margin-top:6px;color:#718789}
+@media(max-width:1150px){.timeline-dock{grid-column:2;min-width:0}}
+@media(max-width:720px){.timeline-dock{padding:11px 14px}.timeline-heading{align-items:start;flex-direction:column;gap:3px}.timeline-control-row{grid-template-columns:auto 1fr auto;gap:8px}#timeline-play{grid-column:1}.timeline-control-row .timeline-scrub{grid-row:2;grid-column:1/-1}.timeline-time{font-size:11px}.timeline-control-row #timeline-total{grid-column:3;grid-row:1}.timeline-control-row #timeline-current{grid-column:2;grid-row:1}}
