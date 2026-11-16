@@ -35,8 +35,8 @@ export class AudioRPC {
 }
 
 export class CaptureSession {
-  constructor({meetingId,recordingId,onEvent=()=>{},onError=()=>{}}){
-    this.meetingId=meetingId;this.recordingId=recordingId;this.onEvent=onEvent;this.onError=onError;
+  constructor({meetingId,recordingId,deviceId='',onEvent=()=>{},onError=()=>{}}){
+    this.meetingId=meetingId;this.recordingId=recordingId;this.deviceId=deviceId;this.onEvent=onEvent;this.onError=onError;
     this.state='idle';this.rate=0;this.generation='g10-'+recordingId;
     this.committedSampleExclusive=0;this.failed=null;this.cancelled=false;this.permissionPendingCleanup=false;
     this.lastAppend=Promise.resolve();this.startedAt=Date.now();
@@ -48,7 +48,8 @@ export class CaptureSession {
     this.state='starting';this.cancelled=false;this.emit('starting');
     let abort;const cancelled=new Promise((_,reject)=>{abort=()=>reject(Error('Người dùng hủy cấp quyền'));});
     this.abortPermissionWait=abort;
-    const permission=navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false},video:false});
+    const permission=navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,
+      ...(this.deviceId?{deviceId:{exact:this.deviceId}}:{})},video:false});
     this.permissionPendingCleanup=true;
     permission.then(stream=>{
       this.permissionPendingCleanup=false;
