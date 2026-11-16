@@ -9,7 +9,8 @@ import {CaptureSession,AudioPlayer,AudioRPC} from './audio.mjs';
 import {MicProbe} from './mic-probe.mjs';
 import {mirrorRecordingToLocalFolder,localRecordingStatus} from './recording-mirror.mjs';
 import {exportDOCX,exportTXT,exportMarkdown,exportCSV,mime} from '../../poc/08-export/exporter.mjs';
-import {exportMochop} from '../../poc/07-backup/mochop-web.mjs';
+import {exportMochopV2,importMochopV2} from './portable-archive.mjs';
+import {loadPortableSource,createBrowserImportRepo} from './portable-storage.mjs';
 
 const $=id=>document.getElementById(id),state={store:null,run:null,lease:new MeetingLease(),switching:false};
 const player=new AudioPlayer((type,detail)=>{
@@ -20,7 +21,7 @@ const player=new AudioPlayer((type,detail)=>{
   if(type==='playing')$('anchor-status').textContent='Đang phát từ '+(detail.offsetMs/1000).toFixed(2)+' giây · '+detail.recordingId+(detail.preRollLimited?' · nghe lùi đã rút ngắn':'');
   if(type==='ended')$('anchor-status').textContent='Đã phát hết đoạn âm thanh có dữ liệu. Nhấp chữ để nghe lại.';
 });
-let noticeTimer=0,secondsTimer=0,localRecordingBusy=false;
+let noticeTimer=0,secondsTimer=0,localRecordingBusy=false,transferBusy=false,importController=null;
 const micProbe=new MicProbe({
   onStatus(phase,detail={}){
     const label=$('mic-test-status'),button=$('mic-test');
@@ -102,7 +103,8 @@ function setRecordingUI(){
   $('rec-pause').disabled=!recording&&!paused;
   $('rec-pause').textContent=paused?'Tiếp tục':'Tạm dừng';
   $('rec-stop').disabled=!active||rec?.state==='stopping';
-  $('backup').disabled=!!active||!run?.meeting.recordingIds?.length||state.switching;
+  $('backup').disabled=!!active||!run?.releaseLease||state.switching||transferBusy;
+  $('import-backup').disabled=!!active||state.switching||transferBusy;
   $('mic-test').disabled=!!active;
   $('mic-device').disabled=!!active||micProbe.state!=='idle';
   $('retry-local-recording').disabled=!!active||localRecordingBusy||!run?.meeting.recordingIds?.length||state.switching;
@@ -310,43 +312,89 @@ async function exportText(format){
     show('Đã tạo tệp '+format.toUpperCase()+'. Không thay thế bản sao lưu có audio.');
   }catch(e){show('Lỗi xuất tệp: '+e.message,'error');}
 }
-async function opfsStream(root,sourcePath){
-  const parts=sourcePath.split('/');if(parts.some(p=>!p||p==='.'||p==='..'))throw Error('Đường dẫn audio không hợp lệ');
-  let dir=root;for(const p of parts.slice(0,-1))dir=await dir.getDirectoryHandle(p);
-  const h=await dir.getFileHandle(parts.at(-1)),file=await h.getFile();
-  return file.stream();
-}
 async function backup(){
-  const run=state.run;if(!run?.releaseLease)return;
+  const run=state.run;
+  if(!run?.releaseLease||transferBusy||state.switching)return;
   if(run.capture&&['starting','capturing','paused','stopping'].includes(run.capture.state)){
-    show('Hãy dừng và flush ghi âm trước khi sao lưu.','error');return;
+    show('Kết thúc và chốt dữ liệu âm thanh trước khi xuất gói.','error');return;
   }
-  if(run.meeting.recordingIds?.length!==1){
-    show('Bản tích hợp hiện chỉ sao lưu một bản ghi âm mỗi cuộc họp. Có thể xuất riêng Word/TXT.','error');return;
+  if(!window.showSaveFilePicker){
+    show('Trình duyệt cần hỗ trợ hộp thoại lưu file theo luồng (Chrome/Edge).','error');return;
   }
-  if(!window.showSaveFilePicker){show('Trình duyệt chưa hỗ trợ ghi tệp ZIP theo luồng. Không tự giữ ZIP nhiều GiB trong RAM.','error');return;}
-  let writable=null;
+  let writable=null,editorWasEnabled=run.editor?.isEditable??false;
   try{
-    // File picker MUST be entered in direct user gesture, before other awaits.
+    // File picker MUST be opened in this direct click gesture.
     const handle=await window.showSaveFilePicker({suggestedName:'moc-hop-'+run.meetingId+'.mochop',
-      types:[{description:'Mốc Họp backup',accept:{'application/zip':['.mochop']}}]});
+      types:[{description:'Gói dữ liệu Mốc Họp',accept:{'application/zip':['.mochop']}}]});
+    transferBusy=true;state.switching=true;
+    run.editor?.setEditable(false);
+    setRecordingUI();syncControls();
+    $('transfer-status').textContent='Đang chốt nội dung ghi chú trước khi xuất…';
     await run.queue.drain();
-    const note=await state.store.notes.getNote(run.meeting.noteDocumentId);
-    const id=run.meeting.recordingIds[0],reader=new AudioRPC();
-    let raw;
-    try{await reader.call('init',{recordingId:id,reopen:true});raw=await reader.call('manifest');}
-    finally{await reader.dispose();}
-    const audio={...raw,segments:raw.segments.map(s=>({...s,filePath:'audio/'+s.filePath,
-      completionState:s.completionState==='checkpointed'?'complete':s.completionState}))};
-    const root=await navigator.storage.getDirectory();
+    const source=await loadPortableSource(state.store,run.meetingId);
+    let lastProgress=0;
     writable=await handle.createWritable();
-    const sink=new WritableStream({write:bytes=>writable.write(bytes),close:()=>writable.close(),abort:e=>writable.abort(e)});
-    await exportMochop({meeting:run.meeting,note,audio,
-      openAudio:name=>opfsStream(root,name.replace(/^audio\//,''))},sink);
-    writable=null;show('Đã xuất bản sao lưu .mochop có audio và mốc thời gian.');
-  }catch(e){
-    if(writable)try{await writable.abort(e);}catch{}
-    if(e?.name!=='AbortError')show('Không sao lưu được: '+e.message,'error');
+    const sink=new WritableStream({
+      write:bytes=>writable.write(bytes),close:()=>writable.close(),abort:error=>writable.abort(error)
+    });
+    const result=await exportMochopV2(source,sink,{onProgress:pos=>{
+      if(pos-lastProgress>5*1024*1024){lastProgress=pos;
+        $('transfer-status').textContent='Đang xuất '+(pos/1048576).toFixed(1)+' MB…';}
+    }});
+    writable=null;
+    $('transfer-status').textContent='Đã xuất '+source.meeting.recordingIds.length+
+      ' phiên ghi, '+result.archive.entries+' mục trong gói .mochop ('+
+      (result.archive.size/1048576).toFixed(1)+' MB).';
+    show('Đã sao lưu toàn bộ cuộc họp và các phiên ghi âm vào file .mochop.');
+  }catch(error){
+    if(writable)try{await writable.abort(error);}catch{}
+    if(error?.name!=='AbortError'){
+      $('transfer-status').textContent='Xuất dữ liệu chưa hoàn tất: '+error.message;
+      show('Không sao lưu được đầy đủ: '+error.message,'error');
+    }
+  }finally{
+    transferBusy=false;state.switching=false;
+    if(state.run===run)run.editor?.setEditable(!!run.releaseLease&&editorWasEnabled);
+    syncControls();setRecordingUI();
+  }
+}
+function displayImportProgress(progress){
+  if(progress.phase==='audio')$('transfer-status').textContent=
+    'Đang khôi phục WAV '+progress.done+'/'+progress.total+': '+progress.path;
+}
+async function importSelectedFile(file){
+  if(!file||transferBusy)return;
+  if(file.size<22){show('Tệp sao lưu không hợp lệ hoặc rỗng.','error');return;}
+  const active=state.run?.capture;
+  if(active&&['starting','capturing','paused','stopping'].includes(active.state)){
+    show('Kết thúc ghi âm hiện tại trước khi nhập cuộc họp.','error');return;
+  }
+  const controller=new AbortController();
+  importController=controller;transferBusy=true;
+  $('import-cancel').style.display='block';
+  $('transfer-status').textContent='Đang kiểm tra cấu trúc, checksum và đủ các phiên ghi âm…';
+  syncControls();setRecordingUI();
+  let imported=null;
+  try{
+    if(state.run?.releaseLease)await state.run.queue.drain();
+    const repo=createBrowserImportRepo(state.store);
+    imported=await importMochopV2(file,repo,{signal:controller.signal,
+      onProgress:displayImportProgress});
+    $('transfer-status').textContent='Đã khôi phục '+imported.recordings+
+      ' phiên ghi âm và biên bản với mã cuộc họp mới. Không ghi đè dữ liệu cũ.';
+    await refreshMeetings();
+    if(state.run?.capture&&['starting','capturing','paused','stopping'].includes(state.run.capture.state))
+      throw Error('Không thể chuyển khi đang ghi âm');
+    await openMeeting(imported.meetingId);
+    show('Đã nhập thành công '+imported.recordings+' phiên ghi âm. Bấm chữ để nghe lại.');
+  }catch(error){
+    $('transfer-status').textContent='Không thể khôi phục gói: '+error.message;
+    show('Nhập cuộc họp thất bại: '+error.message,'error');
+  }finally{
+    importController=null;transferBusy=false;
+    $('import-cancel').style.display='none';
+    $('import-file').value='';
+    syncControls();setRecordingUI();
   }
 }
 function wire(){
@@ -363,6 +411,9 @@ function wire(){
   $('rec-stop').onclick=stopRecording;
   $('play-stop').onclick=()=>{player.stop();show('Đã dừng phát lại.');};
   $('backup').onclick=backup;
+  $('import-backup').onclick=()=>$('import-file').click();
+  $('import-file').onchange=event=>importSelectedFile(event.target.files?.[0]);
+  $('import-cancel').onclick=()=>importController?.abort();
   document.querySelectorAll('[data-export]').forEach(b=>b.onclick=()=>exportText(b.dataset.export));
   document.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>{
     const cmd=b.dataset.action,editor=state.run?.editor;
