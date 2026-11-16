@@ -12,8 +12,10 @@ import {exportDOCX,exportTXT,exportMarkdown,exportCSV,mime} from '../../poc/08-e
 import {exportMochopV2,importMochopV2,probeMochopVersion} from './portable-archive.mjs';
 import {importLegacyMochop} from './portable-legacy.mjs';
 import {loadPortableSource,createBrowserImportRepo} from './portable-storage.mjs';
+import {MeetingTimelineUI} from './timeline-ui.mjs';
 
 const $=id=>document.getElementById(id),state={store:null,run:null,lease:new MeetingLease(),switching:false};
+let timelineUI=null;
 const player=new AudioPlayer((type,detail)=>{
   if(type==='unavailable')show('Không phát được: '+(detail.reason??detail.status),'error');
   if(type==='error')show('Lỗi phát: '+detail.message,'error');
@@ -21,6 +23,7 @@ const player=new AudioPlayer((type,detail)=>{
   if(type==='underrun')$('technical-status').textContent='Bộ phát đang thiếu đệm; chưa chứng minh nối mẫu không ngắt.';
   if(type==='playing')$('anchor-status').textContent='Đang phát từ '+(detail.offsetMs/1000).toFixed(2)+' giây · '+detail.recordingId+(detail.preRollLimited?' · nghe lùi đã rút ngắn':'');
   if(type==='ended')$('anchor-status').textContent='Đã phát hết đoạn âm thanh có dữ liệu. Nhấp chữ để nghe lại.';
+  timelineUI?.onPlayer(type,detail);
 });
 let noticeTimer=0,secondsTimer=0,localRecordingBusy=false,transferBusy=false,importController=null;
 const micProbe=new MicProbe({
@@ -113,6 +116,7 @@ function setRecordingUI(){
   $('rec-label').textContent=recording?'Đang ghi âm':paused?'Đã tạm dừng':rec?.state==='starting'?'Đang xin quyền micro':
     rec?.state==='stopping'?'Đang lưu âm thanh':rec?.state==='failed'?'Ghi âm có lỗi':'Chưa ghi âm';
   $('writer-status').textContent=run?.releaseLease?'Có quyền chỉnh sửa':'Chỉ xem / đang có tab khác';
+  timelineUI?.setBusy(!!active||state.switching||transferBusy);
 }
 function renderMeetings(){
   const run=state.run,root=$('meeting-list');root.replaceChildren();
@@ -154,6 +158,7 @@ async function safelyCloseCurrent(){
   }
   if(run.releaseLease)await run.queue.close(); // Throws if dirty/error. Do not release/clear unsaved note.
   await player.closeReader();
+  timelineUI?.clear();
   run.editor.destroy();
   if(run.releaseLease)await run.releaseLease();
   state.run=null;
@@ -197,6 +202,7 @@ async function openMeeting(meetingId){
     if(!releaseLease)show('Cuộc họp đang được một tab khác chỉnh sửa. Tab này chỉ có quyền xem.','error');
     await refreshMeetings();
     updateAnchor();
+    timelineUI?.refresh(run).catch(e=>show('Không mở được thanh tua: '+e.message,'error'));
   }catch(error){show('Không mở được cuộc họp: '+error.message,'error');}
   finally{state.switching=false;syncControls();}
 }
@@ -277,6 +283,7 @@ async function stopRecording(){
       '\nPCM đã commit: '+result.samples?.toLocaleString('vi-VN')+' frame.'+
       (result.permissionPendingCleanup?'\nQuyền micro vẫn đang chờ hệ điều hành.':'');
     show('Đã dừng; bản lưu OPFS đã được xác nhận.');
+    await timelineUI?.refresh(run);
     await saveWavInRecording(rec.recordingId);
   }catch(e){show('Dừng ghi/lưu chưa hoàn tất: '+e.message,'error');}
   finally{setRecordingUI();}
@@ -475,6 +482,8 @@ async function registerPwa(){
   }catch(e){show('PWA chưa sẵn sàng: '+e.message,'error');}
 }
 async function main(){
+  timelineUI=new MeetingTimelineUI({player,getRun:()=>state.run,onError:message=>show(message,'error')});
+  timelineUI.bind();
   wire();
   refreshMicDevices().catch(()=>{});
   navigator.mediaDevices?.addEventListener?.('devicechange',()=>refreshMicDevices().catch(()=>{}));
