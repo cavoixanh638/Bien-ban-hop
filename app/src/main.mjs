@@ -13,9 +13,10 @@ import {exportMochopV2,importMochopV2,probeMochopVersion} from './portable-archi
 import {importLegacyMochop} from './portable-legacy.mjs';
 import {loadPortableSource,createBrowserImportRepo} from './portable-storage.mjs';
 import {MeetingTimelineUI} from './timeline-ui.mjs';
+import {NoteAudioFollower} from './note-follow.mjs';
 
 const $=id=>document.getElementById(id),state={store:null,run:null,lease:new MeetingLease(),switching:false};
-let timelineUI=null;
+let timelineUI=null,noteFollower=null;
 const player=new AudioPlayer((type,detail)=>{
   if(type==='unavailable')show('Không phát được: '+(detail.reason??detail.status),'error');
   if(type==='error')show('Lỗi phát: '+detail.message,'error');
@@ -24,6 +25,7 @@ const player=new AudioPlayer((type,detail)=>{
   if(type==='playing')$('anchor-status').textContent='Đang phát từ '+(detail.offsetMs/1000).toFixed(2)+' giây · '+detail.recordingId+(detail.preRollLimited?' · nghe lùi đã rút ngắn':'');
   if(type==='ended')$('anchor-status').textContent='Đã phát hết đoạn âm thanh có dữ liệu. Nhấp chữ để nghe lại.';
   timelineUI?.onPlayer(type,detail);
+  noteFollower?.playback(type,detail);
 });
 let noticeTimer=0,secondsTimer=0,localRecordingBusy=false,transferBusy=false,importController=null;
 const micProbe=new MicProbe({
@@ -118,6 +120,7 @@ function setRecordingUI(){
     rec?.state==='stopping'?'Đang lưu âm thanh':rec?.state==='failed'?'Ghi âm có lỗi':'Chưa ghi âm';
   $('writer-status').textContent=run?.releaseLease?'Có quyền chỉnh sửa':'Chỉ xem / đang có tab khác';
   timelineUI?.setBusy(!!active||finalizing||state.switching||transferBusy);
+  noteFollower?.captureChanged();
 }
 function renderMeetings(){
   const run=state.run,root=$('meeting-list');root.replaceChildren();
@@ -162,6 +165,7 @@ async function safelyCloseCurrent(){
   // Cancel the timeline UI then wait until its OPFS recovery worker has CLOSED
   // every exclusive SyncAccessHandle before changing meetings.
   timelineUI?.clear();
+  noteFollower?.clear();
   await timelineUI?.settle();
   await player.closeReader();
   run.editor.destroy();
@@ -199,10 +203,11 @@ async function openMeeting(meetingId){
         'data-gramm':'false','data-gramm_editor':'false','data-enable-grammarly':'false'
       }},
       content:run.note.content,editable:!!releaseLease,autofocus:false,
-      onUpdate:()=>{queue.edit();requestAnimationFrame(updateAnchor);},
-      onSelectionUpdate:()=>requestAnimationFrame(updateAnchor)
+      onUpdate:()=>{queue.edit();noteFollower?.onDocChange();requestAnimationFrame(updateAnchor);},
+      onSelectionUpdate:()=>{noteFollower?.captureChanged();requestAnimationFrame(updateAnchor);}
     });
     if(run.pendingState)tracker.restorePendingState(run.pendingState,run.editor.state.doc);
+    noteFollower?.mount(run);
     status('save-status','Đã lưu • r'+run.revision);
     if(!releaseLease)show('Cuộc họp đang được một tab khác chỉnh sửa. Tab này chỉ có quyền xem.','error');
     await refreshMeetings();
@@ -246,7 +251,7 @@ function recEvent(run,type,detail){
   setRecordingUI();
 }
 async function startRecording(){
-  const run=state.run;if(!run?.releaseLease||run.capture&&['starting','capturing','paused','stopping'].includes(run.capture.state))return;
+  const run=state.run;if(!run?.releaseLease||run.recordingFinalization||state.switching||transferBusy||run.capture&&['starting','capturing','paused','stopping'].includes(run.capture.state))return;
   const recordingId='rec-'+crypto.randomUUID();
   const capture=new CaptureSession({meetingId:run.meetingId,recordingId,deviceId:$('mic-device').value,
     onEvent:(type,detail)=>recEvent(run,type,detail),onError:e=>show('Âm thanh: '+e.message,'error')});
@@ -516,6 +521,8 @@ async function registerPwa(){
 async function main(){
   timelineUI=new MeetingTimelineUI({player,getRun:()=>state.run,onError:message=>show(message,'error')});
   timelineUI.bind();
+  noteFollower=new NoteAudioFollower({getRun:()=>state.run,player,root:$('editor'),
+    scrollArea:document.querySelector('.paper-wrap'),status:$('note-follow-status'),toggle:$('note-follow-toggle')});
   wire();
   refreshMicDevices().catch(()=>{});
   navigator.mediaDevices?.addEventListener?.('devicechange',()=>refreshMicDevices().catch(()=>{}));
