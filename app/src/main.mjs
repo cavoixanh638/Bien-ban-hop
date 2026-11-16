@@ -157,8 +157,11 @@ async function safelyCloseCurrent(){
     throw Error('Hãy kết thúc ghi âm trước khi chuyển cuộc họp');
   }
   if(run.releaseLease)await run.queue.close(); // Throws if dirty/error. Do not release/clear unsaved note.
-  await player.closeReader();
+  // Cancel the timeline UI then wait until its OPFS recovery worker has CLOSED
+  // every exclusive SyncAccessHandle before changing meetings.
   timelineUI?.clear();
+  await timelineUI?.settle();
+  await player.closeReader();
   run.editor.destroy();
   if(run.releaseLease)await run.releaseLease();
   state.run=null;
@@ -299,6 +302,11 @@ async function listenAtCursor(clickedAnchor=null){
     show('Bản tích hợp đầu tiên chỉ nghe lại sau khi dừng ghi để tránh tranh chấp OPFS.','error');return;
   }
   try{
+    if(transferBusy||state.switching){
+      show('Đang xử lý dữ liệu; chưa thể mở thêm bộ đọc âm thanh.','error');return;
+    }
+    await timelineUI?.settle();
+    if(state.run!==run)return;
     const result=await player.start(anchor.recordingId,anchor.audioOffsetMs,
       {preRollMs:Number($('preroll').value),rate:Number($('play-rate').value)});
     // AudioPlayer already reports unavailable through the source-aware callback.
@@ -339,6 +347,10 @@ async function backup(){
     setRecordingUI();syncControls();
     $('transfer-status').textContent='Đang chốt nội dung ghi chú trước khi xuất…';
     await run.queue.drain();
+    // AudioPlayer holds OPFS SyncAccessHandles even after "Dừng". Release
+    // playback and the timeline's manifest reader before opening backup files.
+    await timelineUI?.settle();
+    await player.closeReader();
     const source=await loadPortableSource(state.store,run.meetingId);
     let lastProgress=0;
     writable=await handle.createWritable();
@@ -388,6 +400,8 @@ async function importSelectedFile(file){
   let imported=null;
   try{
     if(state.run?.releaseLease)await state.run.queue.drain();
+    await timelineUI?.settle();
+    await player.closeReader();
     const version=await probeMochopVersion(file);
     if(version===1){
       imported=await importLegacyMochop(file,state.store,{signal:controller.signal,
