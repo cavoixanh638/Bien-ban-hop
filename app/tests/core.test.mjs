@@ -8,6 +8,7 @@ import {resolvePlaybackStart} from '../src/playback-start.mjs';
 import {contextFor,resolvePending,intervalFor} from '../src/clock-bridge.mjs';
 import {fixture as audioFixture} from '../../poc/05-player/player.js';
 import {resolveMedia,meetingToMedia,choosePreRoll} from '../../poc/05-player/timeline.js';
+import {exportDOCX} from '../../poc/08-export/exporter.mjs';
 
 const doc=(text='Ghi chú tiếng Việt')=>({type:'doc',content:[{type:'paragraph',content:[{type:'text',text}]}]});
 const setup=async()=>{const db=createMemoryDB(),store=new MeetingStore(db),meeting=await store.create('Họp thử');
@@ -133,4 +134,13 @@ test('G10 playback: unavailable pre-roll falls back only to exact valid anchor, 
   assert.equal(normal.status,'valid');assert.equal(normal.startMs,500);assert.equal(normal.preRollLimited,false);
   assert.notEqual(resolvePlaybackStart(m,'other',500,5000,resolveMedia,choosePreRoll).status,'valid');
   assert.notEqual(resolvePlaybackStart(m,'rec-a',50,5000,resolveMedia,choosePreRoll).status,'valid');
+});
+
+test('G10 Word export: Times New Roman is default font including Vietnamese characters',()=>{
+  const bytes=exportDOCX({title:'Biên bản họp',document:doc('Tại sao lại có những điều không nên làm vậy?')});
+  const uncompressedZip=new TextDecoder().decode(bytes);
+  assert.match(uncompressedZip,/w:ascii="Times New Roman"/);
+  assert.match(uncompressedZip,/w:hAnsi="Times New Roman"/);
+  assert.match(uncompressedZip,/w:cs="Times New Roman"/);
+  assert.match(uncompressedZip,/Tại sao lại có những điều không nên làm vậy\?/);
 });
