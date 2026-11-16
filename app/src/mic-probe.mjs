@@ -27,6 +27,12 @@ export class MicProbe {
       this.analyser=this.context.createAnalyser();
       this.analyser.fftSize=2048;this.analyser.smoothingTimeConstant=0.4;
       this.source.connect(this.analyser);
+      // Chromium needs an active downstream pull to fill the analyser buffer.
+      // Silent gain to destination prevents feedback while keeping the meter alive.
+      this.monitorMute=this.context.createGain();
+      this.monitorMute.gain.value=0;
+      this.analyser.connect(this.monitorMute);
+      this.monitorMute.connect(this.context.destination);
       this.buffer=new Float32Array(this.analyser.fftSize);
       this.state='testing';this.signalSeen=false;this.startedAt=performance.now();
       const name=this.track?.label||'Micro đã được cấp quyền';
@@ -59,7 +65,8 @@ export class MicProbe {
     clearTimeout(this.timer);cancelAnimationFrame(this.frame);
     const seen=this.signalSeen;
     const stream=this.stream,context=this.context;
-    this.stream=null;this.track=null;this.context=null;this.analyser=null;this.source=null;
+    try{this.source?.disconnect();this.analyser?.disconnect();this.monitorMute?.disconnect();}catch{}
+    this.stream=null;this.track=null;this.context=null;this.analyser=null;this.source=null;this.monitorMute=null;
     for(const t of stream?.getTracks()??[])try{t.stop();}catch{}
     try{await context?.close();}catch{}
     this.state='idle';
