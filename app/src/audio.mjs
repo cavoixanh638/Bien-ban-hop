@@ -1,7 +1,7 @@
 import {CaptureClockMapper} from '../../poc/02-capture/src/clock-mapper.mjs';
 import {resolveMedia,choosePreRoll} from '../../poc/05-player/timeline.js';
 import {contextFor,resolvePending} from './clock-bridge.mjs';
-import {resolvePlaybackStart} from './playback-start.mjs';
+import {selectCommittedPlayback} from './playback-start.mjs';
 
 const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
 const withTimeout=(p,ms,label)=>Promise.race([p,new Promise((_,reject)=>setTimeout(()=>reject(Error(label+' quá thời hạn')),ms))]);
@@ -183,62 +183,115 @@ export class CaptureSession {
 }
 
 /** Streaming C2-style scheduler over durable G03 seek; not a gapless/voice-preserving production engine. */
+/** Play ONLY a verified contiguous durable sample range. End of range is
+ * normal completion, not "audioOffsetMs outside media". Zero-gap safety:
+ * never jump over unavailable samples or another recording.
+ */
 export class AudioPlayer {
-  constructor(onEvent=()=>{}){this.onEvent=onEvent;this.playing=false;this.sources=new Set();this.rate=1;}
+  constructor(onEvent=()=>{}){
+    this.onEvent=onEvent;this.playing=false;this.sources=new Set();
+    this.rate=1;this.filling=false;this.schedulingComplete=false;this.serial=0;
+  }
   async ensure(recordingId){
     if(this.recordingId===recordingId&&this.reader)return;
     await this.closeReader();
-    this.reader=new AudioRPC();await this.reader.call('init',{recordingId,reopen:true});
-    this.recordingId=recordingId;this.manifest=await this.reader.call('manifest');
-    this.safeManifest={...this.manifest,segments:this.manifest.segments.map(s=>({...s,completionState:
-      s.completionState==='checkpointed'||s.completionState==='finalized'?'complete':s.completionState}))};
+    this.reader=new AudioRPC();
+    try{
+      await this.reader.call('init',{recordingId,reopen:true});
+      this.manifest=await this.reader.call('manifest');
+      this.recordingId=recordingId;
+    }catch(e){await this.closeReader();throw e;}
   }
   async start(recordingId,offsetMs,{preRollMs=0,rate=1}={}){
     this.stop();
     await this.ensure(recordingId);
+    if(!Number.isFinite(rate)||rate<0.5||rate>2)throw Error('Tốc độ phát không hợp lệ');
     this.rate=rate;
-    const check=resolvePlaybackStart(this.safeManifest,recordingId,offsetMs,preRollMs,resolveMedia,choosePreRoll);
+    const check=selectCommittedPlayback(this.manifest,recordingId,offsetMs,preRollMs);
     if(check.status!=='valid'){this.onEvent('unavailable',check);return check;}
-    if(check.preRollLimited)this.onEvent('preroll-limited',check);
     if(!this.context)this.context=new AudioContext();
     await this.context.resume();
-    this.playing=true;this.nextSample=Math.round(check.startMs*this.manifest.sampleRate/1000);
+    this.playing=true;
+    this.schedulingComplete=false;
+    this.nextSample=check.startSample;
+    this.endSampleExclusive=check.endSampleExclusive;
     this.scheduledUntil=this.context.currentTime+0.06;
     this.startOffsetMs=check.startMs;this.underruns=0;
-    this.timer=setInterval(()=>this.fill().catch(e=>this.stopWithError(e)),180);
-    await this.fill();
-    this.onEvent('playing',{recordingId,offsetMs:check.startMs,rate});
-    return {status:'valid'};
+    this.currentRun=++this.serial;
+    const run=this.currentRun;
+    try{
+      // Must schedule a real source before notifying the UI "Đang phát".
+      await this.fill();
+      if(this.playing && run===this.currentRun){
+        this.timer=setInterval(()=>this.fill().catch(e=>this.stopWithError(e)),170);
+        this.onEvent('playing',{recordingId,offsetMs:check.startMs,rate,
+          preRollLimited:check.preRollLimited,actualPreRollMs:check.actualPreRollMs});
+        return {status:'valid'};
+      }
+      return {status:'missing',reason:'Không có dữ liệu âm thanh phát được'};
+    }catch(e){this.stopWithError(e);throw e;}
+  }
+  finish(){
+    if(!this.playing)return;
+    this.playing=false;clearInterval(this.timer);
+    this.onEvent('ended',{recordingId:this.recordingId});
   }
   async fill(){
     if(!this.playing||this.filling)return;
     this.filling=true;
+    const run=this.currentRun;
     try{
       let scheduled=0;
-      while(this.playing && this.scheduledUntil<this.context.currentTime+0.7 && scheduled++<4){
-        const ms=Math.round(this.nextSample*1000/this.manifest.sampleRate);
-        const resolved=resolveMedia(this.safeManifest,this.recordingId,ms);
-        if(resolved.status!=='valid'){this.stop();this.onEvent('unavailable',resolved);return;}
-        const n=Math.max(1,Math.min(Math.round(this.manifest.sampleRate*0.4),
-          Math.floor((resolved.clipEndMs-ms)*this.manifest.sampleRate/1000)));
-        if(!n){this.stop();return;}
-        const result=await this.reader.call('seek',{sample:this.nextSample,count:n},[],8000);
-        if(result.status!=='valid'){this.stop();this.onEvent('unavailable',result);return;}
-        const samples=new Float32Array(result.pcm);
-        const buffer=this.context.createBuffer(1,n,this.manifest.sampleRate);
-        buffer.getChannelData(0).set(samples);
-        const node=this.context.createBufferSource();node.buffer=buffer;node.playbackRate.value=this.rate;
+      while(this.playing && run===this.currentRun &&
+            this.scheduledUntil<this.context.currentTime+0.75 && scheduled++<4){
+        if(this.nextSample>=this.endSampleExclusive){
+          this.schedulingComplete=true;
+          if(!this.sources.size)this.finish();
+          break;
+        }
+        const remaining=this.endSampleExclusive-this.nextSample;
+        const count=Math.min(Math.max(1,Math.floor(this.manifest.sampleRate*0.35)),remaining);
+        const result=await this.reader.call('seek',{sample:this.nextSample,count},[],8000);
+        if(!this.playing||run!==this.currentRun)return;
+        if(result.status!=='valid'){
+          this.stop();
+          this.onEvent('unavailable',{...result,reason:'Vùng mẫu đã lưu không thể đọc lại: '+(result.reason??result.status)});
+          return;
+        }
+        const pcm=new Float32Array(result.pcm);
+        if(pcm.length!==count)throw Error('Độ dài mẫu WAV không khớp');
+        const buffer=this.context.createBuffer(1,count,this.manifest.sampleRate);
+        buffer.getChannelData(0).set(pcm);
+        const node=this.context.createBufferSource();
+        node.buffer=buffer;node.playbackRate.value=this.rate;
         node.connect(this.context.destination);this.sources.add(node);
-        node.onended=()=>this.sources.delete(node);
-        const earliest=this.context.currentTime+0.02;
-        if(this.scheduledUntil<earliest){this.underruns++;this.scheduledUntil=earliest;this.onEvent('underrun',{count:this.underruns});}
+        node.onended=()=>{
+          this.sources.delete(node);try{node.disconnect();}catch{}
+          if(run===this.currentRun&&this.schedulingComplete&&!this.sources.size)this.finish();
+        };
+        const earliest=this.context.currentTime+0.015;
+        if(this.scheduledUntil<earliest){
+          this.underruns++;this.scheduledUntil=earliest;
+          this.onEvent('underrun',{count:this.underruns});
+        }
         node.start(this.scheduledUntil);
-        this.scheduledUntil+=n/this.manifest.sampleRate/this.rate;this.nextSample+=n;
+        this.scheduledUntil+=count/this.manifest.sampleRate/this.rate;
+        this.nextSample+=count;
       }
+      if(this.nextSample>=this.endSampleExclusive)this.schedulingComplete=true;
     }finally{this.filling=false;}
   }
   stopWithError(e){this.stop();this.onEvent('error',{message:String(e?.message??e)});}
-  stop(){this.playing=false;clearInterval(this.timer);for(const s of this.sources)try{s.stop();}catch{}this.sources.clear();}
-  async closeReader(){this.stop();await this.reader?.dispose();this.reader=null;this.recordingId=null;}
-  async dispose(){await this.closeReader();await this.context?.close();}
+  stop(){
+    this.playing=false;this.schedulingComplete=false;this.currentRun=++this.serial;
+    clearInterval(this.timer);
+    for(const source of this.sources)try{source.stop();source.disconnect();}catch{}
+    this.sources.clear();
+  }
+  async closeReader(){
+    this.stop();
+    await this.reader?.dispose();
+    this.reader=null;this.recordingId=null;this.manifest=null;
+  }
+  async dispose(){await this.closeReader();await this.context?.close();this.context=null;}
 }
