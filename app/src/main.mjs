@@ -108,6 +108,12 @@ async function openMeeting(meetingId){
     run.queue=queue;
     run.editor=new Editor({
       element:$('editor'),extensions:[StarterKit,TimeSpan,createTrackingExtension(tracker)],
+      // Native browser spellcheck/grammar overlays are too distracting while taking notes.
+      // This does not alter text, timeSpan marks, cursor behavior or audio linking.
+      editorProps:{attributes:{
+        spellcheck:'false',autocorrect:'off',autocapitalize:'off',
+        'data-gramm':'false','data-gramm_editor':'false','data-enable-grammarly':'false'
+      }},
       content:run.note.content,editable:!!releaseLease,autofocus:false,
       onUpdate:()=>{queue.edit();requestAnimationFrame(updateAnchor);},
       onSelectionUpdate:()=>requestAnimationFrame(updateAnchor)
