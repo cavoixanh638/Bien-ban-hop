@@ -56,13 +56,18 @@
 
 /* Audio → note follow: an ephemeral UI treatment only. Never changes
    ProseMirror marks, text formatting, caret, or exported DOCX. */
-.tiptap .note-audio-current{background:#e0f2e9;box-shadow:0 0 0 2px #c0e5d3;border-radius:3px;text-decoration:none!important;transition:background-color .2s,box-shadow .2s}
-.tiptap .note-audio-block{border-radius:5px;background-image:linear-gradient(90deg,#eaf7f1 0%,#fff 78%);box-shadow:inset 3px 0 #2e9a76;transition:background-color .2s,box-shadow .2s}
-.tiptap .note-capture-current{border-radius:5px;background-image:linear-gradient(90deg,#fff5f1 0%,#fff 78%);box-shadow:inset 3px 0 #e16a53}
+.paper{position:relative}
+.note-follow-overlay{position:absolute;inset:0;z-index:2;pointer-events:none;user-select:none}
+.note-playback-layer{position:absolute;inset:0;pointer-events:none}
+.note-playback-highlight-rect{position:absolute;display:block;background:rgba(44,166,119,.2);outline:1px solid rgba(31,146,104,.48);border-radius:3px;box-shadow:0 0 0 2px rgba(77,180,139,.09);pointer-events:none}
+.note-playback-gutter{position:absolute;display:block;width:5px;border-radius:4px;background:#289f75;box-shadow:0 0 0 5px rgba(49,171,125,.1);pointer-events:none}
+.note-capture-pointer{position:absolute;display:block;width:5px;border-radius:4px;background:#e66e58;box-shadow:0 0 0 5px rgba(230,110,88,.12);pointer-events:none;animation:note-capture-pulse 1.9s ease-in-out infinite}
+@keyframes note-capture-pulse{50%{box-shadow:0 0 0 8px rgba(230,110,88,.065)}}
+@media(prefers-reduced-motion:reduce){.note-capture-pointer{animation:none}}
 .note-follow-strip{display:flex;align-items:center;gap:8px;min-width:0;margin-top:6px;padding:6px 8px;border-radius:7px;background:#eef7f2;color:#426960}
 .note-follow-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:#409c79}
 #note-follow-status{font-size:11px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #note-follow-toggle{white-space:nowrap;flex-shrink:0;background:#fff;color:#2d7361;font-size:10px;padding:4px 7px;border:1px solid #c6ddd2;border-radius:6px}
 #note-follow-toggle[aria-pressed="false"]{color:#71848b;background:#f7faf9}
-@media(prefers-reduced-motion:reduce){.tiptap .note-audio-current,.tiptap .note-audio-block{transition:none}}
+
 @media(max-width:720px){.note-follow-strip{flex-wrap:wrap}#note-follow-status{white-space:normal}}
