@@ -10,11 +10,11 @@ async function recordText(page,text){
   await page.keyboard.press('Enter');
   await page.keyboard.type(text,{delay:18});
   await expect(editor).toContainText(text);
-  await expect(page.locator('.tiptap .note-capture-current')).toBeVisible();
+  await expect(page.locator('.paper .note-capture-pointer')).toBeVisible();
   await page.waitForTimeout(1700);
   await page.locator('#rec-stop').click();
   await expect(page.locator('#rec-label')).toHaveText('Chưa ghi âm',{timeout:30000});
-  await expect(page.locator('.tiptap .note-capture-current')).toHaveCount(0);
+  await expect(page.locator('.paper .note-capture-pointer')).toBeHidden();
   await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:18000});
 }
 async function exportBuffer(page){
@@ -85,10 +85,10 @@ test('G10 portable: TWO recordings travel to a separate browser profile, keep no
       const anchor=target.locator('.tiptap [data-time-recording-id="'+id+'"]').first();
       await anchor.click();
       await expect(target.locator('#anchor-status')).toContainText(/Đang phát từ|Đã phát hết đoạn/,{timeout:25000});
-      await expect(target.locator('.tiptap .note-audio-current').first())
-        .toHaveAttribute('data-time-recording-id',id,{timeout:12000});
+      await expect(target.locator('.paper .note-playback-highlight-rect').first())
+        .toHaveAttribute('data-recording-id',id,{timeout:12000});
       await target.locator('#play-stop').click();
-      await expect(target.locator('.tiptap .note-audio-current')).toHaveCount(0);
+      await expect(target.locator('.paper .note-playback-highlight-rect')).toHaveCount(0);
     }
     await target.reload();
     await expect(target.locator('.tiptap [data-time-recording-id]')).not.toHaveCount(0);
