@@ -126,3 +126,11 @@ WIP/chưa push: không (mọi artifact được push qua GitHub connector). **Ch
 - **Đã làm:** thanh ngang ở chân vùng giấy ghi chú với vị trí phát thực, tổng thời gian các phiên, nút phát/dừng, chọn phiên; seek ghi âm theo G03 sample ranges, vùng mất mẫu được nhận diện hiện xám và seek không được tự nhảy nguồn. Các phiên dừng/ghi tiếp có clock riêng; tổng thanh chỉ nối thời lượng ghi, **không cộng thời gian nghỉ giữa phiên**. Bấm chữ vẫn có thể nghe và hiển thị trên thanh.
 - **Lỗi regression tìm qua test & khắc phục:** tạo nhiều OPFS `SyncAccessHandle` xung đột khi vừa mở timeline vừa phát hoặc sao lưu. Thêm async settlement của timeline reader và `player.closeReader()` trước backup/đổi cuộc họp; `run.recordingFinalization` giữ khóa UI và nhãn `Đang hoàn tất lưu` cho đến khi G03/notes/timeline/WAV mirror xong. Test cross-profile 2 phiên, backup sau tua, seek, EOF đã PASS.
 - **Hạn chế cần nghiệm thu:** nút tua chỉ hoạt động **sau khi kết thúc/chốt** (không phát lúc đang ghi); gap trailing chưa được G03 ghi vào journal thì có thể không vẽ được; chưa đo seek thực máy Windows với họp nhiều giờ, missing-sample khi CPU quá tải, C1/C2 gapless/voice playback. Các bài Windows microphone thật/3h/TC01–38 vẫn **NOT_RUN**. `RELEASE_HOLD`.
+
+
+## 17/11/2026 — G10 note-follow overlay (CODE_TESTED)
+
+- Đã code vạch vị trí ghi chú khi đang thu (cam) và điểm đang phát theo `timeSpan` (xanh), chọn đúng `recordingId`/offset, không tự suy diễn khi thiếu mốc hoặc mốc cách >45 giây, tự cuộn có thể tắt và tạm ngưng nếu người dùng cuộn tay. Lớp phủ là sibling bên ngoài `#editor`, không đụng vào văn bản/mark, Word hay gói `.mochop`.
+- Khắc phục được lỗi lớp CSS động bị ProseMirror bỏ qua khi gõ, xác minh trên Chromium qua E2E; cả hai phiên ghi, export/import v2, click-to-play, Stop cleanup vẫn PASS.
+- **Code SHA = Tested SHA** `4ceeb9feb0ee8d16c53dfb2a478f7c23b283d3fd`; [Actions #43927628146](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/43927628146): Windows/Linux build + Node PASS, G10 **34/34 PASS**, Chromium dev 9 PASS/1 intentional SKIP, production/PWA **10 PASS**, 0 retries. Earlier intermediate Chrome FAIL captured and fixed, not overwritten as historical evidence.
+- **NOT_RUN:** physical Windows IME/micro, 3-hour meeting, overload/pool-exhausted, crash/quota, TC01–38; system remains `RELEASE_HOLD`, Draft PR #1, `main` unchanged.
