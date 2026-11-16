@@ -42,7 +42,7 @@
       <div class="panel-title">ÂM THANH</div>
       <div class="rec-state"><div id="rec-light" class="rec-light"></div><div><strong id="rec-label">Chưa ghi âm</strong><div id="rec-clock">00:00:00</div></div></div>
       <div class="controls"><button id="rec-start" class="primary">● Bắt đầu ghi</button><button id="rec-pause" disabled>Tạm dừng</button><button id="rec-stop" disabled>Kết thúc</button></div>
-      <div class="panel-small">Ghi micro bằng AudioWorklet → OPFS/IndexedDB. Chỉ báo dữ liệu âm thanh an toàn sau ACK flush.</div>
+      <div class="panel-small">Âm thanh tự lưu thành các đoạn WAV trong bộ nhớ riêng của trình duyệt (OPFS); không tự xuất ra thư mục trên Windows. Bấm <strong>Sao lưu .mochop</strong> sau khi kết thúc ghi để chọn nơi lưu trên máy. Chỉ báo đã lưu âm thanh sau ACK flush/journal.</div>
       <div class="panel-title">NGHE LẠI</div>
       <div class="play-row"><button id="play-stop" title="Dừng phát">■ Dừng</button><label>Tốc độ <select id="play-rate"><option value="1">1,0×</option><option value="0.9">0,9×</option><option value="0.75">0,75×</option></select></label></div>
       <label class="field">Nghe lùi trước mốc<select id="preroll"><option value="0">Không</option><option value="3000">3 giây</option><option value="5000" selected>5 giây</option><option value="10000">10 giây</option></select></label>
