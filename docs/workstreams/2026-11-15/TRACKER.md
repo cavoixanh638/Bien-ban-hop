@@ -266,3 +266,12 @@ Kiểm cổng Gói 1.1 và bằng chứng thực trên từng SHA. Chốt các a
 - **Code SHA = Tested SHA:** `1b2aaa9869ab3ec5196f1024fb2500d51060e005`. [GitHub Actions #43902784531](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/43902784531): completed/**success**; Windows + Ubuntu Node/build PASS; G10 Node **31/31 PASS**, Chromium dev **9/9 PASS** + 1 PWA-only SKIP, production **10/10 PASS** (0 retry). E2E gồm seek middle, tiến trình thời gian phát, 2 phiên, cross-profile restore, backup sau tua, OPFS không va chạm.
 - **Trạng thái:** `UX_TIMELINE_ALPHA_PASSED_CI / RELEASE_HOLD`. Chưa nghiệm thu thời gian thực trên micro Windows, băng ghi 3h và quá tải/quota, audio C1/C2 gapless, wall-clock timeline đủ tính năng G04, đầy đủ TC01–TC38; các mục ấy vẫn **NOT_RUN**. Draft PR #1, `main` không thay.
 
+
+
+## G10 — Hiệu ứng theo dõi ghi chú khi thu và nghe lại (17/11/2026)
+
+- **Đã triển khai:** lớp phủ độc lập bên ngoài vùng ProseMirror trong `app/src/note-follow.mjs`, CSS và thành phần `note-follow-status` ở dòng thời gian dưới biên bản. Khi thu: vạch cam theo dòng con trỏ; khi phát: nền/vạch xanh theo `timeSpan` đã xác nhận, cập nhật bởi sự kiện `AudioPlayer.position`. Khi phát xong/Dừng, tự xóa. Có nút `Tự cuộn: Bật/Tắt`, tạm nhường 7 giây sau cuộn tay. Không sửa mô hình lưu ProseMirror, không đụng OPFS/Recording/backup v2.
+- **Không giả ASR:** theo mốc đã xác thực trong **đúng recordingId**, không gắn mốc pending, mốc ngoại lai, trùng-xung đột, mốc tương lai hoặc cũ quá 45 giây. Khi không có mốc phù hợp sẽ không tô sai đoạn. Mục đích chỉ hiện vị trí ghi chú tương ứng gần audio, không phải nhận dạng câu đang nói.
+- **Khắc phục lỗi do test:** ProseMirror loại bỏ class CSS thêm trực tiếp vào vùng biên tập; chuyển sang overlay là sibling của `#editor` trong `.paper` sau khi xác minh DOM caret và tái dựng HTML. E2E assert marker/pointer nằm ngoài DOM editor, stop gỡ lớp phủ; thử hai recordingId sau import `.mochop`.
+- **Code SHA = Tested SHA:** `4ceeb9feb0ee8d16c53dfb2a478f7c23b283d3fd`. [GitHub Actions #43927628146](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/43927628146) **completed/success**; Windows + Ubuntu Node/build PASS, G10 Node **34/34 PASS**, Chromium dev **9/9 PASS** + 1 PWA-only SKIP; Chromium production/PWA **10/10 PASS**, 0 retry. Prior failed CI intermediate are not claimed PASS.
+- **Status:** `UX_NOTE_FOLLOW_ALPHA_CI_PASS / RELEASE_HOLD`; vật lý 2 máy Windows/UniKey/EVKey/micro 3 giờ/CPU quá tải, full TC01–TC38 **NOT_RUN**; không merge `main`, PR #1 vẫn Draft.
