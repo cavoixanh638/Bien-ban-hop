@@ -77,7 +77,12 @@ export class NoteAudioFollower{
     const run=this.run;
     const current=this.getRun();
     if(!run||run!==current||!isCaptureActive(run)){
+      const hadLive=!!this.liveBlock;
       this.clearLive();
+      if(run===current&&!this.player.playing&&hadLive)
+        this.setStatus(run.capture?.state==='paused'?
+          'Tạm dừng ghi — vị trí ghi chú được giữ nguyên.':
+          'Đã dừng thu — bấm chữ hoặc kéo thanh tua để theo mốc ghi chú.');
       return;
     }
     this.clearPlayback();
@@ -159,7 +164,7 @@ export class NoteAudioFollower{
     const desired=this.scrollArea.scrollTop+rect.top-area.top-
       Math.min(area.height*.32,150);
     this.scrollArea.scrollTo({top:Math.max(0,desired),
-      behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+      behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
     this.lastJump=Date.now();
   }
   clear(){
