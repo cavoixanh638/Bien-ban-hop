@@ -49,6 +49,22 @@ export class NoteAudioFollower{
     this.index=new Map();this.dirty=true;this.run=null;
     this.activeId=null;this.activeEls=[];this.activeBlocks=[];this.liveBlock=null;
     this.userScrollUntil=0;this.lastJump=0;
+    // An OUTSIDE-EDITOR overlay is mandatory: ProseMirror's DOM observer
+    // removes transient classes added to its content nodes during input.
+    // All overlay children are paper siblings of #editor, not editable nodes.
+    this.paper=root.closest('.paper');
+    this.layer=document.createElement('div');this.layer.className='note-follow-overlay';
+    this.playbackLayer=document.createElement('div');
+    this.playbackLayer.className='note-playback-layer';
+    this.captureMarker=document.createElement('div');
+    this.captureMarker.className='note-capture-pointer';
+    this.captureMarker.style.display='none';
+    this.layer.append(this.playbackLayer,this.captureMarker);
+    this.paper.append(this.layer);
+    window.addEventListener('resize',()=>{
+      if(this.activeEls.length)this.redrawPlayback();
+      if(this.liveBlock)this.positionCaptureMarker(this.liveBlock);
+    });
     toggle.addEventListener('click',()=>{
       this.autoscroll=!this.autoscroll;
       toggle.setAttribute('aria-pressed',String(this.autoscroll));
@@ -68,9 +84,11 @@ export class NoteAudioFollower{
     this.dirty=true;
     if(!this.run||this.getRun()!==this.run)return;
     // Reindex only on an actual playback progress event, not every keystroke.
-    if(this.player.playing && this.player.recordingId)
+    if(this.player.playing && this.player.recordingId){
+      if(this.activeEls.length)this.redrawPlayback();
       this.playback('position',{recordingId:this.player.recordingId,
         offsetMs:this.player.positionMs()});
+    }
     else this.captureChanged();
   }
   captureChanged(){
@@ -108,14 +126,25 @@ export class NoteAudioFollower{
       }
     }
     if(!block||!this.root.contains(block)){this.clearLive();return;}
-    if(this.liveBlock!==block){
-      this.clearLive();block.classList.add('note-capture-current');
-      this.liveBlock=block;
-    }
+    this.liveBlock=block;
+    this.positionCaptureMarker(block);
     this.setStatus('Đang ghi — vị trí ghi chú hiện tại được đánh dấu bên trái.');
   }
+  positionCaptureMarker(block){
+    if(!block?.isConnected)return;
+    const paper=this.paper.getBoundingClientRect(),rect=block.getBoundingClientRect();
+    const selection=window.getSelection?.();
+    const range=selection?.rangeCount?selection.getRangeAt(0):null;
+    const caret=range?.getClientRects?.()[0];
+    const line=caret&&caret.height>0?caret:rect;
+    const left=Math.max(0,rect.left-paper.left-12),top=Math.max(0,line.top-paper.top);
+    this.captureMarker.style.left=left+'px';
+    this.captureMarker.style.top=top+'px';
+    this.captureMarker.style.height=Math.max(22,Math.min(40,line.height||22))+'px';
+    this.captureMarker.style.display='block';
+  }
   clearLive(){
-    if(this.liveBlock?.isConnected)this.liveBlock.classList.remove('note-capture-current');
+    this.captureMarker.style.display='none';
     this.liveBlock=null;
   }
   buildIndex(){
@@ -126,9 +155,41 @@ export class NoteAudioFollower{
     this.dirty=false;
   }
   clearPlayback(){
-    for(const el of this.activeEls)el.classList.remove('note-audio-current');
-    for(const el of this.activeBlocks)el.classList.remove('note-audio-block');
-    this.activeEls=[];this.activeBlocks=[];this.activeId=null;
+    this.playbackLayer.replaceChildren();
+    this.activeEls=[];this.activeBlocks=[];this.activeId=null;this.activeRecordingId=null;
+  }
+  redrawPlayback(){
+    this.playbackLayer.replaceChildren();
+    if(!this.activeEls.length)return;
+    const paper=this.paper.getBoundingClientRect();
+    const fragment=document.createDocumentFragment();
+    let total=0;
+    for(const el of this.activeEls){
+      if(!el.isConnected)continue;
+      for(const rect of el.getClientRects()){
+        if(total++>=80)break; // prevent pathological pasted notes from flooding DOM
+        if(rect.width<=1||rect.height<=1)continue;
+        const glow=document.createElement('span');
+        glow.className='note-playback-highlight-rect';
+        glow.dataset.recordingId=this.activeRecordingId;
+        glow.style.left=(rect.left-paper.left-2)+'px';
+        glow.style.top=(rect.top-paper.top-1)+'px';
+        glow.style.width=(rect.width+4)+'px';
+        glow.style.height=(rect.height+2)+'px';
+        fragment.append(glow);
+      }
+    }
+    const first=this.activeBlocks[0];
+    if(first?.isConnected){
+      const rect=first.getBoundingClientRect();
+      const gutter=document.createElement('span');
+      gutter.className='note-playback-gutter';
+      gutter.style.left=Math.max(0,rect.left-paper.left-12)+'px';
+      gutter.style.top=Math.max(0,rect.top-paper.top)+'px';
+      gutter.style.height=Math.max(24,Math.min(45,rect.height))+'px';
+      fragment.append(gutter);
+    }
+    this.playbackLayer.append(fragment);
   }
   playback(type,detail={}){
     if(!this.run||this.run!==this.getRun())return;
@@ -158,9 +219,9 @@ export class NoteAudioFollower{
       return;
     }
     const blocks=[...new Set(els.map(el=>el.closest(BLOCK)).filter(Boolean))];
-    for(const el of els)el.classList.add('note-audio-current');
-    for(const block of blocks)block.classList.add('note-audio-block');
     this.activeEls=els;this.activeBlocks=blocks;this.activeId=cue.anchorId;
+    this.activeRecordingId=cue.recordingId;
+    this.redrawPlayback();
     const label=els.map(el=>el.textContent).join(' ').trim().replace(/\s+/g,' ').slice(0,70);
     this.setStatus('Đang theo mốc ghi chú: '+(label||'đoạn có liên kết âm thanh'));
     this.maybeScroll(blocks[0]??els[0]);
