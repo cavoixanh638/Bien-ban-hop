@@ -208,7 +208,18 @@ export class Recorder {
     for(const u of report.unavailable)intervals.push(make('unavailable',u.sampleStart,u.sampleEndExclusive,[u.segmentId],u.reason));
     for(const g of report.gaps)if(g.sampleStart<g.sampleEndExclusive)intervals.push(make('gap',g.sampleStart,g.sampleEndExclusive,[],g.reason));
     intervals.sort((a,b)=>a.meetingStartMs-b.meetingStartMs||a.meetingEndMs-b.meetingEndMs);
-    return {recordingId:this.id,sampleRate:this.rate,mappingPoints:[],segments,intervals};
+    // G10: expose committed PCM coverage in the native sample domain.
+    // Millisecond rounding at chunk/segment boundaries is NOT sufficient for
+    // seek or end-of-recording checks: a rounded time may fall beyond media.
+    const sampleRanges=[];
+    for(const r of [...report.committedRanges].sort((a,b)=>a.sampleStart-b.sampleStart)){
+      const last=sampleRanges.at(-1);
+      if(last && r.sampleStart===last.sampleEndExclusive) last.sampleEndExclusive=r.sampleEndExclusive;
+      else if(!last || r.sampleStart>last.sampleEndExclusive)
+        sampleRanges.push({sampleStart:r.sampleStart,sampleEndExclusive:r.sampleEndExclusive});
+      // Overlapping/corrupt ranges must not be inferred as new valid audio.
+    }
+    return {recordingId:this.id,sampleRate:this.rate,mappingPoints:[],segments,intervals,sampleRanges};
   }
 }
 // Deterministic sine generator: bounded memory, exact f32le wire encoding.
