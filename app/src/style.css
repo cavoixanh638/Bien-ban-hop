@@ -53,3 +53,16 @@
 .timeline-notice{min-height:16px;font-size:10px;line-height:1.35;margin-top:6px;color:#718789}
 @media(max-width:1150px){.timeline-dock{grid-column:2;min-width:0}}
 @media(max-width:720px){.timeline-dock{padding:11px 14px}.timeline-heading{align-items:start;flex-direction:column;gap:3px}.timeline-control-row{grid-template-columns:auto 1fr auto;gap:8px}#timeline-play{grid-column:1}.timeline-control-row .timeline-scrub{grid-row:2;grid-column:1/-1}.timeline-time{font-size:11px}.timeline-control-row #timeline-total{grid-column:3;grid-row:1}.timeline-control-row #timeline-current{grid-column:2;grid-row:1}}
+
+/* Audio → note follow: an ephemeral UI treatment only. Never changes
+   ProseMirror marks, text formatting, caret, or exported DOCX. */
+.tiptap .note-audio-current{background:#e0f2e9;box-shadow:0 0 0 2px #c0e5d3;border-radius:3px;text-decoration:none!important;transition:background-color .2s,box-shadow .2s}
+.tiptap .note-audio-block{border-radius:5px;background-image:linear-gradient(90deg,#eaf7f1 0%,#fff 78%);box-shadow:inset 3px 0 #2e9a76;transition:background-color .2s,box-shadow .2s}
+.tiptap .note-capture-current{border-radius:5px;background-image:linear-gradient(90deg,#fff5f1 0%,#fff 78%);box-shadow:inset 3px 0 #e16a53}
+.note-follow-strip{display:flex;align-items:center;gap:8px;min-width:0;margin-top:6px;padding:6px 8px;border-radius:7px;background:#eef7f2;color:#426960}
+.note-follow-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:#409c79}
+#note-follow-status{font-size:11px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#note-follow-toggle{white-space:nowrap;flex-shrink:0;background:#fff;color:#2d7361;font-size:10px;padding:4px 7px;border:1px solid #c6ddd2;border-radius:6px}
+#note-follow-toggle[aria-pressed="false"]{color:#71848b;background:#f7faf9}
+@media(prefers-reduced-motion:reduce){.tiptap .note-audio-current,.tiptap .note-audio-block{transition:none}}
+@media(max-width:720px){.note-follow-strip{flex-wrap:wrap}#note-follow-status{white-space:normal}}
