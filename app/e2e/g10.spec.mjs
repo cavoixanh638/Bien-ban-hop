@@ -37,6 +37,19 @@ test('G10: Times New Roman mặc định và chữ Unicode tiếng Việt còn n
   // Synthetic keyboard text is not a substitute for Windows UniKey/EVKey IME tests.
 });
 
+test('G10: microphone check recognises a real audio signal from Chromium fake device',async({page})=>{
+  await page.goto('/');
+  await expect(page.locator('#mic-test')).toBeEnabled();
+  await page.locator('#mic-test').click();
+  await expect(page.locator('#mic-test')).toHaveText('Dừng thử micro',{timeout:10000});
+  await expect(page.locator('#mic-test-status')).toContainText(/Đang nhận|đã nhận|âm thanh|tín hiệu/i);
+  await expect.poll(()=>page.locator('#mic-meter').getAttribute('aria-valuenow'),
+    {timeout:8000}).not.toBe('0');
+  await page.locator('#mic-test').click();
+  await expect(page.locator('#mic-test')).toHaveText('Thử micro (15 giây)');
+  await expect(page.locator('#mic-meter')).toHaveAttribute('aria-valuenow','0');
+});
+
 test('G10: hai tab không thể cùng có quyền ghi một cuộc họp',async({context,page})=>{
   await page.goto('/');
   await expect(page.locator('#writer-status')).toContainText('Có quyền chỉnh sửa');
@@ -68,6 +81,18 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
   await expect(page.locator('#rec-label')).toHaveText('Chưa ghi âm',{timeout:25000});
   await expect(page.locator('#technical-status')).toContainText('Đã chốt bản ghi',{timeout:15000});
   await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+  if(process.env.G10_PREVIEW!=='1'){
+    await expect(page.locator('#recording-path')).toContainText('app/Recording/',{timeout:20000});
+    const message=await page.locator('#technical-status').innerText();
+    const recordingId=message.match(/rec-[a-z0-9-]+/i)?.[0];
+    expect(recordingId).toBeTruthy();
+    const local=await page.request.head('/__moc_hop_local_recording/'+recordingId+'/seg-0.wav',
+      {headers:{'X-MocHop-Local':'recording-v1'}});
+    expect(local.status()).toBe(200);
+    expect(Number(local.headers()['x-recording-bytes'])).toBeGreaterThan(44);
+  }else{
+    await expect(page.locator('#recording-path')).toContainText('OPFS');
+  }
   const marked=page.locator('.tiptap [data-time-recording-id]');
   await expect(marked.first()).toBeVisible({timeout:10000});
   // A timeSpan remains clickable but has no black/colored underline.
@@ -87,6 +112,8 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
   await expect(page.locator('.tiptap [data-time-recording-id]').first()).toBeVisible({timeout:15000});
   await page.locator('.tiptap [data-time-recording-id]').first().click();
   await expect(page.locator('#anchor-status')).toContainText('Đang phát từ',{timeout:20000});
+  await expect(page.locator('#anchor-status')).toContainText('Đã phát hết đoạn',{timeout:25000});
+  expect(await page.locator('#message').innerText()).not.toContain('audioOffsetMs outside media');
   expect(errors).toEqual([]);
 });
 
