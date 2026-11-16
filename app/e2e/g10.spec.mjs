@@ -98,24 +98,14 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
   await editor.click();
   await page.keyboard.type('Mốc thử ghi âm trong lúc soạn biên bản.');
   await expect(editor).toContainText('Mốc thử');
-  console.log('NOTE_CAPTURE_INSPECT',JSON.stringify(await page.evaluate(()=>{
-    const selection=window.getSelection(),node=selection?.anchorNode;
-    return {captureLabel:document.getElementById('rec-label')?.textContent,
-      followStatus:document.getElementById('note-follow-status')?.textContent,
-      selectionElement:node?.nodeType===1?node.outerHTML?.slice(0,400):node?.parentElement?.outerHTML?.slice(0,400),
-      selectionInside:document.getElementById('editor')?.contains(node),
-      selectedText:selection?.toString(),selectionType:selection?.type,
-      pCount:document.querySelectorAll('.tiptap p').length,
-      highlights:document.querySelectorAll('.tiptap .note-capture-current').length};
-  })));
-  await expect(page.locator('.tiptap .note-capture-current')).toBeVisible();
+  await expect(page.locator('.paper .note-capture-pointer')).toBeVisible();
   await expect(page.locator('#note-follow-status')).toContainText('Đang ghi');
   // The G03 journal flush schedule is 5 s. This is a short synthetic integration test,
   // NOT evidence for 3-hour recording or native Windows IME.
   await page.waitForTimeout(7000);
   await page.locator('#rec-stop').click();
   await expect(page.locator('#rec-label')).toHaveText('Chưa ghi âm',{timeout:25000});
-  await expect(page.locator('.tiptap .note-capture-current')).toHaveCount(0);
+  await expect(page.locator('.paper .note-capture-pointer')).toBeHidden();
   await expect(page.locator('#technical-status')).toContainText('Đã chốt bản ghi',{timeout:15000});
   await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
   await expect(page.locator('#timeline-summary')).toContainText('1 phiên',{timeout:20000});
@@ -161,13 +151,13 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
   },{timeout:12000,message:'Durable OPFS playback did not start'}).toContain('Đang phát từ');
   // The cue overlay must be derived from validated marks, not from the text
   // selection, and must not persist in note JSON after stopping.
-  await expect(page.locator('.tiptap .note-audio-current').first()).toBeVisible({timeout:12000});
+  await expect(page.locator('.paper .note-playback-highlight-rect').first()).toBeVisible({timeout:12000});
   await expect(page.locator('#note-follow-status')).toContainText('Đang theo mốc');
   const followedId=await page.locator('.tiptap .note-audio-current').first()
-    .getAttribute('data-time-recording-id');
+    .getAttribute('data-recording-id');
   expect(followedId).toBeTruthy();
   await page.locator('#play-stop').click();
-  await expect(page.locator('.tiptap .note-audio-current')).toHaveCount(0);
+  await expect(page.locator('.paper .note-playback-highlight-rect')).toHaveCount(0);
   await page.reload();
   await expect(page.locator('.tiptap [data-time-recording-id]').first()).toBeVisible({timeout:15000});
   await page.locator('.tiptap [data-time-recording-id]').first().click();
