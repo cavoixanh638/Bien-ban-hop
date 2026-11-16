@@ -6,6 +6,8 @@ import {MeetingLease} from '../../poc/09-pwa/lease.js';
 import {MeetingStore,SaveQueue} from './meeting-store.mjs';
 import {verifiedClickedAnchor} from './anchor-bridge.mjs';
 import {CaptureSession,AudioPlayer,AudioRPC} from './audio.mjs';
+import {MicProbe} from './mic-probe.mjs';
+import {mirrorRecordingToLocalFolder,localRecordingStatus} from './recording-mirror.mjs';
 import {exportDOCX,exportTXT,exportMarkdown,exportCSV,mime} from '../../poc/08-export/exporter.mjs';
 import {exportMochop} from '../../poc/07-backup/mochop-web.mjs';
 
@@ -13,11 +15,77 @@ const $=id=>document.getElementById(id),state={store:null,run:null,lease:new Mee
 const player=new AudioPlayer((type,detail)=>{
   if(type==='unavailable')show('Không phát được: '+(detail.reason??detail.status),'error');
   if(type==='error')show('Lỗi phát: '+detail.message,'error');
-  if(type==='preroll-limited')show('Không có đủ âm thanh trước mốc; phát từ đúng mốc ghi chú, không bỏ qua đoạn thiếu.');
+  if(type==='preroll-limited')$('anchor-status').textContent='Đã rút ngắn phần nghe lùi đến đầu vùng âm thanh có thật.';
   if(type==='underrun')$('technical-status').textContent='Bộ phát đang thiếu đệm; chưa chứng minh nối mẫu không ngắt.';
-  if(type==='playing')$('anchor-status').textContent='Đang phát từ '+(detail.offsetMs/1000).toFixed(2)+' giây · '+detail.recordingId;
+  if(type==='playing')$('anchor-status').textContent='Đang phát từ '+(detail.offsetMs/1000).toFixed(2)+' giây · '+detail.recordingId+(detail.preRollLimited?' · nghe lùi đã rút ngắn':'');
+  if(type==='ended')$('anchor-status').textContent='Đã phát hết đoạn âm thanh có dữ liệu. Nhấp chữ để nghe lại.';
 });
-let noticeTimer=0,secondsTimer=0;
+let noticeTimer=0,secondsTimer=0,localRecordingBusy=false;
+const micProbe=new MicProbe({
+  onStatus(phase,detail={}){
+    const label=$('mic-test-status'),button=$('mic-test');
+    if(!label||!button)return;
+    if(phase==='requesting')label.textContent='Đang yêu cầu quyền truy cập micro…';
+    else if(phase==='testing')label.textContent='Đã nhận diện: '+detail.deviceLabel+'. Hãy nói để quan sát mức tín hiệu.';
+    else if(phase==='completed'||phase==='stopped')label.textContent=detail.signalSeen?
+      'Có tín hiệu âm thanh từ micro. Kiểm tra đã hoàn tất.':
+      'Đã nhận micro nhưng chưa phát hiện giọng nói rõ ràng. Hãy thử nói to hoặc chọn micro khác.';
+    else if(phase==='disconnected')label.textContent='Micro vừa bị ngắt kết nối.';
+    else if(phase==='error')label.textContent='Không kiểm tra được micro: '+(detail.message??'không rõ');
+    if(phase==='testing'||phase==='requesting')button.textContent='Dừng thử micro';
+    else {
+      button.textContent='Thử micro (15 giây)';
+      $('mic-level-fill').style.width='0%';
+      $('mic-meter')?.setAttribute('aria-valuenow','0');
+    }
+    refreshMicDevices().catch(()=>{});
+  },
+  onLevel({rms,dbfs,signalSeen,elapsedMs}){
+    const pct=Math.min(100,Math.max(0,Math.round((dbfs+65)*100/65)));
+    $('mic-level-fill').style.width=pct+'%';
+    $('mic-meter').setAttribute('aria-valuenow',String(pct));
+    if(elapsedMs>3000&&!signalSeen)$('mic-test-status').textContent=
+      'Đã nhận micro, nhưng âm lượng rất thấp ('+Math.round(dbfs)+' dBFS). Hãy nói gần micro.';
+    else if(signalSeen)$('mic-test-status').textContent=
+      'Đang nhận âm thanh: '+Math.round(dbfs)+' dBFS · mức '+pct+'%.';
+  }
+});
+async function refreshMicDevices(){
+  if(!navigator.mediaDevices?.enumerateDevices)return;
+  const choices=await navigator.mediaDevices.enumerateDevices();
+  const select=$('mic-device');if(!select)return;
+  const current=select.value;
+  select.replaceChildren(new Option('Micro mặc định',''));
+  choices.filter(d=>d.kind==='audioinput').forEach((d,i)=>
+    select.add(new Option(d.label||'Micro '+(i+1),d.deviceId)));
+  if([...select.options].some(o=>o.value===current))select.value=current;
+}
+async function toggleMicProbe(){
+  if(micProbe.state!=='idle'){await micProbe.stop();return;}
+  const recording=state.run?.capture;
+  if(recording&&['starting','capturing','paused','stopping'].includes(recording.state))return;
+  try{await micProbe.start($('mic-device').value);await refreshMicDevices();}
+  catch(e){show('Kiểm tra micro: '+e.message,'error');}
+}
+async function saveWavInRecording(recordingId){
+  if(localRecordingBusy)return;
+  localRecordingBusy=true;setRecordingUI();
+  const label=$('recording-path');label.textContent='Đang sao chép các đoạn WAV đã lưu vào app/Recording…';
+  try{
+    const result=await mirrorRecordingToLocalFolder(recordingId);
+    if(result.status==='saved'){
+      label.textContent='Đã lưu '+result.segments+' đoạn WAV ('+
+        (result.bytes/1048576).toFixed(1)+' MB) tại '+result.relativeFolder+'.';
+      show('Đã sao chép WAV vào '+result.relativeFolder+'.');
+    }else{
+      label.textContent='Âm thanh đã lưu OPFS. '+result.reason+
+        '. Mở bằng START_WINDOWS.cmd để tự lưu vào app/Recording.';
+    }
+  }catch(e){
+    label.textContent='Âm thanh vẫn có trong OPFS nhưng chưa sao chép được vào app/Recording: '+e.message;
+    show('Sao chép WAV thất bại: '+e.message,'error');
+  }finally{localRecordingBusy=false;setRecordingUI();}
+}
 function show(message,kind='info'){
   const el=$('message');el.textContent=message;el.className='message visible'+(kind==='error'?' error':'');
   clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>{el.className='message';},6500);
@@ -35,6 +103,9 @@ function setRecordingUI(){
   $('rec-pause').textContent=paused?'Tiếp tục':'Tạm dừng';
   $('rec-stop').disabled=!active||rec?.state==='stopping';
   $('backup').disabled=!!active||!run?.meeting.recordingIds?.length||state.switching;
+  $('mic-test').disabled=!!active;
+  $('mic-device').disabled=!!active||micProbe.state!=='idle';
+  $('retry-local-recording').disabled=!!active||localRecordingBusy||!run?.meeting.recordingIds?.length||state.switching;
   $('rec-light').className='rec-light'+(recording?' active':paused?' paused':'');
   $('rec-label').textContent=recording?'Đang ghi âm':paused?'Đã tạm dừng':rec?.state==='starting'?'Đang xin quyền micro':
     rec?.state==='stopping'?'Đang lưu âm thanh':rec?.state==='failed'?'Ghi âm có lỗi':'Chưa ghi âm';
@@ -163,10 +234,11 @@ function recEvent(run,type,detail){
 async function startRecording(){
   const run=state.run;if(!run?.releaseLease||run.capture&&['starting','capturing','paused','stopping'].includes(run.capture.state))return;
   const recordingId='rec-'+crypto.randomUUID();
-  const capture=new CaptureSession({meetingId:run.meetingId,recordingId,
+  const capture=new CaptureSession({meetingId:run.meetingId,recordingId,deviceId:$('mic-device').value,
     onEvent:(type,detail)=>recEvent(run,type,detail),onError:e=>show('Âm thanh: '+e.message,'error')});
   run.capture=capture;setRecordingUI();
   try{
+    if(micProbe.state!=='idle')await micProbe.stop('switch');
     await player.closeReader();
     await capture.start();
     run.meeting=await state.store.addRecording(run.meetingId,recordingId,state.lease);
@@ -201,7 +273,8 @@ async function stopRecording(){
     $('technical-status').textContent='Đã chốt bản ghi '+rec.recordingId+
       '\nPCM đã commit: '+result.samples?.toLocaleString('vi-VN')+' frame.'+
       (result.permissionPendingCleanup?'\nQuyền micro vẫn đang chờ hệ điều hành.':'');
-    show('Đã dừng. Âm thanh chỉ được ghi là bền vững đến frame đã flush.');
+    show('Đã dừng; bản lưu OPFS đã được xác nhận.');
+    await saveWavInRecording(rec.recordingId);
   }catch(e){show('Dừng ghi/lưu chưa hoàn tất: '+e.message,'error');}
   finally{setRecordingUI();}
 }
@@ -218,7 +291,7 @@ async function listenAtCursor(clickedAnchor=null){
   try{
     const result=await player.start(anchor.recordingId,anchor.audioOffsetMs,
       {preRollMs:Number($('preroll').value),rate:Number($('play-rate').value)});
-    if(result.status!=='valid')show('Không phát được đoạn này: '+(result.reason??result.status),'error');
+    // AudioPlayer already reports unavailable through the source-aware callback.
   }catch(e){show('Không nghe lại được: '+e.message,'error');}
 }
 function download(filename,data,type){
@@ -280,6 +353,11 @@ function wire(){
   $('new-meeting').onclick=createMeeting;
   $('meeting-title').addEventListener('blur',saveTitle);
   $('meeting-title').addEventListener('keydown',e=>{if(e.key==='Enter'){$('meeting-title').blur();e.preventDefault();}});
+  $('mic-test').onclick=toggleMicProbe;
+  $('retry-local-recording').onclick=()=>{
+    const r=state.run?.meeting?.recordingIds?.at(-1);
+    if(r)saveWavInRecording(r);
+  };
   $('rec-start').onclick=startRecording;
   $('rec-pause').onclick=pauseRecording;
   $('rec-stop').onclick=stopRecording;
@@ -336,6 +414,12 @@ async function registerPwa(){
 }
 async function main(){
   wire();
+  refreshMicDevices().catch(()=>{});
+  navigator.mediaDevices?.addEventListener?.('devicechange',()=>refreshMicDevices().catch(()=>{}));
+  localRecordingStatus().then(r=>{
+    if(r.available)$('recording-path').textContent='Sẵn sàng: tự lưu WAV vào app/Recording khi Kết thúc ghi.';
+    else $('recording-path').textContent='Tự lưu WAV trong OPFS. '+r.reason+'.';
+  }).catch(()=>{});
   registerPwa().catch(()=>{});
   try{
     state.store=await MeetingStore.open();
