@@ -57,6 +57,12 @@ export class MeetingTimelineUI {
     this.renderEmpty('Chọn một cuộc họp có bản ghi âm để sử dụng thanh tua.');
   }
   async refresh(run){
+    const task=this.load(run);
+    this.refreshPromise=task;
+    try{await task;}finally{if(this.refreshPromise===task)this.refreshPromise=null;}
+  }
+  async settle(){if(this.refreshPromise)await this.refreshPromise;}
+  async load(run){
     const epoch=++this.epoch;
     if(this.getRun()!==run)return;
     const ids=[...(run.meeting.recordingIds??[])];
