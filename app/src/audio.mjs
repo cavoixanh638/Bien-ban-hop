@@ -191,7 +191,8 @@ export class CaptureSession {
 export class AudioPlayer {
   constructor(onEvent=()=>{}){
     this.onEvent=onEvent;this.playing=false;this.sources=new Set();
-    this.rate=1;this.filling=false;this.schedulingComplete=false;this.serial=0;
+    this.rate=1;this.fillingRun=null;this.scheduled=new Map();
+    this.schedulingComplete=false;this.serial=0;this.lastRenderedSample=0;
   }
   async ensure(recordingId){
     if(this.recordingId===recordingId&&this.reader)return;
@@ -217,14 +218,19 @@ export class AudioPlayer {
     this.nextSample=check.startSample;
     this.endSampleExclusive=check.endSampleExclusive;
     this.scheduledUntil=this.context.currentTime+0.06;
-    this.startOffsetMs=check.startMs;this.underruns=0;
+    this.startOffsetMs=check.startMs;this.lastRenderedSample=check.startSample;this.underruns=0;
     this.currentRun=++this.serial;
     const run=this.currentRun;
     try{
       // Must schedule a real source before notifying the UI "Đang phát".
       await this.fill();
       if(this.playing && run===this.currentRun){
-        this.timer=setInterval(()=>this.fill().catch(e=>this.stopWithError(e)),170);
+        this.timer=setInterval(()=>{
+          this.fill().catch(e=>this.stopWithError(e));
+          const offsetMs=this.positionMs();
+          if(Number.isFinite(offsetMs))
+            this.onEvent('position',{recordingId:this.recordingId,offsetMs});
+        },170);
         this.onEvent('playing',{recordingId,offsetMs:check.startMs,rate,
           preRollLimited:check.preRollLimited,actualPreRollMs:check.actualPreRollMs});
         return {status:'valid'};
@@ -232,15 +238,34 @@ export class AudioPlayer {
       return {status:'missing',reason:'Không có dữ liệu âm thanh phát được'};
     }catch(e){this.stopWithError(e);throw e;}
   }
+  positionMs(){
+    if(!this.manifest?.sampleRate)return null;
+    const now=this.context?.currentTime??0;
+    let sample=this.lastRenderedSample;
+    const scheduled=[...this.scheduled.values()].sort((a,b)=>a.startAt-b.startAt);
+    for(const part of scheduled){
+      if(now<part.startAt)break;
+      if(now<part.endAt){
+        sample=Math.max(sample,part.firstSample+
+          Math.floor((now-part.startAt)*this.manifest.sampleRate*this.rate));
+        return sample*1000/this.manifest.sampleRate;
+      }
+      sample=Math.max(sample,part.endSample);
+    }
+    return sample*1000/this.manifest.sampleRate;
+  }
   finish(){
     if(!this.playing)return;
     this.playing=false;clearInterval(this.timer);
-    this.onEvent('ended',{recordingId:this.recordingId});
+    this.lastRenderedSample=this.endSampleExclusive;
+    const offsetMs=this.positionMs();
+    this.onEvent('position',{recordingId:this.recordingId,offsetMs});
+    this.onEvent('ended',{recordingId:this.recordingId,offsetMs});
   }
   async fill(){
-    if(!this.playing||this.filling)return;
-    this.filling=true;
+    if(!this.playing||this.fillingRun===this.currentRun)return;
     const run=this.currentRun;
+    this.fillingRun=run;
     try{
       let scheduled=0;
       while(this.playing && run===this.currentRun &&
@@ -266,8 +291,14 @@ export class AudioPlayer {
         const node=this.context.createBufferSource();
         node.buffer=buffer;node.playbackRate.value=this.rate;
         node.connect(this.context.destination);this.sources.add(node);
+        const firstSample=this.nextSample;
         node.onended=()=>{
-          this.sources.delete(node);try{node.disconnect();}catch{}
+          this.sources.delete(node);
+          const part=this.scheduled.get(node);
+          this.scheduled.delete(node);
+          if(run===this.currentRun && part)
+            this.lastRenderedSample=Math.max(this.lastRenderedSample,part.endSample);
+          try{node.disconnect();}catch{}
           if(run===this.currentRun&&this.schedulingComplete&&!this.sources.size)this.finish();
         };
         const earliest=this.context.currentTime+0.015;
@@ -275,19 +306,24 @@ export class AudioPlayer {
           this.underruns++;this.scheduledUntil=earliest;
           this.onEvent('underrun',{count:this.underruns});
         }
-        node.start(this.scheduledUntil);
-        this.scheduledUntil+=count/this.manifest.sampleRate/this.rate;
+        const startAt=this.scheduledUntil,
+          endAt=startAt+count/this.manifest.sampleRate/this.rate;
+        this.scheduled.set(node,{firstSample,endSample:firstSample+count,startAt,endAt});
+        node.start(startAt);
+        this.scheduledUntil=endAt;
         this.nextSample+=count;
       }
       if(this.nextSample>=this.endSampleExclusive)this.schedulingComplete=true;
-    }finally{this.filling=false;}
+    }finally{if(this.fillingRun===run)this.fillingRun=null;}
   }
   stopWithError(e){this.stop();this.onEvent('error',{message:String(e?.message??e)});}
   stop(){
+    const wasPlaying=this.playing,recordingId=this.recordingId,offsetMs=this.positionMs();
     this.playing=false;this.schedulingComplete=false;this.currentRun=++this.serial;
     clearInterval(this.timer);
     for(const source of this.sources)try{source.stop();source.disconnect();}catch{}
-    this.sources.clear();
+    this.sources.clear();this.scheduled.clear();
+    if(wasPlaying)this.onEvent('stopped',{recordingId,offsetMs});
   }
   async closeReader(){
     this.stop();
