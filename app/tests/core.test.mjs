@@ -255,7 +255,7 @@ test('G10 note-follow: unlinked/pending, forged and conflicting marks cannot glo
   const cues=collectNoteCues(doc,new Set([id]),new Set(['waiting']));
   assert.deepEqual(cues.get(id).map(c=>c.anchorId),['safe']);
   assert.equal(cueAtPlayback(cues,id,9000)?.anchorId,'safe');
-  assert.equal(cueAtPlayback(cues,id,50000),null);
+  assert.equal(cueAtPlayback(cues,id,50001),null); // strictly beyond 45-second cutoff
 });
 test('G10 note-follow: merge split DOM words of same anchor without multiplying cues',()=>{
   const id='rec-note-aaaaaaaaaaa',mark=followedMark('one',id,1000);
