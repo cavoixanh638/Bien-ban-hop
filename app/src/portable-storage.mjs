@@ -19,7 +19,7 @@ const fileHandle=async(root,path,create=false)=>{
 };
 const hasDirectory=async(root,id)=>{try{await root.getDirectoryHandle(id);return true;}
   catch(e){if(e.name==='NotFoundError')return false;throw e;}};
-const deleteAudioJournal=async(id)=>{
+export const deleteAudioJournal=async(id)=>{
   const db=await IDBJournal.open();
   try{
     await new Promise((resolve,reject)=>{
@@ -71,11 +71,11 @@ export async function loadPortableSource(store,meetingId){
     return file.stream();
   }};
 }
-export function createBrowserImportRepo(store,{verifyRecordings=true}={}){
+export function createBrowserImportRepo(store,{verifyRecordings=true,adoptedDirs=new Set()}={}){
   return {
     async stage(bundle){
       const root=await navigator.storage.getDirectory();
-      const ids=[...bundle.recordings.keys()],dirs=new Set(),journals=new Set();
+      const ids=[...bundle.recordings.keys()],dirs=new Set(adoptedDirs),journals=new Set();
       let published=false,creating=false;
       // Random IDs already remapped; fail closed if collision in both stores.
       if(await store.getMeeting(bundle.meeting.meetingId))
@@ -83,8 +83,9 @@ export function createBrowserImportRepo(store,{verifyRecordings=true}={}){
       const audioDb=await IDBJournal.open();
       try{
         for(const id of ids){
-          if(await audioDb.load(id) || await hasDirectory(root,id))
-            throw Error('Mã phiên ghi mới đã tồn tại, không được ghi đè: '+id);
+          if(await audioDb.load(id) || (!adoptedDirs.has(id) && await hasDirectory(root,id)) ||
+             (adoptedDirs.has(id) && !await hasDirectory(root,id)))
+            throw Error('Mã phiên ghi mới đã tồn tại hoặc dữ liệu nhập dở không hợp lệ: '+id);
         }
       }finally{audioDb.db.close();}
       const api={
@@ -122,6 +123,15 @@ export function createBrowserImportRepo(store,{verifyRecordings=true}={}){
           if(creating)throw Error('Đang lưu gói khác');
           creating=true;
           try{
+            // Ensure all preloaded files exist and have valid WAV headers before
+            // allowing journals to become visible (legacy adoption uses this gate).
+            for(const [id,journal] of mapped.recordings)for(const segment of journal.segments){
+              const file=await (await fileHandle(root,segment.filePath)).getFile();
+              if(file.size!==segment.byteLength)throw Error('WAV đã nhập không đủ byte');
+              const hdr=new Uint8Array(await file.slice(0,HEADER_BYTES).arrayBuffer());
+              if(!checkHeader(hdr,file.size-HEADER_BYTES,journal.sampleRate,journal.channels))
+                throw Error('Header WAV đã nhập không khớp');
+            }
             const db=await IDBJournal.open();
             try{
               for(const [id,journal] of mapped.recordings){
