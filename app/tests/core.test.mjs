@@ -4,7 +4,7 @@ import {createMemoryDB} from '../../poc/06-notes/notes.mjs';
 import {CaptureClockMapper} from '../../poc/02-capture/src/clock-mapper.mjs';
 import {MeetingStore,SaveQueue} from '../src/meeting-store.mjs';
 import {verifiedClickedAnchor} from '../src/anchor-bridge.mjs';
-import {resolvePlaybackStart} from '../src/playback-start.mjs';
+import {resolvePlaybackStart,selectCommittedPlayback} from '../src/playback-start.mjs';
 import {contextFor,resolvePending,intervalFor} from '../src/clock-bridge.mjs';
 import {fixture as audioFixture} from '../../poc/05-player/player.js';
 import {resolveMedia,meetingToMedia,choosePreRoll} from '../../poc/05-player/timeline.js';
@@ -143,4 +143,35 @@ test('G10 Word export: Times New Roman is default font including Vietnamese char
   assert.match(uncompressedZip,/w:hAnsi="Times New Roman"/);
   assert.match(uncompressedZip,/w:cs="Times New Roman"/);
   assert.match(uncompressedZip,/Tại sao lại có những điều không nên làm vậy\?/);
+});
+
+test('G10 audio: playback clamps pre-roll to first committed PCM sample without false error',()=>{
+  const manifest={recordingId:'rec-test-0000000001',sampleRate:48000,
+    sampleRanges:[{sampleStart:0,sampleEndExclusive:48000}]};
+  const start=selectCommittedPlayback(manifest,manifest.recordingId,500,5000);
+  assert.equal(start.status,'valid');assert.equal(start.startSample,0);
+  assert.equal(start.endSampleExclusive,48000);
+  assert.equal(start.preRollLimited,true);
+  assert.equal(selectCommittedPlayback(manifest,manifest.recordingId,1500,5000).status,'missing');
+});
+
+test('G10 audio: last exclusive sample is natural EOF, not a second unknown recording',()=>{
+  const manifest={recordingId:'rec-test-0000000001',sampleRate:48000,
+    sampleRanges:[{sampleStart:0,sampleEndExclusive:48001}]};
+  const end=selectCommittedPlayback(manifest,manifest.recordingId,1000,0);
+  assert.equal(end.status,'valid');
+  assert.equal(end.anchorSample,48000);
+  assert.equal(end.endSampleExclusive,48001);
+  assert.notEqual(selectCommittedPlayback(manifest,'rec-other',1000,0).status,'valid');
+});
+
+test('G10 audio: never bridge a dropped sample interval or a foreign recording',()=>{
+  const manifest={recordingId:'rec-test-0000000001',sampleRate:48000,
+    sampleRanges:[{sampleStart:0,sampleEndExclusive:48000},
+      {sampleStart:96000,sampleEndExclusive:144000}]};
+  assert.equal(selectCommittedPlayback(manifest,manifest.recordingId,1500,5000).status,'missing');
+  const right=selectCommittedPlayback(manifest,manifest.recordingId,2500,5000);
+  assert.equal(right.status,'valid');assert.equal(right.startSample,96000);
+  assert.equal(right.endSampleExclusive,144000);
+  assert.equal(selectCommittedPlayback(manifest,manifest.recordingId,4000,0).status,'missing');
 });
