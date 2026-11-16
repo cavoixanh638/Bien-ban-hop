@@ -49,6 +49,14 @@ test('G10 portable: TWO recordings travel to a separate browser profile, keep no
   const sourceIds=await page.locator('.tiptap [data-time-recording-id]').evaluateAll(nodes=>
     [...new Set(nodes.map(node=>node.getAttribute('data-time-recording-id')).filter(Boolean))]);
   expect(sourceIds.length).toBe(2);
+  await expect(page.locator('#timeline-summary')).toContainText('2 phiên',{timeout:20000});
+  await expect(page.locator('#timeline-sessions button')).toHaveCount(2);
+  const wholeDuration=Number(await page.locator('#timeline-seek').getAttribute('max'));
+  expect(wholeDuration).toBeGreaterThan(2000);
+  await page.locator('#timeline-sessions button').nth(1).click();
+  await expect(page.locator('#anchor-status')).toContainText('Đang phát từ',{timeout:20000});
+  await expect.poll(async()=>Number(await page.locator('#timeline-seek').inputValue())).toBeGreaterThan(1000);
+  await page.locator('#timeline-play').click();
   const bytes=await exportBuffer(page);
   expect(bytes.byteLength).toBeGreaterThan(88000);
   // Distinct BrowserContext = a new IndexedDB/OPFS/profile, not the previous cache.
@@ -66,6 +74,11 @@ test('G10 portable: TWO recordings travel to a separate browser profile, keep no
       [...new Set(nodes.map(node=>node.getAttribute('data-time-recording-id')).filter(Boolean))]);
     expect(restoredIds.length).toBe(2);
     expect(restoredIds.every(id=>!sourceIds.includes(id))).toBeTruthy();
+    await expect(target.locator('#timeline-summary')).toContainText('2 phiên',{timeout:20000});
+    await expect(target.locator('#timeline-sessions button')).toHaveCount(2);
+    await target.locator('#timeline-sessions button').nth(1).click();
+    await expect(target.locator('#anchor-status')).toContainText('Đang phát từ',{timeout:25000});
+    await target.locator('#timeline-play').click();
     for(const id of restoredIds){
       const anchor=target.locator('.tiptap [data-time-recording-id="'+id+'"]').first();
       await anchor.click();
