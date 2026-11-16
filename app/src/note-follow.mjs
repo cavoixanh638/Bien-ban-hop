@@ -88,13 +88,24 @@ export class NoteAudioFollower{
     this.clearPlayback();
     const editor=run.editor,view=editor?.view;
     if(!view||!view.state.selection.empty){this.clearLive();return;}
-    const $pos=view.state.selection.$from;
-    let block=null;
-    for(let depth=$pos.depth;depth>=1;depth--){
-      if(!$pos.node(depth).isTextblock)continue;
-      const dom=view.nodeDOM($pos.before(depth));
-      block=dom?.nodeType===1?dom:dom?.parentElement;
-      break;
+    // The browser's DOM selection is the authority for the currently edited
+    // paragraph. A ProseMirror nodeDOM() lookup may return null for textblock
+    // positions between inline marks or around composition boundaries.
+    const rawSelection=view.root?.getSelection?.()??window.getSelection?.();
+    const textNode=rawSelection?.anchorNode;
+    const nearestBlock=node=>{
+      const el=node?.nodeType===1?node:node?.parentElement;
+      return el?.closest?.(BLOCK)??null;
+    };
+    let block=textNode&&this.root.contains(textNode)?nearestBlock(textNode):null;
+    if(!block){
+      const resolved=view.domAtPos(view.state.selection.from);
+      block=nearestBlock(resolved.node);
+      if(!block&&resolved.node?.nodeType===1){
+        const adjacent=resolved.node.childNodes[resolved.offset]??
+          resolved.node.childNodes[Math.max(0,resolved.offset-1)];
+        block=nearestBlock(adjacent);
+      }
     }
     if(!block||!this.root.contains(block)){this.clearLive();return;}
     if(this.liveBlock!==block){
