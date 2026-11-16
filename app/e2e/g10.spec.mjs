@@ -41,23 +41,33 @@ test('G10: microphone meter sees a deterministic non-silent PCM stream',async({p
   // Chromium's fake microphone may be intentionally silent depending on runner.
   // Provide a 440 Hz, low-level WebAudio MediaStream to assert real PCM detection,
   // not just success of getUserMedia() permission.
-  await page.addInitScript(()=>{
-    const realMedia=navigator.mediaDevices;
-    Object.defineProperty(realMedia,'getUserMedia',{configurable:true,value:async()=>{
+  await page.goto('/');
+  await page.evaluate(()=>{
+    // Override only this test page's input at the exact moment the button calls it.
+    window.__micOverrideCalls=0;
+    Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{
+      window.__micOverrideCalls++;
       const context=new AudioContext();
       const oscillator=context.createOscillator(),gain=context.createGain();
       const output=context.createMediaStreamDestination();
       oscillator.frequency.value=440;gain.gain.value=0.15;
       oscillator.connect(gain);gain.connect(output);
       oscillator.start();await context.resume();
+      window.__micSynthetic={context,oscillator,gain,output};
       return output.stream;
     }});
   });
-  await page.goto('/');
   await expect(page.locator('#mic-test')).toBeEnabled();
   await page.locator('#mic-test').click();
   await expect(page.locator('#mic-test')).toHaveText('Dừng thử micro',{timeout:10000});
   await expect(page.locator('#mic-test-status')).toContainText(/Đang nhận|đã nhận|âm thanh|tín hiệu/i);
+  await expect.poll(()=>page.evaluate(()=>window.__micOverrideCalls),{timeout:3000}).toBeGreaterThan(0);
+  await page.waitForTimeout(1600);
+  console.log('MIC_DIAGNOSTIC',JSON.stringify({
+    status:await page.locator('#mic-test-status').innerText(),
+    percent:await page.locator('#mic-meter').getAttribute('aria-valuenow'),
+    synthetic:await page.evaluate(()=>Boolean(window.__micSynthetic?.context?.state==='running'))
+  }));
   await expect.poll(()=>page.locator('#mic-meter').getAttribute('aria-valuenow'),
     {timeout:8000}).not.toBe('0');
   await page.locator('#mic-test').click();
