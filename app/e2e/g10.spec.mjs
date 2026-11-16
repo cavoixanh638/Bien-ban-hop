@@ -37,7 +37,22 @@ test('G10: Times New Roman mặc định và chữ Unicode tiếng Việt còn n
   // Synthetic keyboard text is not a substitute for Windows UniKey/EVKey IME tests.
 });
 
-test('G10: microphone check recognises a real audio signal from Chromium fake device',async({page})=>{
+test('G10: microphone meter sees a deterministic non-silent PCM stream',async({page})=>{
+  // Chromium's fake microphone may be intentionally silent depending on runner.
+  // Provide a 440 Hz, low-level WebAudio MediaStream to assert real PCM detection,
+  // not just success of getUserMedia() permission.
+  await page.addInitScript(()=>{
+    const realMedia=navigator.mediaDevices;
+    Object.defineProperty(realMedia,'getUserMedia',{configurable:true,value:async()=>{
+      const context=new AudioContext();
+      const oscillator=context.createOscillator(),gain=context.createGain();
+      const output=context.createMediaStreamDestination();
+      oscillator.frequency.value=440;gain.gain.value=0.15;
+      oscillator.connect(gain);gain.connect(output);
+      oscillator.start();await context.resume();
+      return output.stream;
+    }});
+  });
   await page.goto('/');
   await expect(page.locator('#mic-test')).toBeEnabled();
   await page.locator('#mic-test').click();
