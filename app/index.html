@@ -57,7 +57,11 @@
       <div id="anchor-status" class="anchor-status">Chọn một đoạn chữ đã gắn mốc để nghe lại.</div>
       <div class="panel-title">TỆP & XUẤT</div>
       <div class="exports"><button data-export="docx">Word</button><button data-export="txt">TXT</button><button data-export="md">Markdown</button><button data-export="csv">CSV</button></div>
-      <button id="backup" class="wide">Sao lưu .mochop (ZIP streaming)</button>
+      <button id="backup" class="wide">Xuất toàn bộ cuộc họp (.mochop)</button>
+      <button id="import-backup" class="wide" type="button">Nhập cuộc họp từ máy khác (.mochop)</button>
+      <input type="file" id="import-file" accept=".mochop,application/zip" style="display:none" aria-label="Chọn gói cuộc họp .mochop">
+      <button id="import-cancel" class="wide" type="button" style="display:none">Hủy nhập dữ liệu</button>
+      <div id="transfer-status" class="panel-small" role="status" aria-live="polite">Gói .mochop chứa biên bản, mốc thời gian và tất cả phiên ghi âm.</div>
       <label class="field"><input type="checkbox" id="include-time"> Kèm mốc thời gian trong file xuất</label>
       <div class="panel-divider"></div>
       <div id="technical-status" class="technical">Chưa có phiên ghi.</div>
