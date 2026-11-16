@@ -9,7 +9,8 @@ import {CaptureSession,AudioPlayer,AudioRPC} from './audio.mjs';
 import {MicProbe} from './mic-probe.mjs';
 import {mirrorRecordingToLocalFolder,localRecordingStatus} from './recording-mirror.mjs';
 import {exportDOCX,exportTXT,exportMarkdown,exportCSV,mime} from '../../poc/08-export/exporter.mjs';
-import {exportMochopV2,importMochopV2} from './portable-archive.mjs';
+import {exportMochopV2,importMochopV2,probeMochopVersion} from './portable-archive.mjs';
+import {importLegacyMochop} from './portable-legacy.mjs';
 import {loadPortableSource,createBrowserImportRepo} from './portable-storage.mjs';
 
 const $=id=>document.getElementById(id),state={store:null,run:null,lease:new MeetingLease(),switching:false};
@@ -361,6 +362,9 @@ async function backup(){
 function displayImportProgress(progress){
   if(progress.phase==='audio')$('transfer-status').textContent=
     'Đang khôi phục WAV '+progress.done+'/'+progress.total+': '+progress.path;
+  else if(Number.isFinite(progress.processed))$('transfer-status').textContent=
+    'Đang kiểm tra gói đời cũ: '+(progress.processed/1048576).toFixed(1)+' / '+
+    (progress.total/1048576).toFixed(1)+' MB';
 }
 async function importSelectedFile(file){
   if(!file||transferBusy)return;
@@ -377,11 +381,18 @@ async function importSelectedFile(file){
   let imported=null;
   try{
     if(state.run?.releaseLease)await state.run.queue.drain();
-    const repo=createBrowserImportRepo(state.store);
-    imported=await importMochopV2(file,repo,{signal:controller.signal,
-      onProgress:displayImportProgress});
+    const version=await probeMochopVersion(file);
+    if(version===1){
+      imported=await importLegacyMochop(file,state.store,{signal:controller.signal,
+        onProgress:displayImportProgress});
+    }else{
+      const repo=createBrowserImportRepo(state.store);
+      imported=await importMochopV2(file,repo,{signal:controller.signal,
+        onProgress:displayImportProgress});
+    }
     $('transfer-status').textContent='Đã khôi phục '+imported.recordings+
-      ' phiên ghi âm và biên bản với mã cuộc họp mới. Không ghi đè dữ liệu cũ.';
+      ' phiên ghi âm và biên bản với mã cuộc họp mới. Không ghi đè dữ liệu cũ.'+
+      (imported.legacy?' Đây là file v1: chỉ dữ liệu vốn có trong bản xuất đời cũ được khôi phục.':'');
     await refreshMeetings();
     if(state.run?.capture&&['starting','capturing','paused','stopping'].includes(state.run.capture.state))
       throw Error('Không thể chuyển khi đang ghi âm');
