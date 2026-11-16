@@ -93,6 +93,7 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
   await expect(page.locator('.tiptap')).toBeVisible();
   await page.locator('#rec-start').click();
   await expect(page.locator('#rec-label')).toHaveText('Đang ghi âm',{timeout:25000});
+  await expect(page.locator('#timeline-seek')).toBeDisabled();
   const editor=page.locator('.tiptap');
   await editor.click();
   await page.keyboard.type('Mốc thử ghi âm trong lúc soạn biên bản.');
@@ -104,6 +105,21 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
   await expect(page.locator('#rec-label')).toHaveText('Chưa ghi âm',{timeout:25000});
   await expect(page.locator('#technical-status')).toContainText('Đã chốt bản ghi',{timeout:15000});
   await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+  await expect(page.locator('#timeline-summary')).toContainText('1 phiên',{timeout:20000});
+  await expect(page.locator('#timeline-seek')).toBeEnabled();
+  expect(await page.locator('#timeline-sessions button').count()).toBe(1);
+  const total=Number(await page.locator('#timeline-seek').getAttribute('max'));
+  expect(total).toBeGreaterThan(1000);
+  const middle=Math.floor(total/2);
+  await page.locator('#timeline-seek').evaluate((slider,at)=>{
+    slider.value=String(at);slider.dispatchEvent(new Event('input',{bubbles:true}));
+    slider.dispatchEvent(new Event('change',{bubbles:true}));
+  },middle);
+  await expect(page.locator('#anchor-status')).toContainText('Đang phát từ',{timeout:20000});
+  await expect.poll(async()=>Number(await page.locator('#timeline-seek').inputValue()),
+    {timeout:6000}).toBeGreaterThan(middle);
+  await page.locator('#timeline-play').click();
+  await expect(page.locator('#timeline-play')).toHaveText('▶ Phát');
   if(process.env.G10_PREVIEW!=='1'){
     await expect(page.locator('#recording-path')).toContainText('app/Recording/',{timeout:20000});
     const message=await page.locator('#technical-status').innerText();
