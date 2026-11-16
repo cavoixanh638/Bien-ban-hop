@@ -6,6 +6,7 @@ import {MeetingStore,SaveQueue} from '../src/meeting-store.mjs';
 import {verifiedClickedAnchor} from '../src/anchor-bridge.mjs';
 import {resolvePlaybackStart,selectCommittedPlayback} from '../src/playback-start.mjs';
 import {buildMeetingTimeline,locateMeetingPosition,meetingPositionFor,firstPlayablePosition} from '../src/meeting-timeline.mjs';
+import {collectNoteCues,cueAtPlayback} from '../src/note-follow.mjs';
 import {contextFor,resolvePending,intervalFor} from '../src/clock-bridge.mjs';
 import {fixture as audioFixture} from '../../poc/05-player/player.js';
 import {resolveMedia,meetingToMedia,choosePreRoll} from '../../poc/05-player/timeline.js';
@@ -221,4 +222,43 @@ test('G10 timeline: a trailing pool-exhausted interval is visible as missing aud
   assert.equal(tl.totalMs,2000);
   assert.equal(tl.unavailableCount,1);
   assert.equal(locateMeetingPosition(tl,1200).status,'gap');
+});
+
+const followedMark=(id,recordingId,audioOffsetMs,overrides={})=>({
+  anchorId:id,recordingId,audioOffsetMs,typedAt:1794800000000+audioOffsetMs,
+  source:'live_recording',schemaVersion:1,...overrides
+});
+const trackedDoc=(spans)=>({descendants(fn){
+  spans.forEach((span,index)=>fn({isText:true,textContent:span.text??'Một nội dung',
+    marks:[{type:{name:'timeSpan'},attrs:span.mark}]},index*20+1));
+}});
+test('G10 note-follow: playback selects only a matching verified audio mark, not a future/foreign mark',()=>{
+  const a='rec-note-aaaaaaaaaaa',b='rec-note-bbbbbbbbbbb';
+  const marks=[{mark:followedMark('a1',a,1000)},{mark:followedMark('a2',a,6500)},
+    {mark:followedMark('b1',b,1100)}];
+  const cues=collectNoteCues(trackedDoc(marks),new Set([a,b]));
+  assert.equal(cueAtPlayback(cues,a,1200).anchorId,'a1');
+  assert.equal(cueAtPlayback(cues,a,7000).anchorId,'a2');
+  assert.equal(cueAtPlayback(cues,b,7000).anchorId,'b1');
+  assert.equal(cueAtPlayback(cues,a,800),null); // do not jump forward to a future note
+  assert.equal(cueAtPlayback(cues,'foreign',3000),null);
+  assert.equal(cueAtPlayback(cues,a,52000),null); // stale note must not pretend to transcribe 45+s later
+});
+test('G10 note-follow: unlinked/pending, forged and conflicting marks cannot glow',()=>{
+  const id='rec-note-aaaaaaaaaaa',valid=followedMark('safe',id,5000);
+  const forged=followedMark('external','foreign',3000);
+  const pending=followedMark('waiting',id,7000);
+  const conflict=followedMark('conflict',id,8000);
+  const doc=trackedDoc([{mark:valid},{mark:forged},{mark:pending},
+    {mark:conflict},{mark:{...conflict,audioOffsetMs:13000}},
+    {mark:followedMark('unlinked',null,null,{source:'unlinked'})}]);
+  const cues=collectNoteCues(doc,new Set([id]),new Set(['waiting']));
+  assert.deepEqual(cues.get(id).map(c=>c.anchorId),['safe']);
+  assert.equal(cueAtPlayback(cues,id,9000)?.anchorId,'safe');
+  assert.equal(cueAtPlayback(cues,id,50000),null);
+});
+test('G10 note-follow: merge split DOM words of same anchor without multiplying cues',()=>{
+  const id='rec-note-aaaaaaaaaaa',mark=followedMark('one',id,1000);
+  const cues=collectNoteCues(trackedDoc([{mark,text:'Nội'}, {mark,text:' dung'}]),new Set([id]));
+  assert.equal(cues.get(id).length,1);
 });
