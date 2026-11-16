@@ -19,6 +19,10 @@ export async function importLegacyMochop(blob,store,{signal,onProgress}={}){
   let adopted=false,result=null,sourceAudioId=null;
   const metadata=new Map(),parts=new Map();let metadataBytes=0,writtenPaths=new Set();
   const repo={async stage(){
+    // Never accidentally adopt/overwrite files already present in this browser.
+    try{await root.getDirectoryHandle(newId);
+      fail('mã ghi âm nhập mới đã có sẵn trong OPFS');}
+    catch(e){if(e.name!=='NotFoundError')throw e;}
     return {
       async create(name){
         if(name.startsWith('audio/')){
