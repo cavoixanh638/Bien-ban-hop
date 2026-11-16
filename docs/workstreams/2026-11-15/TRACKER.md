@@ -256,3 +256,13 @@ Kiểm cổng Gói 1.1 và bằng chứng thực trên từng SHA. Chốt các a
 **Quyết định điều phối:** G01 có **một nhiệm vụ bổ sung có reproducer**; G07 **không có lỗi logic mới đã xác minh** ngoài các cổng npm/browser/Windows còn thiếu. Chưa thể gọi hai luồng là DONE theo entrypoint; không cập nhật main, không merge/deploy.
 
 - **G10-R kiểm thử bổ sung 16/11:** giữ dấu vết mốc đồng bộ đang chờ trong lịch sử `archivedPendingState` qua các vòng import/export mà không gắn âm thanh sai; Code/Tested SHA `a38175ed`, Actions `#43815476675` `PASS`. HEAD nhánh G10 sau bằng chứng chứa 1 commit checkpoint tài liệu, không thay logic.
+
+
+## G10 — Thanh tua tổng hợp ghi âm (16/11/2026)
+
+- **Đã triển khai thực tế:** thanh phát/tua ngang ở đáy vùng biên bản trong `app/index.html` + `app/src/timeline-ui.mjs`, mô hình thời lượng các phiên và gap/missing/EOF qua `app/src/meeting-timeline.mjs`. Ghi âm nhiều phiên vẫn ở từng recordingId riêng, thanh hiển thị tổng hợp thời lượng các phiên (KHÔNG tự cộng thời gian nghỉ giữa hai lần dừng và ghi tiếp); nhấp đoạn chữ sẽ làm đồng bộ playhead.
+- **Fail closed:** vùng thiếu PCM (kể cả các gap được G03 journal nhận diện) tô xám, seek vào gap bị từ chối; không lén tua sang phiên bên cạnh. UI có nút Phát/Dừng, vị trí hiện tại/tổng thời lượng, chọn phiên; khóa tua khi đang ghi/đang chốt dữ liệu.
+- **Sửa lỗi tích hợp tìm được qua CI:** hai bộ đọc OPFS `createSyncAccessHandle` va chạm giữa timeline, player và sao lưu `.mochop`. Đã serial hóa reader/close, giữ `run.recordingFinalization` cho đến khi G03 flush, G06 note, thanh thời gian và sao chép WAV hoàn tất; ngăn mở backup hoặc tạo phiên mới quá sớm.
+- **Code SHA = Tested SHA:** `1b2aaa9869ab3ec5196f1024fb2500d51060e005`. [GitHub Actions #43902784531](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/43902784531): completed/**success**; Windows + Ubuntu Node/build PASS; G10 Node **31/31 PASS**, Chromium dev **9/9 PASS** + 1 PWA-only SKIP, production **10/10 PASS** (0 retry). E2E gồm seek middle, tiến trình thời gian phát, 2 phiên, cross-profile restore, backup sau tua, OPFS không va chạm.
+- **Trạng thái:** `UX_TIMELINE_ALPHA_PASSED_CI / RELEASE_HOLD`. Chưa nghiệm thu thời gian thực trên micro Windows, băng ghi 3h và quá tải/quota, audio C1/C2 gapless, wall-clock timeline đủ tính năng G04, đầy đủ TC01–TC38; các mục ấy vẫn **NOT_RUN**. Draft PR #1, `main` không thay.
+
