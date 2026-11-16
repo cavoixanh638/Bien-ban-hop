@@ -13,3 +13,6 @@ coverage/
 .env.*.local
 npm-debug.log*
 *.tsbuildinfo
+
+# Actual local microphone recordings: never upload personal WAVs to GitHub.
+Recording/
