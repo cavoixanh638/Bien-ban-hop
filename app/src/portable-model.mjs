@@ -113,14 +113,23 @@ export function remapBundle({meeting,note,history,pendingState,recordings},makeI
   };
   const newNote={...copy(note),noteDocumentId,content:remapText(note.content)};
   const newPending={schemaVersion:1,meetingId:newMeetingId,records:[]};
-  const newHistory=history.map(row=>({...copy(row),journalId:noteDocumentId+':'+row.revision,
-    noteDocumentId,content:remapText(row.content),
-    ...(row.pendingState?{archivedPendingState:copy(row.pendingState)}:{}),
-    pendingState:row.revision===note.revision?newPending:null}));
+  // The original clock/provenance is useful for audit but cannot be resumed
+  // on another computer. Preserve it OUT OF BAND in historical journal rows,
+  // while the active pending journal is empty and safe.
+  const originalPending=copy(pendingState??null);
+  const newHistory=history.map(row=>{
+    const previous=row.archivedPendingState??row.pendingState??
+      (row.revision===note.revision?originalPending:null);
+    return {...copy(row),journalId:noteDocumentId+':'+row.revision,
+      noteDocumentId,content:remapText(row.content),
+      ...(previous?{archivedPendingState:copy(previous)}:{}),
+      pendingState:row.revision===note.revision?newPending:null};
+  });
   if(!newHistory.some(row=>row.revision===note.revision)){
     newHistory.push({journalId:noteDocumentId+':'+note.revision,noteDocumentId,
       revision:note.revision,previousRevision:Math.max(0,note.revision-1),committedAt:now,
-      kind:'snapshot',content:copy(newNote.content),pendingState:newPending});
+      kind:'snapshot',content:copy(newNote.content),pendingState:newPending,
+      ...(originalPending?{archivedPendingState:copy(originalPending)}:{})});
   }
   const outRecordings=new Map();
   for(const [original,journal] of recordings){
