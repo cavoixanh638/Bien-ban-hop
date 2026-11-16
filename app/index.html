@@ -36,6 +36,20 @@
       <section class="paper-wrap"><div class="paper">
         <div id="editor" aria-label="Nội dung ghi chú cuộc họp"></div>
       </div></section>
+      <section class="timeline-dock" aria-label="Thanh thời gian toàn bộ ghi âm">
+        <div class="timeline-heading"><strong>TOÀN BỘ GHI ÂM</strong><span id="timeline-summary">Chưa có phiên ghi âm</span></div>
+        <div class="timeline-control-row">
+          <button id="timeline-play" type="button" disabled title="Phát / dừng tại vị trí đã chọn">▶ Phát</button>
+          <span id="timeline-current" class="timeline-time" aria-label="Thời điểm đang chọn">00:00:00</span>
+          <div class="timeline-scrub">
+            <div id="timeline-bands" class="timeline-bands" aria-hidden="true"></div>
+            <input id="timeline-seek" type="range" min="0" max="1" value="0" step="1" disabled aria-label="Tua trong toàn bộ thời lượng ghi âm">
+          </div>
+          <span id="timeline-total" class="timeline-time" aria-label="Tổng thời gian phiên ghi âm">00:00:00</span>
+        </div>
+        <div id="timeline-sessions" class="timeline-sessions" aria-label="Danh sách phiên ghi âm"></div>
+        <div id="timeline-notice" class="timeline-notice" role="status" aria-live="polite">Thanh tua sẽ xuất hiện sau khi bản ghi âm được lưu.</div>
+      </section>
       <div id="message" class="message" role="status" aria-live="polite"></div>
     </main>
     <aside class="panel">
