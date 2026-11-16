@@ -21,6 +21,22 @@ test('G10: mở ứng dụng, gõ chữ Việt và lưu/reopen bản ghi chú',a
   expect(errors).toEqual([]);
 });
 
+test('G10: Times New Roman mặc định và chữ Unicode tiếng Việt còn nguyên khi mở lại',async({page})=>{
+  await page.goto('/');
+  const editor=page.locator('.tiptap');
+  await expect(editor).toBeVisible();
+  await expect.poll(()=>editor.evaluate(el=>getComputedStyle(el).fontFamily)).toContain('Times New Roman');
+  const sample='Tại sao lại có những điều không nên làm vậy?';
+  await editor.click();
+  await page.keyboard.type(sample);
+  await expect(editor).toContainText(sample);
+  await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+  await page.reload();
+  await expect(page.locator('.tiptap')).toContainText(sample);
+  await expect.poll(()=>page.locator('.tiptap').evaluate(el=>getComputedStyle(el).fontFamily)).toContain('Times New Roman');
+  // Synthetic keyboard text is not a substitute for Windows UniKey/EVKey IME tests.
+});
+
 test('G10: hai tab không thể cùng có quyền ghi một cuộc họp',async({context,page})=>{
   await page.goto('/');
   await expect(page.locator('#writer-status')).toContainText('Có quyền chỉnh sửa');
