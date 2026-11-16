@@ -38,6 +38,7 @@ test('G10: Times New Roman mặc định và chữ Unicode tiếng Việt còn n
 });
 
 test('G10: microphone meter sees a deterministic non-silent PCM stream',async({page})=>{
+  const pageErrors=[];page.on('pageerror',e=>pageErrors.push(e.message));
   // Chromium's fake microphone may be intentionally silent depending on runner.
   // Provide a 440 Hz, low-level WebAudio MediaStream to assert real PCM detection,
   // not just success of getUserMedia() permission.
@@ -58,21 +59,18 @@ test('G10: microphone meter sees a deterministic non-silent PCM stream',async({p
     }});
   });
   await expect(page.locator('#mic-test')).toBeEnabled();
+  await expect(page.locator('#mic-meter')).toBeVisible();
   await page.locator('#mic-test').click();
   await expect(page.locator('#mic-test')).toHaveText('Dừng thử micro',{timeout:10000});
   await expect(page.locator('#mic-test-status')).toContainText(/Đang nhận|đã nhận|âm thanh|tín hiệu/i);
   await expect.poll(()=>page.evaluate(()=>window.__micOverrideCalls),{timeout:3000}).toBeGreaterThan(0);
-  await page.waitForTimeout(1600);
-  console.log('MIC_DIAGNOSTIC',JSON.stringify({
-    status:await page.locator('#mic-test-status').innerText(),
-    percent:await page.locator('#mic-meter').getAttribute('aria-valuenow'),
-    synthetic:await page.evaluate(()=>Boolean(window.__micSynthetic?.context?.state==='running'))
-  }));
   await expect.poll(()=>page.locator('#mic-meter').getAttribute('aria-valuenow'),
     {timeout:8000}).not.toBe('0');
   await page.locator('#mic-test').click();
   await expect(page.locator('#mic-test')).toHaveText('Thử micro (15 giây)');
   await expect(page.locator('#mic-meter')).toHaveAttribute('aria-valuenow','0');
+  await expect(page.locator('#mic-test-status')).toContainText('Có tín hiệu âm thanh');
+  expect(pageErrors).toEqual([]);
 });
 
 test('G10: hai tab không thể cùng có quyền ghi một cuộc họp',async({context,page})=>{
