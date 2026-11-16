@@ -153,7 +153,7 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
   // selection, and must not persist in note JSON after stopping.
   await expect(page.locator('.paper .note-playback-highlight-rect').first()).toBeVisible({timeout:12000});
   await expect(page.locator('#note-follow-status')).toContainText('Đang theo mốc');
-  const followedId=await page.locator('.tiptap .note-audio-current').first()
+  const followedId=await page.locator('.paper .note-playback-highlight-rect').first()
     .getAttribute('data-recording-id');
   expect(followedId).toBeTruthy();
   await page.locator('#play-stop').click();
