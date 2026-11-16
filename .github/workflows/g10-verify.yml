@@ -1,8 +1,8 @@
 name: G10 integration verification (no deployment)
+# Check PR updates exactly once. A previous push+PR double trigger
+# cancelled one duplicate run and made GitHub Desktop show a red X,
+# even while both actual checks on the same SHA were successful.
 on:
-  push:
-    branches:
-      - integration/20261115-g10-v1.2
   pull_request:
     paths:
       - "app/**"
