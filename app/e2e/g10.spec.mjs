@@ -98,6 +98,16 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
   await editor.click();
   await page.keyboard.type('Mốc thử ghi âm trong lúc soạn biên bản.');
   await expect(editor).toContainText('Mốc thử');
+  console.log('NOTE_CAPTURE_INSPECT',JSON.stringify(await page.evaluate(()=>{
+    const selection=window.getSelection(),node=selection?.anchorNode;
+    return {captureLabel:document.getElementById('rec-label')?.textContent,
+      followStatus:document.getElementById('note-follow-status')?.textContent,
+      selectionElement:node?.nodeType===1?node.outerHTML?.slice(0,400):node?.parentElement?.outerHTML?.slice(0,400),
+      selectionInside:document.getElementById('editor')?.contains(node),
+      selectedText:selection?.toString(),selectionType:selection?.type,
+      pCount:document.querySelectorAll('.tiptap p').length,
+      highlights:document.querySelectorAll('.tiptap .note-capture-current').length};
+  })));
   await expect(page.locator('.tiptap .note-capture-current')).toBeVisible();
   await expect(page.locator('#note-follow-status')).toContainText('Đang ghi');
   // The G03 journal flush schedule is 5 s. This is a short synthetic integration test,
