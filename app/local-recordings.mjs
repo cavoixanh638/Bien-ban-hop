@@ -4,7 +4,7 @@
  * OPFS + IndexedDB remain the authoritative crash-resistant recorder.
  * Production PWA does NOT expose this endpoint.
  */
-import {createWriteStream} from 'node:fs';
+import {createWriteStream,createReadStream} from 'node:fs';
 import {mkdir,open,stat,link,unlink} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {Transform} from 'node:stream';
@@ -33,6 +33,11 @@ function validWaveHeader(buffer,size){
     buffer.readUInt32LE(40)===size-44 &&
     buffer.readUInt32LE(24)>=8000 && buffer.readUInt32LE(24)<=192000;
 }
+async function sha256OnDisk(filePath){
+  const hash=createHash('sha256');
+  for await(const chunk of createReadStream(filePath))hash.update(chunk);
+  return hash.digest('hex');
+}
 export function createLocalRecordingMiddleware(appRoot,{origin='http://127.0.0.1:5173'}={}){
   const base=resolve(appRoot,'Recording');
   return async (req,res,next)=>{
@@ -54,8 +59,12 @@ export function createLocalRecordingMiddleware(appRoot,{origin='http://127.0.0.1
     }
     const [recordingId,filename]=parts,dir=join(base,recordingId),dest=join(dir,filename);
     if(req.method==='HEAD'){
-      try{const st=await stat(dest);
+      try{
+        const st=await stat(dest);
+        if(!st.isFile())throw Error('WAV cục bộ không phải tệp thường');
+        const sha256=await sha256OnDisk(dest);
         res.statusCode=200;res.setHeader('X-Recording-Bytes',String(st.size));
+        res.setHeader('X-Recording-Sha256',sha256);
       }catch(e){res.statusCode=e.code==='ENOENT'?404:500;}
       res.setHeader('Cache-Control','no-store');res.end();return;
     }

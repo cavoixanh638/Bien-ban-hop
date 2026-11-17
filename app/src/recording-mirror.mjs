@@ -1,4 +1,5 @@
 import {AudioRPC} from './audio.mjs';
+import {Sha256} from '../../poc/07-backup/zip-stream.mjs';
 
 const ENDPOINT='/__moc_hop_local_recording/';
 const HEADERS={'X-MocHop-Local':'recording-v1'};
@@ -15,13 +16,34 @@ export async function localRecordingStatus(){
     return await response.json();
   }catch{return {available:false,reason:'Không thể truy cập thư mục Recording cục bộ'};}
 }
-async function getExistingBytes(url){
+async function getExistingCopy(url){
   const r=await fetch(url,{method:'HEAD',headers:HEADERS,cache:'no-store'});
   if(r.status===404)return null;
   if(!r.ok)throw Error('Không đọc được trạng thái WAV cục bộ: '+r.status);
-  const n=Number(r.headers.get('X-Recording-Bytes'));
-  if(!Number.isSafeInteger(n)||n<44)throw Error('File WAV trong Recording không hợp lệ');
-  return n;
+  const bytes=Number(r.headers.get('X-Recording-Bytes'));
+  const sha256=r.headers.get('X-Recording-Sha256');
+  if(!Number.isSafeInteger(bytes)||bytes<44||!/^[0-9a-f]{64}$/.test(sha256??''))
+    throw Error('File WAV trong Recording thiếu kích thước/SHA256 hợp lệ');
+  return {bytes,sha256};
+}
+/** Existing same-size WAVs may be corrupted. Fail closed without overwriting
+ * them, hashing OPFS in bounded chunks instead of loading a whole WAV into RAM. */
+export async function verifyExistingLocalWav(url,file){
+  const existing=await getExistingCopy(url);
+  if(existing===null)return false;
+  if(existing.bytes!==file.size)throw Error('WAV cục bộ khác kích thước; không ghi đè dữ liệu cũ');
+  const sha=new Sha256(),reader=file.stream().getReader();
+  try{
+    for(;;){
+      const {value,done}=await reader.read();
+      if(done)break;
+      if(!(value instanceof Uint8Array))throw Error('Stream WAV không hợp lệ');
+      sha.update(value);
+    }
+  }finally{reader.releaseLock();}
+  if(sha.digestHex()!==existing.sha256)
+    throw Error('WAV cục bộ khác SHA256 dù cùng dung lượng; không ghi đè dữ liệu cũ');
+  return true;
 }
 async function getRecordingFile(root,path){
   const parts=path.split('/');
@@ -53,9 +75,7 @@ export async function mirrorRecordingToLocalFolder(recordingId,{onProgress=()=>{
     const file=await getRecordingFile(root,path);
     if(file.size<44)throw Error('File WAV rỗng: '+path);
     const url=ENDPOINT+encodeURIComponent(recordingId)+'/'+encodeURIComponent(parts[1]);
-    const size=await getExistingBytes(url);
-    if(size!==null){
-      if(size!==file.size)throw Error('WAV cục bộ khác kích thước: '+parts[1]+'; không ghi đè dữ liệu cũ');
+    if(await verifyExistingLocalWav(url,file)){
       existing++;bytes+=file.size;onProgress({copied,existing,total:segments.length,bytes});
       continue;
     }
@@ -64,7 +84,7 @@ export async function mirrorRecordingToLocalFolder(recordingId,{onProgress=()=>{
     const response=await fetch(url,{method:'PUT',headers:{...HEADERS,'Content-Type':'audio/wav'},body:file});
     if(!response.ok){
       const detail=await response.json().catch(()=>({error:'HTTP '+response.status}));
-      if(response.status===409 && await getExistingBytes(url)===file.size)existing++;
+      if(response.status===409 && await verifyExistingLocalWav(url,file))existing++;
       else throw Error('Lưu WAV '+parts[1]+' thất bại: '+(detail.error??response.status));
     }else copied++;
     bytes+=file.size;onProgress({copied,existing,total:segments.length,bytes});

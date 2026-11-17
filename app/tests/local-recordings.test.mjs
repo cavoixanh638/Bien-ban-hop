@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
-import {mkdtemp,readFile,rm,stat} from 'node:fs/promises';
+import {mkdtemp,readFile,rm,stat,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createLocalRecordingMiddleware} from '../local-recordings.mjs';
+import {verifyExistingLocalWav} from '../src/recording-mirror.mjs';
 import {wavHeader} from '../../poc/03-opfs/core.mjs';
 
 async function fixture(){
@@ -37,6 +39,9 @@ test('G10 local mirror: stream WAV into app/Recording/<id> without overwriting',
     const exists=await fetch(url,{method:'HEAD',headers:HEADERS});
     assert.equal(exists.status,200);
     assert.equal(Number(exists.headers.get('X-Recording-Bytes')),wav.length);
+    assert.equal(exists.headers.get('X-Recording-Sha256'),
+      createHash('sha256').update(wav).digest('hex'));
+    assert.equal(await verifyExistingLocalWav(url,new Blob([wav])),true);
     const duplicate=await fetch(url,{method:'PUT',headers:{...HEADERS,Origin:f.origin},body:wav});
     assert.equal(duplicate.status,409);
     assert.deepEqual(await readFile(join(f.root,'Recording',ID,'seg-0.wav')),wav);
@@ -53,5 +58,21 @@ test('G10 local mirror: reject foreign origin, arbitrary paths, and broken WAV',
     const broken=await fetch(root+ID+'/seg-0.wav',{method:'PUT',headers:{...HEADERS,Origin:f.origin},body:Buffer.alloc(100)});
     assert.equal(broken.status,422);
     await assert.rejects(()=>stat(join(f.root,'Recording',ID,'seg-0.wav')),e=>e.code==='ENOENT');
+  }finally{await f.cleanup();}
+});
+
+
+test('G10 local mirror: same-size corrupt WAV is rejected by SHA256, never silently reused',async()=>{
+  const f=await fixture();
+  try{
+    const url=f.origin+'/__moc_hop_local_recording/'+ID+'/seg-0.wav';
+    const created=await fetch(url,{method:'PUT',headers:{...HEADERS,Origin:f.origin},body:wav});
+    assert.equal(created.status,201);
+    const saved=join(f.root,'Recording',ID,'seg-0.wav');
+    const corrupt=Buffer.from(wav);corrupt[corrupt.length-1]^=0x7f;
+    await writeFile(saved,corrupt);
+    assert.equal((await stat(saved)).size,wav.length);
+    await assert.rejects(()=>verifyExistingLocalWav(url,new Blob([wav])),/SHA256/);
+    assert.deepEqual(await readFile(saved),corrupt);
   }finally{await f.cleanup();}
 });
