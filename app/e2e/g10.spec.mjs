@@ -228,7 +228,14 @@ test('G00 export: TXT and portable filename use Biên bản họp product name',
     };
   });
   await page.locator('#backup').click();
-  await expect.poll(()=>page.evaluate(()=>window.__pickerOptions?.suggestedName)).toMatch(/^bien-ban-hop-.+\.mochop$/);
+  await expect.poll(()=>page.evaluate(()=>window.__pickerOptions?.suggestedName)).toMatch(/^bien-ban-hop-.+\.bbhop$/);
+  await expect(page.locator('#backup')).toHaveText('Sao lưu biên bản và ghi âm');
+  await expect(page.locator('#import-backup')).toHaveText('Khôi phục biên bản từ tệp');
+  await expect(page.locator('#transfer-status')).not.toContainText('.mochop');
+  await expect(page.locator('#import-file')).toHaveAttribute('accept','.bbhop,.mochop,application/zip');
+  const picker=await page.evaluate(()=>window.__pickerOptions);
+  expect(picker.types[0].accept['application/zip']).toEqual(['.bbhop']);
+  expect(await page.locator('body').innerText()).not.toMatch(/\.mochop|Mốc Họp/);
   const pwaManifest=await page.evaluate(async()=>await (await fetch('./manifest.webmanifest')).json());
   expect(pwaManifest.name).toContain('Biên bản họp');
   expect(pwaManifest.short_name).toBe('Biên bản họp');

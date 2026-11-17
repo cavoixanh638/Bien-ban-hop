@@ -31,14 +31,14 @@ async function exportBuffer(page){
   const downloadPromise=page.waitForEvent('download');
   await page.evaluate(()=>{
     const url=URL.createObjectURL(window.__fileBlob),a=document.createElement('a');
-    a.href=url;a.download='hop-day-du.mochop';document.body.append(a);a.click();a.remove();
+    a.href=url;a.download='bien-ban-hop-thu.bbhop';document.body.append(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),15000);
   });
   const download=await downloadPromise;
   return await readFile(await download.path());
 }
-async function importBuffer(page,bytes){
-  await page.locator('#import-file').setInputFiles({name:'hop-day-du.mochop',
+async function importBuffer(page,bytes,filename='bien-ban-hop-thu.bbhop'){
+  await page.locator('#import-file').setInputFiles({name:filename,
     mimeType:'application/zip',buffer:bytes});
 }
 test('G10 portable: TWO recordings travel to a separate browser profile, keep notes and both click-to-play markers',async({page,browser})=>{
@@ -94,7 +94,8 @@ test('G10 portable: TWO recordings travel to a separate browser profile, keep no
     await expect(target.locator('.tiptap [data-time-recording-id]')).not.toHaveCount(0);
     // Import the exact same archive again: must create a new meeting, not overwrite.
     const count=await target.locator('#meeting-list .meeting').count();
-    await importBuffer(target,bytes);
+    // The old .mochop filename stays importable even after new exports use .bbhop.
+    await importBuffer(target,bytes,'ban-sao-luu-cu.mochop');
     await expect(target.locator('#transfer-status')).toContainText('Đã khôi phục 2 phiên',{timeout:60000});
     await expect(target.locator('#meeting-list .meeting')).toHaveCount(count+1);
     expect(errorsB).toEqual([]);

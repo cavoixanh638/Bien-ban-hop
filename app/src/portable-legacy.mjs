@@ -11,7 +11,7 @@ import {createBrowserImportRepo} from './portable-storage.mjs';
 
 const utf8=new TextDecoder('utf-8',{fatal:true});
 const isSafe=x=>Number.isSafeInteger(x)&&x>=0;
-const fail=s=>{throw Error('File .mochop đời cũ không thể khôi phục: '+s);};
+const fail=s=>{throw Error('Tệp sao lưu phiên bản cũ không thể khôi phục: '+s);};
 const wavPath=/^audio\/(rec-[A-Za-z0-9_-]{10,96})\/(seg-[0-9]+)\.wav$/;
 export async function importLegacyMochop(blob,store,{signal,onProgress}={}){
   const newId='rec-'+crypto.randomUUID(),newMeetingId=crypto.randomUUID(),newNoteId=crypto.randomUUID();

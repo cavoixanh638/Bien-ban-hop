@@ -388,8 +388,8 @@ async function backup(){
   let writable=null,editorWasEnabled=run.editor?.isEditable??false;
   try{
     // File picker MUST be opened in this direct click gesture.
-    const handle=await window.showSaveFilePicker({suggestedName:'bien-ban-hop-'+run.meetingId+'.mochop',
-      types:[{description:'Gói dữ liệu Biên bản họp',accept:{'application/zip':['.mochop']}}]});
+    const handle=await window.showSaveFilePicker({suggestedName:'bien-ban-hop-'+run.meetingId+'.bbhop',
+      types:[{description:'Sao lưu biên bản họp và ghi âm',accept:{'application/zip':['.bbhop']}}]});
     transferBusy=true;state.switching=true;
     run.editor?.setEditable(false);
     setRecordingUI();syncControls();
@@ -411,9 +411,9 @@ async function backup(){
     }});
     writable=null;
     $('transfer-status').textContent='Đã xuất '+source.meeting.recordingIds.length+
-      ' phiên ghi, '+result.archive.entries+' mục trong gói .mochop ('+
+      ' phiên ghi, '+result.archive.entries+' mục trong tệp sao lưu ('+
       (result.archive.size/1048576).toFixed(1)+' MB).';
-    show('Đã sao lưu toàn bộ cuộc họp và các phiên ghi âm vào file .mochop.');
+    show('Đã sao lưu biên bản và toàn bộ phiên ghi âm vào tệp.');
   }catch(error){
     if(writable)try{await writable.abort(error);}catch{}
     if(error?.name!=='AbortError'){

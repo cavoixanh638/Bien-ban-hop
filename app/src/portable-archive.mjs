@@ -102,7 +102,7 @@ export async function importMochopV2(blob,repo,{signal,onProgress,makeId,now}={}
   if(header?.format!=='mochop'||header.formatVersion!==2||
      header.schemaVersion!==1||!Array.isArray(header.files)||
      !Array.isArray(header.recordingIds)||!Array.isArray(header.meetingIds)||
-     header.meetingIds.length!==1)fail('phiên bản .mochop chưa được hỗ trợ');
+     header.meetingIds.length!==1)fail('định dạng tệp sao lưu chưa được hỗ trợ');
   const declarations=new Map(),known=new Set(metaPaths);
   for(const id of header.recordingIds){
     if(typeof id!=='string'||!/^[A-Za-z0-9_-]+$/.test(id))fail('mã bản ghi ZIP');
@@ -192,6 +192,6 @@ export async function probeMochopVersion(blob){
   const digest=await hashEntry(reader,m);
   const manifest=await loadJson(reader,m,{path:m.name,size:m.size,sha256:digest});
   if(manifest?.format!=='mochop'||![1,2].includes(manifest.formatVersion))
-    fail('phiên bản .mochop không được hỗ trợ');
+    fail('định dạng tệp sao lưu không được hỗ trợ');
   return manifest.formatVersion;
 }
