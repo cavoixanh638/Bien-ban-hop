@@ -5,6 +5,7 @@ import {CaptureClockMapper} from '../../poc/02-capture/src/clock-mapper.mjs';
 import {MeetingStore,SaveQueue} from '../src/meeting-store.mjs';
 import {verifiedClickedAnchor} from '../src/anchor-bridge.mjs';
 import {resolvePlaybackStart,selectCommittedPlayback} from '../src/playback-start.mjs';
+import {AudioPlayer} from '../src/audio.mjs';
 import {buildMeetingTimeline,locateMeetingPosition,meetingPositionFor,firstPlayablePosition} from '../src/meeting-timeline.mjs';
 import {collectNoteCues,cueAtPlayback} from '../src/note-follow.mjs';
 import {contextFor,resolvePending,intervalFor} from '../src/clock-bridge.mjs';
@@ -261,4 +262,67 @@ test('G10 note-follow: merge split DOM words of same anchor without multiplying 
   const id='rec-note-aaaaaaaaaaa',mark=followedMark('one',id,1000);
   const cues=collectNoteCues(trackedDoc([{mark,text:'Nội'}, {mark,text:' dung'}]),new Set([id]));
   assert.equal(cues.get(id).length,1);
+});
+
+
+test('G10 playback: stop during asynchronous reader setup never starts a late player',async()=>{
+  const events=[],player=new AudioPlayer(type=>events.push(type));
+  let entered,release;
+  const started=new Promise(resolve=>{entered=resolve;});
+  const gate=new Promise(resolve=>{release=resolve;});
+  player.ensure=async()=>{entered();await gate;};
+  const request=player.start('rec-cancel-aaaaaaaa',2000);
+  await started;
+  player.stop();
+  release();
+  assert.equal((await request).status,'cancelled');
+  assert.equal(player.playing,false);
+  assert.equal(player.timer,undefined);
+  assert.deepEqual(events,[]);
+  await player.closeReader();
+});
+
+test('G10 playback: newest rapid seek wins even when old worker setup fails late',async()=>{
+  const events=[],calls=[],player=new AudioPlayer(type=>events.push(type));
+  let entered,release;
+  const started=new Promise(resolve=>{entered=resolve;});
+  const gate=new Promise(resolve=>{release=resolve;});
+  player.ensure=async recordingId=>{
+    calls.push(recordingId);
+    if(recordingId==='rec-old-aaaaaaaa'){
+      entered();await gate;
+      throw Error('Old reader failed after it was superseded');
+    }
+    throw Error('Current reader failure');
+  };
+  const old=player.start('rec-old-aaaaaaaa',1000);
+  await started;
+  const latest=player.start('rec-new-bbbbbbbb',2000);
+  release();
+  assert.equal((await old).status,'cancelled');
+  await assert.rejects(latest,/Current reader failure/);
+  assert.deepEqual(calls,['rec-old-aaaaaaaa','rec-new-bbbbbbbb']);
+  assert.deepEqual(events,['error']);
+  assert.equal(player.playing,false);
+  await player.closeReader();
+});
+
+test('G10 playback: switching meetings waits for a pending startup before closing its reader',async()=>{
+  const events=[],player=new AudioPlayer();
+  let entered,release;
+  const started=new Promise(resolve=>{entered=resolve;});
+  const gate=new Promise(resolve=>{release=resolve;});
+  player.ensure=async()=>{
+    entered();await gate;
+    player.reader={dispose:async()=>events.push('reader disposed')};
+  };
+  const request=player.start('rec-close-aaaaaaaa',500);
+  await started;
+  const closing=player.closeReader();
+  release();
+  assert.equal((await request).status,'cancelled');
+  await closing;
+  assert.deepEqual(events,['reader disposed']);
+  assert.equal(player.reader,null);
+  assert.equal(player.recordingId,null);
 });

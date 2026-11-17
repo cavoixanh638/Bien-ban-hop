@@ -193,50 +193,84 @@ export class AudioPlayer {
     this.onEvent=onEvent;this.playing=false;this.sources=new Set();
     this.rate=1;this.fillingRun=null;this.scheduled=new Map();
     this.schedulingComplete=false;this.serial=0;this.lastRenderedSample=0;
+    // Serialize worker setup and playback starts. A cancelled/older seek
+    // must never resume after Stop, switching meetings, or a newer seek.
+    this.startChain=Promise.resolve();
+  }
+  async releaseReader(){
+    const reader=this.reader;
+    this.reader=null;this.recordingId=null;this.manifest=null;
+    await reader?.dispose();
   }
   async ensure(recordingId){
     if(this.recordingId===recordingId&&this.reader)return;
-    await this.closeReader();
-    this.reader=new AudioRPC();
+    // closeReader() cancels pending playback and waits for startChain; using
+    // it from within startChain would deadlock the very startup it belongs to.
+    await this.releaseReader();
+    const reader=new AudioRPC();
+    this.reader=reader;
     try{
-      await this.reader.call('init',{recordingId,reopen:true});
-      this.manifest=await this.reader.call('manifest');
+      await reader.call('init',{recordingId,reopen:true});
+      const manifest=await reader.call('manifest');
+      if(this.reader!==reader)throw Error('Bộ đọc âm thanh đã thay đổi');
+      this.manifest=manifest;
       this.recordingId=recordingId;
-    }catch(e){await this.closeReader();throw e;}
+    }catch(e){
+      if(this.reader===reader)await this.releaseReader();
+      else await reader.dispose();
+      throw e;
+    }
   }
   async start(recordingId,offsetMs,{preRollMs=0,rate=1}={}){
+    // Stop synchronously, before any await, so the previous request cannot
+    // schedule audio after a rapid seek or an explicit Stop.
     this.stop();
-    await this.ensure(recordingId);
-    if(!Number.isFinite(rate)||rate<0.5||rate>2)throw Error('Tốc độ phát không hợp lệ');
-    this.rate=rate;
-    const check=selectCommittedPlayback(this.manifest,recordingId,offsetMs,preRollMs);
-    if(check.status!=='valid'){this.onEvent('unavailable',check);return check;}
-    if(!this.context)this.context=new AudioContext();
-    await this.context.resume();
-    this.playing=true;
-    this.schedulingComplete=false;
-    this.nextSample=check.startSample;
-    this.endSampleExclusive=check.endSampleExclusive;
-    this.scheduledUntil=this.context.currentTime+0.06;
-    this.startOffsetMs=check.startMs;this.lastRenderedSample=check.startSample;this.underruns=0;
-    this.currentRun=++this.serial;
     const run=this.currentRun;
-    try{
-      // Must schedule a real source before notifying the UI "Đang phát".
-      await this.fill();
-      if(this.playing && run===this.currentRun){
-        this.timer=setInterval(()=>{
-          this.fill().catch(e=>this.stopWithError(e));
-          const offsetMs=this.positionMs();
-          if(Number.isFinite(offsetMs))
-            this.onEvent('position',{recordingId:this.recordingId,offsetMs});
-        },170);
-        this.onEvent('playing',{recordingId,offsetMs:check.startMs,rate,
-          preRollLimited:check.preRollLimited,actualPreRollMs:check.actualPreRollMs});
-        return {status:'valid'};
+    const cancelled=()=>({status:'cancelled',reason:'Lệnh phát cũ đã bị hủy'});
+    const operation=this.startChain.then(async()=>{
+      if(run!==this.currentRun)return cancelled();
+      try{
+        await this.ensure(recordingId);
+        if(run!==this.currentRun)return cancelled();
+        if(!Number.isFinite(rate)||rate<0.5||rate>2)throw Error('Tốc độ phát không hợp lệ');
+        this.rate=rate;
+        const check=selectCommittedPlayback(this.manifest,recordingId,offsetMs,preRollMs);
+        if(check.status!=='valid'){this.onEvent('unavailable',check);return check;}
+        if(!this.context)this.context=new AudioContext();
+        await this.context.resume();
+        if(run!==this.currentRun)return cancelled();
+        this.playing=true;
+        this.schedulingComplete=false;
+        this.nextSample=check.startSample;
+        this.endSampleExclusive=check.endSampleExclusive;
+        this.scheduledUntil=this.context.currentTime+0.06;
+        this.startOffsetMs=check.startMs;this.lastRenderedSample=check.startSample;this.underruns=0;
+        // Preserve the request epoch across all asynchronous seek/fill steps.
+        this.currentRun=run;
+        await this.fill();
+        if(this.playing && run===this.currentRun){
+          this.timer=setInterval(()=>{
+            // An old async worker error may not stop a newer recording.
+            this.fill().catch(e=>{if(run===this.currentRun)this.stopWithError(e);});
+            const position=this.positionMs();
+            if(Number.isFinite(position)&&run===this.currentRun)
+              this.onEvent('position',{recordingId:this.recordingId,offsetMs:position});
+          },170);
+          this.onEvent('playing',{recordingId,offsetMs:check.startMs,rate,
+            preRollLimited:check.preRollLimited,actualPreRollMs:check.actualPreRollMs});
+          return {status:'valid'};
+        }
+        return run!==this.currentRun?cancelled():
+          {status:'missing',reason:'Không có dữ liệu âm thanh phát được'};
+      }catch(e){
+        if(run!==this.currentRun)return cancelled();
+        this.stopWithError(e);
+        throw e;
       }
-      return {status:'missing',reason:'Không có dữ liệu âm thanh phát được'};
-    }catch(e){this.stopWithError(e);throw e;}
+    });
+    // A rejected attempt must not poison the next request's queue.
+    this.startChain=operation.catch(()=>{});
+    return operation;
   }
   positionMs(){
     if(!this.manifest?.sampleRate)return null;
@@ -327,8 +361,10 @@ export class AudioPlayer {
   }
   async closeReader(){
     this.stop();
-    await this.reader?.dispose();
-    this.reader=null;this.recordingId=null;this.manifest=null;
+    // The reader must not be closed while an older startup is still
+    // reopening it after a user switched meeting/exported/started capture.
+    await this.startChain;
+    await this.releaseReader();
   }
   async dispose(){await this.closeReader();await this.context?.close();this.context=null;}
 }
