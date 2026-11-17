@@ -1,8 +1,8 @@
 # Biên bản họp — Ghi chú liên kết âm thanh
 
-**Biên bản họp** là ứng dụng dự kiến cho việc **gõ ghi chú như Word và tự gắn mốc âm thanh**, để nghe lại đúng đoạn từ chính chữ người dùng đã ghi. Không bắt tạo dấu mốc, chọn nhãn hoặc bấm Lưu khi đang ghi chú.
+**Biên bản họp** là ứng dụng đang tích hợp thử nghiệm, dành cho việc **gõ ghi chú như Word và tự gắn mốc âm thanh**, để nghe lại đúng đoạn từ chính chữ người dùng đã ghi. Không bắt tạo dấu mốc, chọn nhãn hoặc bấm Lưu khi đang ghi chú.
 
-> **Trạng thái thực tế:** Hiện repo chủ yếu chứa **tài liệu thiết kế Giai đoạn 1**. Chưa có WebApp hoặc bộ kiểm thử được nghiệm thu. Xem [STATUS](docs/STATUS.md) trước khi nhận công việc.
+> **Trạng thái thực tế:** Nhánh `main` giữ tài liệu đường cơ sở; [nhánh tích hợp G10](https://github.com/cavoixanh638/Bien-ban-hop/tree/integration/20261115-g10-v1.2) có WebApp **INTEGRATION_ALPHA** tại `app/` cùng các PoC tại `poc/`. Đã có CI mã/browser nhưng **chưa nghiệm thu phần cứng hoặc phát hành**. Xem [STATUS](docs/STATUS.md) và [app/README.md](app/README.md).
 
 ## Bộ tài liệu gọn — 9 tệp
 
@@ -21,7 +21,7 @@
 ## Khởi đầu công việc
 
 1. Đọc **PLAN_V1_2.md** và **STATUS.md**.
-2. Bắt đầu từ Gói 1.1: PoC editor `timeSpan`, kiểm thử Unikey/EVKey trên Windows thật.
+2. Kiểm tra HEAD/checkpoint nhánh tích hợp và CI đúng SHA; tiếp tục các cổng còn NOT_RUN, nhất là Unikey/EVKey trên Windows thật.
 3. Làm từng gói, chỉ ghi PASS khi có mã nguồn và bằng chứng kiểm thử.
 4. Cập nhật **STATUS.md** với commit, test, lỗi và bước tiếp theo.
 5. Không coi hướng dẫn dự kiến hoặc PoC là ứng dụng đã phát hành.
