@@ -1,4 +1,4 @@
-# PoC A — Mốc Họp 1.1 (Editor + timeSpan + IME)
+# PoC A — Biên bản họp 1.1 (Editor + timeSpan + IME)
 
 **Phạm vi riêng của 01-editor.** Bản này thử Tiptap 3.33.1/ProseMirror, không thu âm, không cung cấp player và chưa tự lưu bền vững. Không nhập dữ liệu cuộc họp thật. Toàn bộ dữ liệu và audio context trong demo là **synthetic fixture**.
 

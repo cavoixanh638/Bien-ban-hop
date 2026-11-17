@@ -1,6 +1,6 @@
-# Mốc Họp — Biên bản họp
+# Biên bản họp — Ghi chú liên kết âm thanh
 
-**Mốc Họp** là ứng dụng dự kiến cho việc **gõ ghi chú như Word và tự gắn mốc âm thanh**, để nghe lại đúng đoạn từ chính chữ người dùng đã ghi. Không bắt tạo dấu mốc, chọn nhãn hoặc bấm Lưu khi đang ghi chú.
+**Biên bản họp** là ứng dụng dự kiến cho việc **gõ ghi chú như Word và tự gắn mốc âm thanh**, để nghe lại đúng đoạn từ chính chữ người dùng đã ghi. Không bắt tạo dấu mốc, chọn nhãn hoặc bấm Lưu khi đang ghi chú.
 
 > **Trạng thái thực tế:** Hiện repo chủ yếu chứa **tài liệu thiết kế Giai đoạn 1**. Chưa có WebApp hoặc bộ kiểm thử được nghiệm thu. Xem [STATUS](docs/STATUS.md) trước khi nhận công việc.
 

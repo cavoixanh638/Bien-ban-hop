@@ -71,3 +71,54 @@
 #note-follow-toggle[aria-pressed="false"]{color:#71848b;background:#f7faf9}
 
 @media(max-width:720px){.note-follow-strip{flex-wrap:wrap}#note-follow-status{white-space:normal}}
+
+
+/* G00 UX: bright sidebar, on-demand rename, and replay controls at the timeline. */
+.sidebar{background:linear-gradient(165deg,#e1f8f1 0%,#e4f7fa 58%,#d4edf7 100%);
+  color:#173e49;border-right:1px solid #b9dcd9}
+.brand{border-bottom-color:#bededb}
+.brand-logo{background:linear-gradient(145deg,#0e958a,#28adba);color:#fff;box-shadow:0 5px 13px #0d787b30}
+.brand strong{color:#16414a}.brand small{color:#4c7b80}
+.side-heading{color:#336872}
+.side-heading button{background:#fff;color:#126b70;border:1px solid #9ed1cb;box-shadow:0 2px 6px #40878a12}
+.side-heading button:hover:not(:disabled){background:#d4f2e9}
+.meeting-row{position:relative;min-width:0}
+.meeting-row .meeting{background:transparent;color:#3a5f69;padding-right:40px}
+.meeting-row .meeting strong{font-size:13px}
+.meeting-row .meeting small{color:#5b8990}
+.meeting-row .meeting.active{background:#fff;color:#12535c;border-color:#9fd5ce;box-shadow:0 3px 12px #2d8b8b12}
+.meeting-row .meeting.active small{color:#4a8b8a}
+.meeting-row .meeting:hover:not(.active){background:#ffffffa8;color:#135663}
+.meeting-row .meeting.active:hover{background:#f8fffd}
+.meeting-edit{position:absolute;right:8px;top:13px;z-index:1;width:27px;height:27px;padding:0;
+  background:#e2f5f2;color:#216f6a;border:1px solid #b3dcd5;border-radius:7px;font-size:15px}
+.meeting-edit:hover:not(:disabled){background:#c8ebe3}
+.meeting-title-editor{margin:9px 2px;padding:12px;background:#fff;border:1px solid #abdbd2;
+  border-radius:11px;box-shadow:0 5px 15px #2e8c8914}
+.meeting-title-editor[hidden]{display:none}
+.meeting-title-editor label{display:block;color:#2e6971;font-size:11px;font-weight:700;margin-bottom:6px}
+.meeting-title-editor input{width:100%;min-width:0;padding:9px 10px;border:1px solid #abd3cd;
+  border-radius:8px;background:#fff;color:#173f49;font-size:13px}
+.meeting-title-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:8px}
+.meeting-title-actions button{font-size:11px;padding:6px 10px}
+#meeting-title-save{background:#177b74;color:#fff;border-color:#177b74}
+.sidebar-foot{border-top-color:#bcdcd9;color:#467a80}
+.dot{background:#17a787}.update-app{background:#fff;color:#236a6d;border-color:#abd3d1}
+.update-app:hover:not(:disabled){background:#dcf5ee}
+.toolbar-hint{margin-left:12px;flex:1 1 210px}
+.toolbar .top-status{margin-left:auto;flex:0 0 auto;align-items:center}
+.timeline-playback-options{display:flex;flex-wrap:wrap;align-items:center;gap:7px 13px;
+  margin-top:8px;padding-top:8px;border-top:1px solid #e3eeec}
+.timeline-playback-options label{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
+  font-size:11px;font-weight:600;color:#4b7277}
+.timeline-playback-options select{padding:5px 7px;border:1px solid #bfd8d4;border-radius:7px;
+  font-size:11px;background:#fff;color:#23565e}
+#play-stop{padding:6px 10px;font-size:11px;border-color:#bedbd5;background:#f1f9f6;color:#1c665b}
+#play-stop:hover:not(:disabled){background:#def2ea}
+.timeline-playback-options .anchor-status{flex:1 1 260px;min-height:0;margin:0;padding:0;
+  border:0;border-radius:0;background:transparent;font-size:11px;line-height:1.5;color:#57797e}
+@media(max-width:720px){
+  .toolbar .top-status{order:10;flex:1 0 100%;justify-content:flex-start;margin:5px 0 0}
+  .timeline-playback-options{gap:8px}
+  .timeline-playback-options .anchor-status{flex:1 0 100%}
+}

@@ -1,4 +1,4 @@
-# THIẾT KẾ THU ÂM VÀ PHÁT LẠI — MỐC HỌP V1.2
+# THIẾT KẾ THU ÂM VÀ PHÁT LẠI — BIÊN BẢN HỌP V1.2
 
 **Trạng thái:** Đặc tả thử nghiệm, **chưa lựa chọn engine production**, chưa có kết quả benchmark. Tài liệu này hợp nhất kế hoạch lựa chọn bộ ghi âm và thiết kế Virtual Multi-Segment Player; thông tin PASS/FAIL thực tế thuộc [STATUS.md](STATUS.md).
 

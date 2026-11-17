@@ -122,15 +122,36 @@ function setRecordingUI(){
   timelineUI?.setBusy(!!active||finalizing||state.switching||transferBusy);
   noteFollower?.captureChanged();
 }
+function hideTitleEditor(){
+  $('meeting-title-editor').hidden=true;
+  if(state.run)$('meeting-title').value=state.run.meeting.title;
+}
+function openTitleEditor(){
+  if(!state.run?.releaseLease||state.switching)return;
+  $('meeting-title').value=state.run.meeting.title;
+  $('meeting-title-editor').hidden=false;
+  $('meeting-title').focus();
+  $('meeting-title').select();
+}
 function renderMeetings(){
   const run=state.run,root=$('meeting-list');root.replaceChildren();
   for(const meeting of state.meetings??[]){
+    const row=document.createElement('div');row.className='meeting-row';row.setAttribute('role','listitem');
     const button=document.createElement('button');
+    button.type='button';
     button.className='meeting'+(meeting.meetingId===run?.meeting.meetingId?' active':'');
     const heading=document.createElement('strong');heading.textContent=meeting.title;
     const small=document.createElement('small');small.textContent=new Date(meeting.updatedAt??meeting.createdAt).toLocaleDateString('vi-VN');
     button.append(heading,small);button.onclick=()=>openMeeting(meeting.meetingId);
-    root.append(button);
+    row.append(button);
+    if(meeting.meetingId===run?.meeting.meetingId){
+      const edit=document.createElement('button');
+      edit.type='button';edit.className='meeting-edit';edit.textContent='✎';
+      edit.title='Đổi tên cuộc họp';edit.setAttribute('aria-label','Đổi tên: '+meeting.title);
+      edit.disabled=!run.releaseLease;edit.onclick=openTitleEditor;
+      row.append(edit);
+    }
+    root.append(row);
   }
 }
 async function refreshMeetings(){state.meetings=await state.store.list();renderMeetings();}
@@ -181,6 +202,7 @@ async function openMeeting(meetingId){
     const run={...loaded,releaseLease,meetingId,revision:loaded.note.revision,capture:null,editor:null,queue:null};
     state.run=run;
     $('meeting-title').value=run.meeting.title;
+    $('meeting-title-editor').hidden=true;
     const tracker=new InputTracker({meetingId,recordingIds:run.meeting.recordingIds??[],
       getAudioContext:mono=>run.capture?.getEditorContext(mono)??{source:'unlinked',coverage:'unlinked'}});
     run.tracker=tracker;
@@ -223,16 +245,22 @@ async function createMeeting(){
     const meeting=await state.store.create(title);
     await refreshMeetings();
     await openMeeting(meeting.meetingId);
-    $('meeting-title').focus();$('meeting-title').select();
+    if(state.run?.meetingId===meeting.meetingId)openTitleEditor();
   }catch(e){show('Không tạo được cuộc họp: '+e.message,'error');}
 }
 async function saveTitle(){
   const run=state.run;if(!run?.releaseLease)return;
   const title=$('meeting-title').value.trim();
-  if(!title){$('meeting-title').value=run.meeting.title;return;}
-  if(title===run.meeting.title)return;
-  try{run.meeting=await state.store.notes.renameMeeting(run.meetingId,title);await refreshMeetings();}
-  catch(e){show('Lỗi đổi tên: '+e.message,'error');$('meeting-title').value=run.meeting.title;}
+  if(!title){show('Tên cuộc họp không được để trống.','error');$('meeting-title').focus();return;}
+  if(title===run.meeting.title){hideTitleEditor();return;}
+  try{
+    const renamed=await state.store.notes.renameMeeting(run.meetingId,title);
+    if(state.run!==run)return;
+    run.meeting=renamed;
+    await refreshMeetings();
+    hideTitleEditor();
+    show('Đã đổi tên cuộc họp.');
+  }catch(e){show('Lỗi đổi tên: '+e.message,'error');}
 }
 function recEvent(run,type,detail){
   if(state.run!==run)return;
@@ -341,7 +369,7 @@ async function exportText(format){
     const data={title:run.meeting.title,document:run.editor.getJSON(),includeTimestamps:$('include-time').checked};
     const fns={docx:exportDOCX,txt:exportTXT,md:exportMarkdown,csv:exportCSV};
     const result=fns[format](data);
-    download('moc-hop-'+run.meetingId+'.'+format,result,mime[format]);
+    download('bien-ban-hop-'+run.meetingId+'.'+format,result,mime[format]);
     show('Đã tạo tệp '+format.toUpperCase()+'. Không thay thế bản sao lưu có audio.');
   }catch(e){show('Lỗi xuất tệp: '+e.message,'error');}
 }
@@ -360,8 +388,8 @@ async function backup(){
   let writable=null,editorWasEnabled=run.editor?.isEditable??false;
   try{
     // File picker MUST be opened in this direct click gesture.
-    const handle=await window.showSaveFilePicker({suggestedName:'moc-hop-'+run.meetingId+'.mochop',
-      types:[{description:'Gói dữ liệu Mốc Họp',accept:{'application/zip':['.mochop']}}]});
+    const handle=await window.showSaveFilePicker({suggestedName:'bien-ban-hop-'+run.meetingId+'.mochop',
+      types:[{description:'Gói dữ liệu Biên bản họp',accept:{'application/zip':['.mochop']}}]});
     transferBusy=true;state.switching=true;
     run.editor?.setEditable(false);
     setRecordingUI();syncControls();
@@ -454,8 +482,12 @@ async function importSelectedFile(file){
 }
 function wire(){
   $('new-meeting').onclick=createMeeting;
-  $('meeting-title').addEventListener('blur',saveTitle);
-  $('meeting-title').addEventListener('keydown',e=>{if(e.key==='Enter'){$('meeting-title').blur();e.preventDefault();}});
+  $('meeting-title-save').onclick=()=>saveTitle();
+  $('meeting-title-cancel').onclick=hideTitleEditor;
+  $('meeting-title').addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();saveTitle();}
+    else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();hideTitleEditor();}
+  });
   $('mic-test').onclick=toggleMicProbe;
   $('retry-local-recording').onclick=()=>{
     const r=state.run?.meeting?.recordingIds?.at(-1);

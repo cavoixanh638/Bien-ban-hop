@@ -1,4 +1,4 @@
-# KIẾN TRÚC KỸ THUẬT — MỐC HỌP V1.2
+# KIẾN TRÚC KỸ THUẬT — BIÊN BẢN HỌP V1.2
 
 **Trạng thái:** kiến trúc mục tiêu; chưa có module được nghiệm thu. Nguồn phạm vi: [PLAN_V1_2.md](PLAN_V1_2.md).
 > **Căn cứ nghiên cứu và so sánh công nghệ:** [TECHNICAL_OPTIONS.md](TECHNICAL_OPTIONS.md). Tài liệu nghiên cứu là đề xuất; file này quy định kiến trúc mục tiêu. **Nguồn chính thức về thiết kế module và mô hình dữ liệu.** Tài liệu này hợp nhất `ARCHITECTURE.md` và `DATA_MODEL.md` trước khi tinh gọn. Đây là **kiến trúc mục tiêu**, không phải mô tả một phần mềm đã triển khai. Phạm vi xem [PLAN_V1_2.md](PLAN_V1_2.md), quy tắc mốc xem [TIMELINE_RULES.md](TIMELINE_RULES.md), âm thanh xem [AUDIO_DESIGN.md](AUDIO_DESIGN.md).

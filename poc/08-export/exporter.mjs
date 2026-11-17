@@ -1,4 +1,4 @@
-/** Mốc Họp V1.2 PoC: standalone DOCX, TXT, Markdown, CSV exporters. */
+/** Biên bản họp V1.2 PoC: standalone DOCX, TXT, Markdown, CSV exporters. */
 const utf8=new TextEncoder();
 const esc=s=>String(s??'').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffe\uffff]/g,'\uFFFD').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const mdesc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/([\\`*_{}\[\]()#+.!|~-])/g,'\\$1');

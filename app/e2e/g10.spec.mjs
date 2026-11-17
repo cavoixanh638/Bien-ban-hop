@@ -186,3 +186,50 @@ test('G10 PWA production shell reloads offline without caching meeting notes',as
   await context.setOffline(false);
   expect(errors).toEqual([]);
 });
+
+
+test('G00 UX: bright sidebar, compact document, replay options in timeline, rename in sidebar',async({page})=>{
+  await page.goto('/');
+  await expect(page).toHaveTitle(/Biên bản họp/);
+  await expect(page.locator('.topbar')).toHaveCount(0);
+  await expect(page.locator('.toolbar #save-status')).toBeVisible();
+  await expect(page.locator('.toolbar #writer-status')).toContainText('Có quyền chỉnh sửa');
+  await expect(page.locator('.timeline-dock #play-stop')).toBeVisible();
+  await expect(page.locator('.timeline-dock #play-rate')).toHaveValue('1');
+  await expect(page.locator('.timeline-dock #preroll')).toHaveValue('5000');
+  await expect(page.locator('.timeline-dock #anchor-status')).toBeVisible();
+  await expect(page.locator('.panel #play-rate')).toHaveCount(0);
+  await expect(page.locator('.sidebar .brand strong')).toHaveText('Biên bản họp');
+  await expect(page.locator('.sidebar .brand-logo')).toHaveText('B');
+  await expect.poll(()=>page.locator('.sidebar').evaluate(el=>getComputedStyle(el).backgroundImage)).toContain('gradient');
+  await expect(page.locator('#meeting-title-editor')).toBeHidden();
+  await page.locator('#meeting-list .meeting-edit').click();
+  await expect(page.locator('#meeting-title-editor')).toBeVisible();
+  await page.locator('#meeting-title').fill('Họp rà soát tiến độ tháng 11');
+  await page.locator('#meeting-title').press('Enter');
+  await expect(page.locator('#meeting-title-editor')).toBeHidden();
+  await expect(page.locator('#meeting-list .meeting.active strong')).toHaveText('Họp rà soát tiến độ tháng 11');
+  await page.reload();
+  await expect(page.locator('#meeting-list .meeting.active strong')).toHaveText('Họp rà soát tiến độ tháng 11');
+});
+
+test('G00 export: TXT and portable filename use Biên bản họp product name',async({page})=>{
+  await page.goto('/');
+  await expect(page.locator('.tiptap')).toBeVisible();
+  const downloadPromise=page.waitForEvent('download');
+  await page.locator('[data-export="txt"]').click();
+  const download=await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^bien-ban-hop-.+\.txt$/);
+  await page.evaluate(()=>{
+    window.__pickerOptions=null;
+    window.showSaveFilePicker=async options=>{
+      window.__pickerOptions=options;
+      throw new DOMException('User cancelled','AbortError');
+    };
+  });
+  await page.locator('#backup').click();
+  await expect.poll(()=>page.evaluate(()=>window.__pickerOptions?.suggestedName)).toMatch(/^bien-ban-hop-.+\.mochop$/);
+  const pwaManifest=await page.evaluate(async()=>await (await fetch('./manifest.webmanifest')).json());
+  expect(pwaManifest.name).toContain('Biên bản họp');
+  expect(pwaManifest.short_name).toBe('Biên bản họp');
+});

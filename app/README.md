@@ -1,4 +1,6 @@
-# G10 — Ứng dụng Mốc Họp V1.2 tích hợp thử nghiệm
+# G10 — Ứng dụng Biên bản họp V1.2 tích hợp thử nghiệm
+
+**Tên hiển thị và tên file xuất:** Biên bản họp / `bien-ban-hop-<meetingId>`. Đuôi sao lưu `.mochop`, format ID `mochop` và kho IndexedDB/OPFS nội bộ được giữ nguyên để tương thích dữ liệu đã tạo; đây không phải tên hiển thị sản phẩm.
 
 **Trạng thái:** `INTEGRATION_ALPHA`, **không** phải bản phát hành và **không** có bằng chứng nghiệm thu TC01–TC38. Được dựng trên nhánh `integration/20261115-g10-v1.2`, giữ nguyên `main` và chín nhánh PoC. Không sử dụng dữ liệu họp quan trọng cho đến khi qua cổng Windows và kiểm thử crash/quota/restore.
 

@@ -1,4 +1,4 @@
-# TRẠNG THÁI VÀ ĐIỀU PHỐI — MỐC HỌP
+# TRẠNG THÁI VÀ ĐIỀU PHỐI — BIÊN BẢN HỌP
 
 **Ngày khởi tạo:** 15/11/2026  
 **Nguồn:** [PLAN_V1_2.md](PLAN_V1_2.md) · [Bộ nghiệm thu](ACCEPTANCE_TESTS.md)  

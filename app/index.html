@@ -3,26 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#152b35">
+  <meta name="theme-color" content="#e1f7f4">
   <link rel="manifest" href="./manifest.webmanifest">
-  <meta name="description" content="Mốc Họp — ghi chú trung tâm, ghi âm và nghe lại theo từng đoạn chữ.">
-  <title>Mốc Họp • Bản tích hợp thử nghiệm G10</title>
+  <meta name="description" content="Biên bản họp — ghi chú trung tâm, ghi âm và nghe lại theo từng đoạn chữ.">
+  <title>Biên bản họp • Bản tích hợp thử nghiệm G10</title>
 </head>
 <body>
   <div id="app">
     <aside class="sidebar">
-      <div class="brand"><div class="brand-logo">M</div><div><strong>Mốc Họp</strong><small>Bản tích hợp thử nghiệm</small></div></div>
+      <div class="brand"><div class="brand-logo">B</div><div><strong>Biên bản họp</strong><small>Bản tích hợp thử nghiệm</small></div></div>
       <div class="side-section">
         <div class="side-heading"><span>Cuộc họp của tôi</span><button id="new-meeting" title="Tạo cuộc họp">＋</button></div>
         <div id="meeting-list" class="meeting-list" role="list"></div>
+        <div id="meeting-title-editor" class="meeting-title-editor" hidden>
+          <label for="meeting-title">Đổi tên cuộc họp</label>
+          <input id="meeting-title" aria-label="Tên cuộc họp" placeholder="Tên cuộc họp" spellcheck="false" autocorrect="off" autocapitalize="off" data-gramm="false">
+          <div class="meeting-title-actions">
+            <button id="meeting-title-save" type="button">Lưu tên</button>
+            <button id="meeting-title-cancel" type="button">Hủy</button>
+          </div>
+        </div>
       </div>
       <div class="sidebar-foot"><span class="dot"></span> Lưu tại trình duyệt của thiết bị này<br><button id="update-app" class="update-app" disabled>Cập nhật phiên bản</button></div>
     </aside>
     <main class="workspace">
-      <header class="topbar">
-        <div><div class="eyebrow">BIÊN BẢN VÀ GHI CHÚ</div><input id="meeting-title" aria-label="Tên cuộc họp" placeholder="Tên cuộc họp" spellcheck="false" autocorrect="off" autocapitalize="off" data-gramm="false"></div>
-        <div class="top-status"><span id="writer-status" class="chip">Chờ tải</span><span id="save-status" class="chip">Chưa tải</span></div>
-      </header>
       <div class="toolbar" aria-label="Công cụ soạn thảo">
         <button data-action="bold" title="In đậm (Ctrl+B)"><b>B</b></button>
         <button data-action="italic" title="In nghiêng (Ctrl+I)"><i>I</i></button>
@@ -32,6 +36,7 @@
         <button data-action="undo" title="Hoàn tác (Ctrl+Z)">↶</button>
         <button data-action="redo" title="Làm lại (Ctrl+Y)">↷</button>
         <span class="toolbar-hint">Gõ tự nhiên như một tài liệu. Nhấp chữ có mốc để nghe lại sau khi dừng thu.</span>
+        <div class="top-status"><span id="writer-status" class="chip">Chờ tải</span><span id="save-status" class="chip">Chưa tải</span></div>
       </div>
       <section class="paper-wrap"><div class="paper">
         <div id="editor" aria-label="Nội dung ghi chú cuộc họp"></div>
@@ -46,6 +51,16 @@
             <input id="timeline-seek" type="range" min="0" max="1" value="0" step="1" disabled aria-label="Tua trong toàn bộ thời lượng ghi âm">
           </div>
           <span id="timeline-total" class="timeline-time" aria-label="Tổng thời gian phiên ghi âm">00:00:00</span>
+        </div>
+        <div class="timeline-playback-options" aria-label="Tùy chọn nghe lại">
+          <button id="play-stop" type="button" title="Dừng phát lại">■ Dừng</button>
+          <label for="play-rate">Tốc độ
+            <select id="play-rate"><option value="1">1,0×</option><option value="0.9">0,9×</option><option value="0.75">0,75×</option></select>
+          </label>
+          <label for="preroll">Nghe lùi trước mốc
+            <select id="preroll"><option value="0">Không</option><option value="3000">3 giây</option><option value="5000" selected>5 giây</option><option value="10000">10 giây</option></select>
+          </label>
+          <div id="anchor-status" class="anchor-status" role="status" aria-live="polite">Chọn một đoạn chữ đã gắn mốc để nghe lại.</div>
         </div>
         <div id="timeline-sessions" class="timeline-sessions" aria-label="Danh sách phiên ghi âm"></div>
         <div class="note-follow-strip" aria-label="Liên kết vị trí âm thanh với ghi chú">
@@ -70,10 +85,6 @@
       <div class="controls"><button id="rec-start" class="primary">● Bắt đầu ghi</button><button id="rec-pause" disabled>Tạm dừng</button><button id="rec-stop" disabled>Kết thúc</button></div>
       <div id="recording-path" class="panel-small">Audio tự lưu vào OPFS; khi chạy app bằng START_WINDOWS.cmd, tệp WAV được tự động sao chép vào app/Recording sau khi Kết thúc.</div>
       <button id="retry-local-recording" type="button" class="wide" disabled>Lưu lại WAV vào Recording</button>
-      <div class="panel-title">NGHE LẠI</div>
-      <div class="play-row"><button id="play-stop" title="Dừng phát">■ Dừng</button><label>Tốc độ <select id="play-rate"><option value="1">1,0×</option><option value="0.9">0,9×</option><option value="0.75">0,75×</option></select></label></div>
-      <label class="field">Nghe lùi trước mốc<select id="preroll"><option value="0">Không</option><option value="3000">3 giây</option><option value="5000" selected>5 giây</option><option value="10000">10 giây</option></select></label>
-      <div id="anchor-status" class="anchor-status">Chọn một đoạn chữ đã gắn mốc để nghe lại.</div>
       <div class="panel-title">TỆP & XUẤT</div>
       <div class="exports"><button data-export="docx">Word</button><button data-export="txt">TXT</button><button data-export="md">Markdown</button><button data-export="csv">CSV</button></div>
       <button id="backup" class="wide">Xuất toàn bộ cuộc họp (.mochop)</button>

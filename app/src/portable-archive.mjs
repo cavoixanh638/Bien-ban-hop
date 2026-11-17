@@ -1,4 +1,4 @@
-/** Portable Mốc Họp v2 ZIP64 export/import. Stream WAVs end-to-end.
+/** Portable Biên bản họp v2 ZIP64 export/import. Stream WAVs end-to-end.
  * G07 ZIP primitives, but complete multi-session G03 journals and G06 history.
  * Metadata is bounded; audio is never fully buffered in JS.
  */

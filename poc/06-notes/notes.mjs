@@ -1,4 +1,4 @@
-// Mốc Họp 06-notes — dependency-free ESM proof of concept.
+// Biên bản họp 06-notes — dependency-free ESM proof of concept.
 export const SCHEMA_VERSION = 1;
 export class RevisionConflict extends Error { constructor(){super("Revision conflict");this.name="RevisionConflict";} }
 export class StorageFailure extends Error { constructor(message){super(message);this.name="StorageFailure";} }

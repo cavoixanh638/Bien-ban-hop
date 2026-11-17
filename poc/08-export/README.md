@@ -1,4 +1,4 @@
-# Mốc Họp V1.2 — PoC 08-export
+# Biên bản họp V1.2 — PoC 08-export
 
 Công cụ xuất tài liệu ProseMirror JSON sang **DOCX, TXT, Markdown và CSV**, mỗi loại có **bản sạch** và **bản kèm mốc**. Đây là PoC **độc lập**, không dùng mã/fixture của luồng khác. `.mochop` và việc khôi phục audio thuộc luồng 07.
 

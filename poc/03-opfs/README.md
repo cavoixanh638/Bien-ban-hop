@@ -1,6 +1,6 @@
 # G03 — Audio OPFS durable writer, checkpoints and reconcile (PoC B)
 
-This is an **independent PoC** for Mốc Họp Gói 1.2, not the integrated application. It imports nothing from other workers and does not write NoteDocument/Meeting/ZIP.
+This is an **independent PoC** for Biên bản họp Gói 1.2, not the integrated application. It imports nothing from other workers and does not write NoteDocument/Meeting/ZIP.
 
 ## Quick start
 

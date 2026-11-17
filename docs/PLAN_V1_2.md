@@ -1,4 +1,4 @@
-# KẾ HOẠCH PHÁT TRIỂN MỐC HỌP V1.2
+# KẾ HOẠCH PHÁT TRIỂN BIÊN BẢN HỌP V1.2
 
 **Hệ thống ghi chú văn bản đồng bộ tự động với âm thanh cuộc họp**
 
@@ -14,7 +14,7 @@
 
 ## I. Mục tiêu
 
-**Nội dung người dùng tự gõ là trung tâm.** Mốc Họp là trình soạn thảo giống Word có khả năng tự liên kết phần chữ với thời điểm trong bản ghi âm, không phải phần mềm ghi âm có thêm ô nhập. Người dùng tự chọn ý quan trọng để ghi; ứng dụng không cố ghi lại mọi lời nói.
+**Nội dung người dùng tự gõ là trung tâm.** Biên bản họp là trình soạn thảo giống Word có khả năng tự liên kết phần chữ với thời điểm trong bản ghi âm, không phải phần mềm ghi âm có thêm ô nhập. Người dùng tự chọn ý quan trọng để ghi; ứng dụng không cố ghi lại mọi lời nói.
 
 Mỗi phần văn bản được gõ khi có nguồn âm thanh phù hợp tự ghi lại mốc thời gian, kể cả trong một đoạn dài không xuống dòng; không phải tạo thẻ, chọn nhãn, chọn người nói hay bấm Lưu. Mốc là lúc người dùng **gõ**, không phải thời điểm lời nói chính xác bắt đầu. Khi nghe lại áp dụng độ lùi có thể tùy chỉnh, không sửa mốc gốc.
 

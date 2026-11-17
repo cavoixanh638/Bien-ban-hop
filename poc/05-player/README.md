@@ -1,4 +1,4 @@
-# 05-player — độc lập PoC C1/C2, Mốc Họp V1.2
+# 05-player — độc lập PoC C1/C2, Biên bản họp V1.2
 
 **Không phải ứng dụng đã nghiệm thu.** Luồng này chỉ thử độc lập playback trên fixture tổng hợp theo `COMMON.md`. Không chờ G04 hoặc nhánh khác. Quyết định production còn HOLD do chưa nghe giọng thật/Windows Chrome+Edge.
 

@@ -1,4 +1,4 @@
-# MOC HOP / 09-PWA - self-contained proof of concept
+# BIEN BAN HOP / 09-PWA - self-contained proof of concept
 
 This directory is an isolated **fixture-based PoC**, not the integrated meeting application or real microphone recording. Nothing in this directory imports files from any other workstream. The app has no backend and never sends meeting data to a server. Synthetic bytes stand in for audio.
 

@@ -1,4 +1,4 @@
-# Mốc Họp · PoC 02-capture
+# Biên bản họp · PoC 02-capture
 
 Phạm vi thuộc nhánh `gemini/20261115-02-capture`, chỉ mã trong thư mục này và checkpoint 02. Đối chứng **AudioWorklet/PCM** với **MediaRecorder/WebM/Opus**; có **spool OPFS chẩn đoán cho MediaRecorder nhưng KHÔNG có journal/durability của G03**, không phải bản ghi âm sản xuất. Mọi số liệu là bằng chứng riêng của đúng môi trường chạy, không tự kế thừa cho ứng dụng tích hợp.
 

@@ -48,7 +48,7 @@ export function createLocalRecordingMiddleware(appRoot,{origin='http://127.0.0.1
     if(req.headers['x-mochop-local']!==HEADER ||
        (req.headers.origin && req.headers.origin!==origin) ||
        req.headers.host!==new URL(origin).host){
-      answer(res,403,{error:'Chỉ ứng dụng Mốc Họp chạy cục bộ được ghi WAV'});return;
+      answer(res,403,{error:'Chỉ ứng dụng Biên bản họp chạy cục bộ được ghi WAV'});return;
     }
     if(relative==='status' && req.method==='GET'){
       answer(res,200,{available:true,folder:'app/Recording',limitBytes:LIMIT_BYTES});return;

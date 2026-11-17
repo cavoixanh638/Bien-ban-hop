@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 echo.
 echo =============================================
-echo MOC HOP V1.2 - G10 ALPHA (CHUA NGHIEM THU)
+echo BIEN BAN HOP V1.2 - G10 ALPHA (CHUA NGHIEM THU)
 echo =============================================
 echo Chi dung de thu voi du lieu gia lap.
 echo Khong su dung cho cuoc hop quan trong.
