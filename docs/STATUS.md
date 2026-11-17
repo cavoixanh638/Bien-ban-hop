@@ -6,6 +6,18 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## Cập nhật G00/G10 tích hợp — 17/11/2026 (không áp dụng cho `main`)
+
+**Nhánh nguồn thực thi:** `integration/20261115-g10-v1.2`, [PR #1](https://github.com/cavoixanh638/Bien-ban-hop/pull/1) ở trạng thái **DRAFT**, không merge/deploy.
+
+- Bản tích hợp **INTEGRATION_ALPHA** đã có mã trong `app/`, với các PoC nguồn ở `poc/`; bảng kế hoạch khởi tạo bên dưới mô tả **trạng thái trước khi triển khai**, không phản ánh mã trên nhánh này. Không nâng gói 1.1–1.6 lên PASS nghiệm thu khi chưa chạy đủ TC01–TC38 và thiết bị thật.
+- Kiểm tra baseline `4ceeb9feb0ee8d16c53dfb2a478f7c23b283d3fd`: GitHub Actions [#43927628146](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/43927628146) **SUCCESS**; Node G10 34/34, Chromium dev 9/9 và production 10/10 PASS; Windows/Linux build PASS. Note follow, timeline tổng và import/export đa phiên đã tích hợp ở mức alpha.
+- G00 sửa tranh chấp phát audio: commit `4183fff514fa39298d50b4e984e8f95b99b6b221`, **Code SHA = Tested SHA** cho bản sửa này. Actions [#43996623815](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/43996623815) **SUCCESS** Linux/Windows; Node G10 **37/37 PASS**, Chromium dev **9/9 PASS**, production/PWA **10/10 PASS**. Bổ sung 3 regression: dừng giữa async startup, tua liên tiếp khi lệnh cũ lỗi, chuyển cuộc họp trong khi mở reader.
+- G00 gia cố kiểm tra WAV trong `app/Recording`: commit `ca66ccd3e654b972d8b1f02ea7ae445750aa1028` (**Code SHA**). So sánh dung lượng **và SHA-256** theo luồng khi tái sử dụng bản sao hoặc xảy ra race upload; không coi hai WAV cùng số byte là giống nhau. Thêm test sửa byte giữ nguyên kích thước. **Tested SHA tại lúc ghi: chờ xác nhận CI [#44050166325](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44050166325)**; không báo PASS trước khi kiểm tra.
+- **NOT_RUN / RELEASE HOLD:** UniKey/EVKey thật (Telex/VNI), micro Windows vật lý, 3 giờ ghi liên tục, sleep/mất điện/quota/crash trên máy thật, stress ZIP 0,5–2 GiB/>4 GiB trên browser, chuyển .mochop giữa 2 máy Windows vật lý, full TC01–TC38. Linux/Windows CI không thay thế các phép thử này.
+
+**Quy tắc đọc:** trạng thái lịch sử trong các mục tiếp theo giữ nguyên để bảo toàn nền kế hoạch và quyết định kỹ thuật; khi nhận việc G00 mới phải dùng **HEAD nhánh tích hợp, PR và Actions tại SHA tương ứng** trước khi lấy kết quả bên dưới làm hiện trạng.
+
 ## 1. Đường cơ sở đã kiểm tra
 
 - Repo: `cavoixanh638/Bien-ban-hop`, nhánh chính `main`.
