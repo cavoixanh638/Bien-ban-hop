@@ -6,6 +6,13 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Tinh gọn giao diện và tên sản phẩm (17/11/2026)
+
+- **Code SHA = Tested SHA:** \`3f92eb11f7b82300533b26de3be69b3591a2df51\` (nhánh \`integration/20261115-g10-v1.2\`, [Draft PR #1](https://github.com/cavoixanh638/Bien-ban-hop/pull/1)).
+- **Thay đổi:** chuyển tùy chọn nghe (Dừng/tốc độ/nghe lùi/trạng thái) vào dock thanh tua; bỏ thanh tiêu đề trùng và đặt đổi tên trên danh sách cuộc họp bên trái; giữ chip quyền sửa/lưu tại toolbar; sidebar xanh ngọc sáng; tên hiển thị **Biên bản họp** trong tab, PWA, logo, tài liệu và tên file \`bien-ban-hop-*\`. Giữ \`.mochop\`, format ID, IndexedDB/OPFS, REST nội bộ để tương thích sao lưu cũ.
+- **PASS (CI đúng SHA):** [Actions #44056625577](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44056625577), Windows/Linux Node **38/38 PASS**, Vite build PASS, Chromium dev **11/11 PASS + 1 PWA-only SKIP**, Chromium production/PWA **12/12 PASS**, 0 FAIL. Hai E2E mới kiểm bố cục, đổi tên, tên file xuất và PWA manifest ở cả dev và production.
+- **NOT_RUN / RELEASE HOLD:** Windows micro/UniKey/EVKey thật, ghi 3h, thiết bị thứ hai, ZIP nhiều GiB, quota/crash/mất điện và full TC01–TC38. Không merge \`main\`, không deploy; bản vẫn \`INTEGRATION_ALPHA\`.
+
 ## Cập nhật G00/G10 tích hợp — 17/11/2026 (không áp dụng cho `main`)
 
 **Nhánh nguồn thực thi:** `integration/20261115-g10-v1.2`, [PR #1](https://github.com/cavoixanh638/Bien-ban-hop/pull/1) ở trạng thái **DRAFT**, không merge/deploy.
