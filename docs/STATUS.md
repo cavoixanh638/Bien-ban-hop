@@ -6,6 +6,14 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Hoàn thiện tên gói sao lưu "Biên bản họp" (17/11/2026)
+
+- **Code SHA = Tested SHA:** `65e23d689c54be7686e3c9062609ca7801d36e5f` trên `integration/20261115-g10-v1.2`.
+- **PASS:** [GitHub Actions #44074180067](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44074180067) — Linux/Windows G10 **38/38 unit PASS**, build và các PoC PASS; Chromium dev **11 PASS, 1 PWA-only SKIP**; Chromium production/PWA **12/12 PASS**, không có FAIL. E2E xác nhận giao diện không hiển thị `.mochop`, file mới `.bbhop`, khôi phục v2 bằng `.bbhop`, tái nhập cùng gói với tên đuôi cũ `.mochop`; luồng nhập v1 cũ vẫn chạy qua bài thử.
+- **Thay đổi giao diện:** `Sao lưu biên bản và ghi âm` / `Khôi phục biên bản từ tệp`; mô tả, trạng thái, lỗi không nhắc đuôi kỹ thuật cũ. Mặc định xuất `bien-ban-hop-<meetingId>.bbhop`.
+- **Tương thích:** chỉ đổi tên tệp và nhãn; ZIP64 v2, định danh `format:mochop`, checksum, metadata, kho IndexedDB/OPFS và endpoint vẫn nguyên. Bộ nhập tiếp nhận cả `.bbhop` mới, `.mochop` cũ (v1/v2) và các ZIP hợp lệ theo manifest. Không đổi/ghi đè các tệp hiện có.
+- **NOT_RUN / RELEASE HOLD:** Windows micro/UniKey/EVKey vật lý, ghi 3 giờ, 2 máy thật, quota/crash/mất điện, gói nhiều GiB và toàn bộ TC01–TC38; PR vẫn DRAFT, chưa merge `main`/deploy.
+
 ## G00 — Tinh gọn giao diện và tên sản phẩm (17/11/2026)
 
 - **Code SHA = Tested SHA:** `3f92eb11f7b82300533b26de3be69b3591a2df51` (nhánh `integration/20261115-g10-v1.2`, [Draft PR #1](https://github.com/cavoixanh638/Bien-ban-hop/pull/1)).
