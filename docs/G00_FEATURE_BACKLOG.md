@@ -19,7 +19,7 @@
 | 11 | Ảnh/link/ngắt trang/PDF | **Một phần** | Ảnh PNG/JPEG ≤300KB/ảnh, link http(s)/mailto, ngắt trang, native Print PDF A4; ảnh lớn/cắt trang/định dạng Word nâng cao chưa nghiệm thu |
 | 12 | Tìm toàn cuộc họp | **Có chức năng cơ bản, đang bổ sung điều hướng** | MiniSearch offline, có dấu/không dấu; nhấp cuộc họp phù hợp chuyển đến từ khóa đầu tiên trong nội dung bằng selection (không sửa `timeSpan`); giới hạn tìm kiếm tại đoạn tối đa 160k ký tự của bộ index, chưa liệt kê toàn bộ kết quả |
 | 13 | Đánh dấu đoạn quan trọng | **Một phần** | Mark `important` lưu trong note JSON, danh sách lọc `timeSpan` hợp lệ, bấm nghe; cần thử tương tác dài với IME |
-| 14 | Cảnh báo quota/kiểm chứng sao lưu | **Một phần** | `navigator.storage.estimate()` chỉ ước tính + tự cảnh báo, chọn file v2 để verify SHA256/CRC từng entry; chưa tự verify ngay sau SaveFilePicker và chưa kiểm v1 |
+| 14 | Cảnh báo quota/kiểm chứng sao lưu | **Một phần** | `navigator.storage.estimate()` chỉ ước tính + tự cảnh báo, chọn file v2 để verify SHA256/CRC từng entry; đã có chế độ tự kiểm chứng SHA256/CRC ngay sau SaveFilePicker (mặc định bật) hoặc kiểm thủ công; chưa xác minh v1 và trường hợp file đa GB trên Windows thật |
 | 15 | Xuất clip WAV A–B | **Một phần** | Xuất từ một vùng PCM thật liên tục, có validation từ chối gap; chưa xuất xuyên segment/gap, chưa nghiệm thu dài/máy thật |
 | 16 | Waveform | **Chưa tích hợp** | Thanh tua hiện chỉ hiển thị dải recorded/gap, không phải waveform từ biên độ PCM |
 | 17 | RNNoise WASM | **Chưa tích hợp** | Cần PoC CPU/latency/âm người, tuyệt đối không lọc lại WAV gốc |

@@ -37,6 +37,13 @@ npm run dev
 - **Chưa tích hợp/đang HOLD:** C1 preservesPitch vào C2 scheduler, waveform thật, RNNoise, tự bỏ qua im lặng, Word numbering/pagination phức tạp, nhập file nén dài, backup đa-GB Windows và TC01–TC38.
 - **Theo dõi:** [docs/G00_FEATURE_BACKLOG.md](../docs/G00_FEATURE_BACKLOG.md), [STATUS.md](../docs/STATUS.md), [ACCEPTANCE_TESTS.md](../docs/ACCEPTANCE_TESTS.md). Mỗi module cần **Code SHA, Tested SHA, PASS/FAIL/NOT_RUN** trước khi chuyển trạng thái.
 
+## G00 — Kiểm chứng tự động file sao lưu sau khi ghi (18/11/2026)
+
+- Bổ sung checkbox **Kiểm chứng file ngay sau khi sao lưu** (mặc định bật). Khi FileSystemFileHandle hỗ trợ `getFile()`, sau khi ghi/đóng ZIP sẽ đọc lại tệp vật lý để kiểm tra SHA-256/CRC **từng entry**, không dựa vào kết quả ghi bộ nhớ.
+- Nếu kiểm chứng thất bại hoặc trình duyệt không hỗ trợ, trạng thái hiển thị rõ **ĐÃ GHI nhưng CHƯA được xác nhận an toàn**. Người dùng có thể chọn kiểm chứng thủ công; không xóa file hỏng hay dữ liệu gốc trong OPFS.
+- Có nút Hủy nhập/kiểm chứng dùng AbortController khi đọc lại file lớn; không tuyên bố PASS nếu hủy. Kiểm thử Chromium dựng FileSystemFileHandle fixture, xuất ZIP rồi đọc lại và verify.
+- Tệp lớn có thể kiểm tra lâu do đọc lại toàn bộ; có thể bỏ chọn để xuất rồi tự kiểm chứng thủ công. Không tự xóa hoặc thay file đang lưu.
+
 ## G00 — Danh sách Word có đánh số và thụt cấp native (18/11/2026)
 
 - Xuất Word dùng cấu trúc numbering OOXML gốc cho danh sách gạch đầu dòng/đánh số, kể cả lồng nhau; các danh sách riêng có reference riêng để không nối số thứ tự không mong muốn.

@@ -531,10 +531,39 @@ async function backup(){
         $('transfer-status').textContent='Đang xuất '+(pos/1048576).toFixed(1)+' MB…';}
     }});
     writable=null;
-    $('transfer-status').textContent='Đã xuất '+source.meeting.recordingIds.length+
-      ' phiên ghi, '+result.archive.entries+' mục trong tệp sao lưu ('+
-      (result.archive.size/1048576).toFixed(1)+' MB).';
-    show('Đã sao lưu biên bản và toàn bộ phiên ghi âm vào tệp.');
+    const exported='Đã ghi '+source.meeting.recordingIds.length+
+      ' phiên ghi, '+result.archive.entries+' mục ('+
+      (result.archive.size/1048576).toFixed(1)+' MB) vào tệp.';
+    if($('verify-after-backup').checked){
+      if(typeof handle.getFile!=='function'){
+        $('transfer-status').textContent=exported+' CHƯA kiểm chứng: trình duyệt không hỗ trợ đọc lại file vừa lưu.';
+        show('Đã xuất nhưng CHƯA xác nhận an toàn. Hãy dùng nút Kiểm chứng file sao lưu.','error');
+      }else{
+        const controller=new AbortController();
+        importController=controller;
+        $('import-cancel').style.display='block';
+        $('transfer-status').textContent=exported+' Đang kiểm chứng SHA-256/CRC…';
+        try{
+          const savedFile=await handle.getFile();
+          const verified=await verifyPortableArchiveV2(savedFile,{
+            signal:controller.signal,onProgress:({processed,total})=>{
+              $('transfer-status').textContent='Đang đọc lại file đã lưu và kiểm SHA-256/CRC: '+
+                (processed/1048576).toFixed(1)+' / '+(total/1048576).toFixed(1)+' MB';
+            }});
+          $('transfer-status').textContent=exported+' Đã kiểm chứng đủ '+
+            verified.files+' tệp, '+verified.recordings+' phiên WAV (SHA-256/CRC khớp).';
+          show('Đã sao lưu VÀ kiểm chứng file hoàn chỉnh.');
+        }catch(error){
+          $('transfer-status').textContent=exported+' CHƯA vượt kiểm chứng: '+error.message;
+          show('Tệp đã ghi nhưng CHƯA được xác nhận an toàn: '+error.message,'error');
+        }finally{
+          importController=null;$('import-cancel').style.display='none';
+        }
+      }
+    }else{
+      $('transfer-status').textContent=exported+' Chưa kiểm chứng; có thể kiểm tra bằng nút bên dưới.';
+      show('Đã ghi file nhưng chưa kiểm chứng SHA-256/CRC.');
+    }
   }catch(error){
     if(writable)try{await writable.abort(error);}catch{}
     if(error?.name!=='AbortError'){

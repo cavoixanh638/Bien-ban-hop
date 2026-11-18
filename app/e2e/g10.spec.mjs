@@ -654,3 +654,29 @@ test('G00 A4 margin selector updates browser print rule without changing meeting
   await expect.poll(()=>style.evaluate(el=>el.textContent)).toContain('margin: 20mm;');
   await expect(editor).toHaveText(before);
 });
+
+
+test('G00 saving a backup automatically verifies SHA256/CRC from saved file',async({page})=>{
+  await page.goto('/');
+  await expect(page.locator('.tiptap')).toBeVisible();
+  await expect(page.locator('#verify-after-backup')).toBeChecked();
+  await page.evaluate(()=>{
+    window.__storedArchive=null;
+    window.showSaveFilePicker=async()=>({
+      createWritable:async()=>{
+        const parts=[];
+        return {
+          async write(value){parts.push(value instanceof Uint8Array?value.slice():value);},
+          async close(){window.__storedArchive=new Blob(parts,{type:'application/zip'});},
+          async abort(){window.__storedArchive=null;}
+        };
+      },
+      getFile:async()=>window.__storedArchive
+    });
+  });
+  await page.locator('#backup').click();
+  await expect(page.locator('#transfer-status')).toContainText('Đã kiểm chứng đủ',{timeout:30000});
+  const size=await page.evaluate(()=>window.__storedArchive?.size??0);
+  expect(size).toBeGreaterThan(100);
+  await expect(page.locator('#message')).toContainText('sao lưu VÀ kiểm chứng');
+});
