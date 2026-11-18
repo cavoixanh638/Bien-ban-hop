@@ -455,3 +455,32 @@ test('G00 Enter makes adjacent paragraphs with zero margin at 1.0; 1.5 expands',
   const printGap=await paragraphs.first().evaluate(n=>parseFloat(getComputedStyle(n).marginBottom));
   expect(printGap).toBe(0);
 });
+
+
+test('G00 Word parity: all preset CSS line-height multipliers scale in 1:1.15:1.5:2',async({page})=>{
+  await page.goto('/');
+  const editor=page.locator('.tiptap'),paragraph=editor.locator('p').first();
+  await expect(editor).toBeVisible();
+  await editor.click();
+  await page.keyboard.type('Kiem tra gian dong 1,0 - 1,15 - 1,5 - 2,0.');
+  await page.locator('#word-menu summary').click();
+  const rates=['1','1.15','1.5','2'],heights=[];
+  for(const rate of rates){
+    await page.locator('#word-lineheight').selectOption(rate);
+    await expect(paragraph).toHaveAttribute('style',new RegExp('line-height:\\s*'+rate.replace('.','\\.')+'(?:;|$)'));
+    const metrics=await paragraph.evaluate(node=>{
+      const style=getComputedStyle(node);
+      return {lineHeight:parseFloat(style.lineHeight),fontSize:parseFloat(style.fontSize),
+        before:parseFloat(style.marginTop),after:parseFloat(style.marginBottom)};
+    });
+    expect(metrics.before).toBe(0);
+    expect(metrics.after).toBe(0);
+    expect(Math.abs(metrics.lineHeight/metrics.fontSize-Number(rate))).toBeLessThan(0.015);
+    heights.push(metrics.lineHeight);
+  }
+  for(let i=1;i<rates.length;i++)
+    expect(Math.abs(heights[i]/heights[0]-Number(rates[i]))).toBeLessThan(0.015);
+  await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+  await page.reload();
+  await expect(paragraph).toHaveAttribute('style',/line-height:\s*2(?:;|$)/);
+});

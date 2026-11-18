@@ -29,6 +29,12 @@ npm run dev
 4. Nhấn **Bắt đầu ghi**, gõ ghi chú ngay vào trang giấy; không phải nhập mã mốc. Sau khi dừng, nhấp đoạn chữ có gắn mốc để nghe. `Alt+Enter` nghe mốc tại con trỏ; `Esc` dừng phát. Ghi chú tự lưu với revision, báo "Đã lưu" chỉ sau IDB transaction hoàn tất.
 5. Có thể tạo/chuyển cuộc họp, đổi tên, sử dụng hai tab (chỉ một tab giữ writer lock), xuất DOCX/TXT/MD/CSV, **Sao lưu biên bản và ghi âm** và **Khôi phục biên bản từ tệp**. Khi nhập, chương trình kiểm tra checksum rồi tạo ID cuộc họp, ghi chú và phiên thu mới; không ghi đè cuộc họp đang có.
 
+## G00 — Đối chiếu tỷ lệ giãn dòng với chuẩn Microsoft Word (18/11/2026)
+
+- **DOCX:** Các mức 1,0 / 1,15 / 1,5 / 2,0 phải ghi theo OpenXML `w:spacing w:lineRule="auto"` với `w:line` lần lượt **240 / 276 / 360 / 480** (đơn vị 1/240 dòng). Mã đang sử dụng `Math.round(240*height)`, đúng công thức quy định. CI có kiểm thử thực tế bằng cách xuất DOCX, mở `word/document.xml`, xác nhận đủ bốn giá trị, cùng `before=after=0`; kiểm thử cả fallback 1,15 và ghi chú cũ có giãn dòng inline.
+- **WebApp:** CSS `line-height:1/1.15/1.5/2` tăng theo đúng các hệ số với cỡ chữ của đoạn. Chromium E2E đo `getComputedStyle` từng mức và kiểm tra lưu/tải lại. **Không đảm bảo số pixel hoặc vị trí glyph giống Microsoft Word**: bộ dàn trang Word dùng font metrics và quy tắc riêng, CSS dùng line box; việc bằng hệ số không đồng nghĩa bản xem trước và Word pixel-perfect.
+- **Khoảng cách đoạn:** sản phẩm chủ ý đặt `before=after=0` để Enter không tạo khoảng trắng không mong muốn, **khác** một số Normal style mặc định của Word (Microsoft hướng dẫn khoảng cách dòng và khoảng cách đoạn là hai tùy chọn độc lập). Kiểm thử dùng Microsoft Word cài trên máy Windows vật lý vẫn `NOT_RUN`.
+
 ## G00 — Khử khoảng cách thừa sau Enter khi chọn giãn dòng (18/11/2026)
 
 - **Nguyên nhân:** các lần nhấn Enter tạo `<p>` mới; CSS cũ `.tiptap p{margin:0 0 .75em}` cộng thêm khoảng cách sau mỗi đoạn bất kể giãn dòng đang chọn. Chữ trông vẫn cách xa khi đặt 1,0.
