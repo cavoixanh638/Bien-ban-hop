@@ -284,3 +284,38 @@ test('G00 Word editor: find/replace unlinked text and create a table',async({pag
   await page.reload();
   await expect(editor.locator('table')).toHaveCount(1);
 });
+
+
+test('G00 offline multi-meeting search supports Vietnamese without accents',async({page})=>{
+  await page.goto('/');
+  await expect(page.locator('.tiptap')).toBeVisible();
+  await page.locator('#new-meeting').click();
+  await expect(page.locator('#meeting-title-editor')).toBeVisible();
+  await page.locator('#meeting-title').fill('Họp về quy hoạch đô thị');
+  await page.locator('#meeting-title').press('Enter');
+  await page.locator('.tiptap').click();
+  await page.keyboard.type('Noi dung ve chinh sach phat trien.');
+  await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+  await page.locator('#meeting-search').fill('quy hoach');
+  await expect(page.locator('#meeting-search-status')).toContainText('1 cuộc họp',{timeout:15000});
+  await expect(page.locator('#meeting-list .meeting')).toHaveCount(1);
+  await expect(page.locator('#meeting-list .meeting strong')).toContainText('quy hoạch đô thị');
+  await page.locator('#meeting-search').fill('');
+  await expect(page.locator('#meeting-list .meeting')).toHaveCount(2);
+});
+
+test('G00 Word DOCX export produces a complete file from a table and formatted text',async({page})=>{
+  await page.goto('/');
+  const editor=page.locator('.tiptap');
+  await editor.click();
+  await page.keyboard.type('Tai lieu xuat Word.');
+  await page.locator('#word-menu summary').click();
+  await page.locator('[data-word="insertTable"]').click();
+  await expect(editor.locator('table')).toHaveCount(1);
+  const downloadPromise=page.waitForEvent('download');
+  await page.locator('[data-export="docx"]').click();
+  const result=await downloadPromise;
+  expect(result.suggestedFilename()).toMatch(/^bien-ban-hop-.+\.docx$/);
+  const file=await result.path();
+  expect(file).toBeTruthy();
+});

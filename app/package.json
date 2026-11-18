@@ -18,7 +18,9 @@
     "@tiptap/extension-text-style": "3.33.1",
     "@tiptap/extension-text-align": "3.33.1",
     "@tiptap/extension-find-and-replace": "3.33.1",
-    "@tiptap/extension-table": "3.33.1"
+    "@tiptap/extension-table": "3.33.1",
+    "docx": "9.15.4",
+    "minisearch": "7.2.0"
   },
   "devDependencies": {
     "vite": "6.3.6",

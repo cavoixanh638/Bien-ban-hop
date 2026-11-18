@@ -22,6 +22,14 @@ npm run dev
 4. Nhấn **Bắt đầu ghi**, gõ ghi chú ngay vào trang giấy; không phải nhập mã mốc. Sau khi dừng, nhấp đoạn chữ có gắn mốc để nghe. `Alt+Enter` nghe mốc tại con trỏ; `Esc` dừng phát. Ghi chú tự lưu với revision, báo "Đã lưu" chỉ sau IDB transaction hoàn tất.
 5. Có thể tạo/chuyển cuộc họp, đổi tên, sử dụng hai tab (chỉ một tab giữ writer lock), xuất DOCX/TXT/MD/CSV, **Sao lưu biên bản và ghi âm** và **Khôi phục biên bản từ tệp**. Khi nhập, chương trình kiểm tra checksum rồi tạo ID cuộc họp, ghi chú và phiên thu mới; không ghi đè cuộc họp đang có.
 
+## G00 — Soạn thảo Word và tìm kiếm offline
+
+- Thanh **Định dạng & bảng** dùng Tiptap 3.33.1: gạch chân/gạch ngang, font, cỡ, màu chữ/tô sáng, căn lề, giãn dòng theo vùng chữ, Heading 1–3, bảng 3×3, thêm/xóa dòng/cột và gộp/tách ô.
+- **Ctrl+F/Ctrl+H** mở tìm/thay trong biên bản. Thay thế tự động bị chặn nếu vùng kết quả có `timeSpan` (không bịa nguồn âm thanh); phần khác được thay. Không can thiệp khi người dùng đang gõ tiếng Việt.
+- **Tìm tất cả cuộc họp** ở cột trái sử dụng MiniSearch nội bộ, hỗ trợ chữ có dấu/không dấu, chỉ đọc ghi chú khi tìm và không thay đổi nguồn.
+- Xuất **DOCX bằng thư viện docx** có font/cỡ/căn lề/bảng, trang A4 và thông tin mốc tùy chọn. **DOCX chỉ là bản văn bản**, không thay thế sao lưu audio `.bbhop`. Trong bảng, ô gộp theo chiều dọc cần kiểm chứng riêng trước khi tuyên bố đúng 100%.
+- Thử nghiệm unit `fast-check` để phát hiện nguy cơ thay thế chữ có mốc; CI vẫn cần thử UniKey/EVKey thật trên Windows.
+
 ## Kiến trúc thực tế của bản này
 
 - **G01:** `InputTracker`, `timeSpan`, `PendingLinkJournal`, Tiptap Editor thật; không nhúng status động vào Mark.

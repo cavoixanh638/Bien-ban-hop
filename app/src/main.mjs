@@ -6,6 +6,8 @@ import TextAlign from '@tiptap/extension-text-align';
 import {TableKit} from '@tiptap/extension-table';
 import {FindAndReplace} from '@tiptap/extension-find-and-replace';
 import {canReplaceFindResults} from './word-guards.mjs';
+import {exportWord} from './rich-docx.mjs';
+import {buildMeetingSearchIndex,plainTextFromDoc,searchMeetings} from './meeting-search.mjs';
 import {InputTracker,TimeSpan,createTrackingExtension,readAnchorAtCursor} from '../../poc/01-editor/src/tracker.mjs';
 import {MeetingLease} from '../../poc/09-pwa/lease.js';
 import {MeetingStore,SaveQueue} from './meeting-store.mjs';
@@ -22,6 +24,7 @@ import {NoteAudioFollower} from './note-follow.mjs';
 
 const $=id=>document.getElementById(id),state={store:null,run:null,lease:new MeetingLease(),switching:false};
 let timelineUI=null,noteFollower=null;
+let meetingSearchTimer=null,meetingSearchGeneration=0,meetingSearchTerm='',meetingSearchIds=null,meetingSearchIndex=null;
 const player=new AudioPlayer((type,detail)=>{
   if(type==='unavailable')show('Không phát được: '+(detail.reason??detail.status),'error');
   if(type==='error')show('Lỗi phát: '+detail.message,'error');
@@ -141,6 +144,7 @@ function openTitleEditor(){
 function renderMeetings(){
   const run=state.run,root=$('meeting-list');root.replaceChildren();
   for(const meeting of state.meetings??[]){
+    if(meetingSearchTerm && meetingSearchIds && !meetingSearchIds.has(meeting.meetingId))continue;
     const row=document.createElement('div');row.className='meeting-row';row.setAttribute('role','listitem');
     const button=document.createElement('button');
     button.type='button';
@@ -159,7 +163,34 @@ function renderMeetings(){
     root.append(row);
   }
 }
-async function refreshMeetings(){state.meetings=await state.store.list();renderMeetings();}
+async function refreshMeetings(){
+  state.meetings=await state.store.list();
+  meetingSearchIndex=null;
+  if(meetingSearchTerm)runMeetingSearch().catch(e=>show('Không tìm được cuộc họp: '+e.message,'error'));
+  renderMeetings();
+}
+async function runMeetingSearch(){
+  const query=meetingSearchTerm;
+  const generation=++meetingSearchGeneration;
+  if(!query){meetingSearchIds=null;renderMeetings();$('meeting-search-status').textContent='';return;}
+  $('meeting-search-status').textContent='Đang tìm trong nội dung…';
+  if(!meetingSearchIndex){
+    const docs=[];
+    for(const meeting of state.meetings??[]){
+      const doc=state.run?.meetingId===meeting.meetingId?state.run.editor?.getJSON():
+        (await state.store.notes.getNote(meeting.noteDocumentId))?.content;
+      if(generation!==meetingSearchGeneration)return;
+      docs.push({meetingId:meeting.meetingId,title:meeting.title,
+        text:plainTextFromDoc(doc)});
+    }
+    meetingSearchIndex=buildMeetingSearchIndex(docs);
+  }
+  const matches=searchMeetings(meetingSearchIndex,query);
+  if(generation!==meetingSearchGeneration)return;
+  meetingSearchIds=new Set(matches.map(m=>m.meetingId));
+  renderMeetings();
+  $('meeting-search-status').textContent=matches.length+' cuộc họp phù hợp';
+}
 function updateAnchor(){
   const run=state.run;if(!run?.editor)return;
   const pos=readAnchorAtCursor(run.editor.state,run.tracker.allowed);
@@ -215,7 +246,7 @@ async function openMeeting(meetingId){
       if(!run.releaseLease)throw Error('Không có quyền ghi');
       run.revision=await state.store.save(meetingId,run.editor.getJSON(),tracker.exportPendingState(),run.revision,state.lease);
     },(phase,error)=>{
-      if(phase==='saved')status('save-status','Đã lưu • r'+run.revision);
+      if(phase==='saved'){meetingSearchIndex=null;status('save-status','Đã lưu • r'+run.revision);}
       else if(phase==='saving')status('save-status','Đang lưu…');
       else if(phase==='dirty')status('save-status','Chưa lưu');
       else status('save-status','Lỗi lưu: '+(error?.message??'không rõ'),true);
@@ -377,8 +408,8 @@ async function exportText(format){
   try{
     if(run.releaseLease)await run.queue.drain();
     const data={title:run.meeting.title,document:run.editor.getJSON(),includeTimestamps:$('include-time').checked};
-    const fns={docx:exportDOCX,txt:exportTXT,md:exportMarkdown,csv:exportCSV};
-    const result=fns[format](data);
+    const fns={txt:exportTXT,md:exportMarkdown,csv:exportCSV};
+    const result=format==='docx'?await exportWord(data):fns[format](data);
     download('bien-ban-hop-'+run.meetingId+'.'+format,result,mime[format]);
     show('Đã tạo tệp '+format.toUpperCase()+'. Không thay thế bản sao lưu có audio.');
   }catch(e){show('Lỗi xuất tệp: '+e.message,'error');}
@@ -571,6 +602,16 @@ function wireWordTools(){
 
 function wire(){
   wireWordTools();
+  $('meeting-search').oninput=e=>{
+    meetingSearchTerm=e.target.value.trim();
+    meetingSearchIds=null;
+    ++meetingSearchGeneration;
+    clearTimeout(meetingSearchTimer);
+    if(!meetingSearchTerm){
+      meetingSearchIds=null;renderMeetings();$('meeting-search-status').textContent='';
+    }else meetingSearchTimer=setTimeout(()=>runMeetingSearch().catch(
+      err=>show('Lỗi tìm kiếm: '+err.message,'error')),250);
+  };
   $('new-meeting').onclick=createMeeting;
   $('meeting-title-save').onclick=()=>saveTitle();
   $('meeting-title-cancel').onclick=hideTitleEditor;

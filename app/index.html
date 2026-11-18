@@ -14,6 +14,9 @@
       <div class="brand"><div class="brand-logo">B</div><div><strong>Biên bản họp</strong><small>Bản tích hợp thử nghiệm</small></div></div>
       <div class="side-section">
         <div class="side-heading"><span>Cuộc họp của tôi</span><button id="new-meeting" title="Tạo cuộc họp">＋</button></div>
+        <label class="meeting-search-label" for="meeting-search">Tìm cuộc họp hoặc nội dung đã ghi</label>
+        <input id="meeting-search" type="search" placeholder="Tìm cả chữ không dấu…" autocomplete="off" aria-label="Tìm trong tất cả cuộc họp">
+        <div id="meeting-search-status" class="meeting-search-status" aria-live="polite"></div>
         <div id="meeting-list" class="meeting-list" role="list"></div>
         <div id="meeting-title-editor" class="meeting-title-editor" hidden>
           <label for="meeting-title">Đổi tên cuộc họp</label>

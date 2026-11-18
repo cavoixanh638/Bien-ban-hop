@@ -153,3 +153,11 @@
 .tiptap .find-and-replace-result-current{background:#f5a44288}
 @media(max-width:720px){.word-menu-inner{width:min(440px,calc(100vw - 26px));grid-template-columns:repeat(2,minmax(0,1fr))}
 .find-panel{padding:8px 12px}.find-panel input{max-width:none}}
+
+
+/* Local full-text search: index only when requested, never modify source notes. */
+.meeting-search-label{display:block;margin:0 7px 6px;color:#44777a;font-size:10px;font-weight:700}
+#meeting-search{display:block;width:calc(100% - 14px);margin:0 7px 7px;
+  border:1px solid #a3d2ca;background:#ffffffda;border-radius:8px;
+  padding:9px 10px;color:#1b515a;font-size:12px;outline-offset:2px}
+.meeting-search-status{min-height:14px;margin:0 7px 8px;font-size:10px;color:#467e7d}
