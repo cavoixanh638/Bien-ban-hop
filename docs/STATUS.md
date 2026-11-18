@@ -6,6 +6,15 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Chuẩn hóa tên nội bộ thành Biên bản họp (18/11/2026)
+
+- **Code SHA = Tested SHA:** `955dc40a775f174b985e3fa823d6a785a32c3543`, trên `integration/20261115-g10-v1.2`. [GitHub Actions #44284975192](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44284975192) **SUCCESS**, Windows/Linux **49/49 unit G10 PASS**, Chromium dev **17 PASS + 1 PWA-only SKIP**, production/PWA **18/18 PASS**, 0 FAIL. Bài thử nhánh máy thật vẫn **NOT_RUN**.
+- **Đã sửa mã:** `app/package.json` tên npm `bien-ban-hop`, 8 package metadata PoC `bien-ban-hop-poc-...`; API gói v2 `exportMeetingArchiveV2`, `importMeetingArchiveV2`, `probeMeetingArchiveVersion`, v1 `importLegacyMeetingArchive`; URL/header WAV localhost mới `/__bien_ban_hop_local_recording/` / `X-BienBanHop-Local`; PWA shell cache mới.
+- **Tương thích đã PASS ở CI:** HTTP header/URL cũ và mới truy cập cùng file WAV, checksum SHA-256 bất biến; xuất/nhập gói v2 hợp đồng cũ; import v1/v2 giữ nguyên; không đổi dữ liệu/OPFS/IndexedDB. Khóa bảo trì PWA vẫn dùng tên cũ để nhiều phiên bản giữ cùng khóa.
+- **Còn chuỗi cũ do thiết kế:** `format: "mochop"` trong ZIP v1/v2, `mochop-g10-v1` (DB có dữ liệu), `mochop-opfs-poc-v1`, `mochop:poc09:maintenance` (Web Lock), định dạng import `.mochop`, các file/oracle PoC lịch sử. **Không Replace All** tránh mất dữ liệu; bảng giải thích: [NAMING_COMPATIBILITY.md](NAMING_COMPATIBILITY.md).
+- **Lockfile trên máy người dùng:** `app/package-lock.json` chưa được track trong GitHub (file tự sinh bởi `npm install`); sau khi Pull tên mới, chạy `npm install --package-lock-only --ignore-scripts` trong `app/` để cập nhật cả hai trường `name`. Đã thêm test tên package/lock.
+- **RELEASE HOLD:** Không merge `main`, không publish, chưa nghiệm thu IME/micro Windows thật, ghi 3 giờ, crash/quota, PWA upgrade khi đang ghi và khôi phục liên máy thực tế.
+
 ## G00 — Nâng cấp soạn thảo Word, tìm kiếm offline và nghe lại (18/11/2026)
 
 - **Code SHA = Tested SHA:** `ae176ebc8fdda2b43ed4534b56699884a240b654` trên nhánh `integration/20261115-g10-v1.2`. **CI PASS:** [GitHub Actions #44280821059](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44280821059): Windows + Linux `npm test` G10 **45/45 PASS**, các bài PoC và Vite build **PASS**, Chromium dev **17 PASS + 1 PWA-only SKIP**, production/PWA **18/18 PASS**, **0 FAIL**. Test phát hành tại chính Code SHA, không dùng CI của commit cũ.
