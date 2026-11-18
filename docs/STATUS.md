@@ -6,6 +6,15 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Sửa thanh công cụ và định dạng Word (18/11/2026)
+
+- **Code SHA = Tested SHA:** `45d3595186fa2985d7e3a6c32eeccf42a49184ce` trên `integration/20261115-g10-v1.2`. [GitHub Actions #44293515004](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44293515004) **SUCCESS**: Windows/Linux unit G10 **53/53 PASS mỗi hệ**, build + các PoC PASS; Chromium dev **19 PASS, 1 PWA-only SKIP**, Chromium production/PWA **20/20 PASS**, 0 FAIL.
+- **Đã sửa theo phản hồi ảnh:** bỏ dòng "Gõ tự nhiên như một tài liệu…" và chip quyền chỉnh sửa/lưu khỏi toolbar; các trạng thái vẫn cập nhật trong vùng trợ năng ẩn, lỗi lưu hiện toast; **căn giữa toolbar, hàng Tìm/Thay và nút bảng**.
+- **Nguyên nhân và bản sửa 14pt:** UI cũ gọi `setFontSize('14px')`, tương đương khoảng **10,5 pt**, nên rất nhỏ. Nay UI dùng `14pt` (CSS ~18,67 px ở 96dpi), mặc định editor/print 14pt, và bộ xuất DOCX chuyển đúng sang **28 half-points**. Ghi chú đời cũ dùng `px` vẫn xuất được cỡ tương đương, không thay dữ liệu hàng loạt.
+- **Nguyên nhân và bản sửa giãn dòng:** `TextStyleKit` mặc định dùng `span` trong chữ (`textStyle.lineHeight`), không định dạng đúng cả đoạn. Nay tắt inline `lineHeight` và dùng extension `LineHeight` trên `paragraph/heading`; lệnh chỉ cập nhật block có trong lựa chọn, không thay `timeSpan`. Mốc thời gian gốc giữ nguyên; xuất DOCX ưu tiên `node.attrs.lineHeight` và hỗ trợ giá trị inline cũ để tương thích. Giãn dòng trong một đoạn khác với khoảng cách giữa các đoạn.
+- **Hồi quy mới:** unit font pt/px, block spacing cả paragraph/heading, và boundary giữ `timeSpan`; Chromium kiểm center, ẩn chip, cỡ chữ thực bằng `getComputedStyle`, thay 1,0 → 1,5, tự lưu, tải lại. **Service Worker** đổi version `bien-ban-hop-20261118-font-spacing`.
+- **NOT_RUN / RELEASE HOLD:** Thử bộ gõ Việt UniKey/EVKey trên Windows thật, micro thật, tài liệu dài ghi 3 giờ, quota/crash, PWA upgrade đang ghi âm, đối chiếu DOCX trên Microsoft Word thật và đầy đủ TC01–TC38. Giữ Draft PR; không merge `main`/publish.
+
 ## G00 — Chuẩn hóa tên nội bộ thành Biên bản họp (18/11/2026)
 
 - **Code SHA = Tested SHA:** `955dc40a775f174b985e3fa823d6a785a32c3543`, trên `integration/20261115-g10-v1.2`. [GitHub Actions #44284975192](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44284975192) **SUCCESS**, Windows/Linux **49/49 unit G10 PASS**, Chromium dev **17 PASS + 1 PWA-only SKIP**, production/PWA **18/18 PASS**, 0 FAIL. Bài thử nhánh máy thật vẫn **NOT_RUN**.
