@@ -3,6 +3,7 @@ import {
   AlignmentType,HeadingLevel,WidthType
 } from 'docx';
 import {fontSizeToHalfPoints,paragraphLineHeight} from './word-layout.mjs';
+import {pageMargins} from './page-margins.mjs';
 import {firstLineIndentTwips} from './paragraph-indent.mjs';
 import {safeLink,isSafeImageSource} from './word-media.mjs';
 
@@ -160,7 +161,7 @@ export async function exportWord(input){
   const page=new Document({
     creator:'Biên bản họp',
     sections:[{properties:{
-      page:{size:{width:11906,height:16838},margin:{top:1134,bottom:1134,left:1701,right:1134}}
+      page:{size:{width:11906,height:16838},margin:pageMargins(input?.pageMarginPreset)}
     },children:[
       new Paragraph({text:title,heading:HeadingLevel.TITLE,spacing:{after:220}}),
       ...renderNodes(doc.content,{includeTimestamps:!!input.includeTimestamps})

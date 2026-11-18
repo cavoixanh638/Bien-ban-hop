@@ -633,3 +633,20 @@ test('G00 offline search jumps to matching text without changing notes',async({p
   expect(selection).toMatch(/Quy hoạch/i);
   await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
 });
+
+
+test('G00 A4 margin selector updates browser print rule without changing meeting notes',async({page})=>{
+  await page.goto('/');
+  const editor=page.locator('.tiptap');
+  await expect(editor).toBeVisible();
+  const before=await editor.innerText();
+  const margins=page.locator('#page-margin-preset');
+  await expect(margins).toHaveValue('official');
+  const style=page.locator('#print-page-margins');
+  await expect(style).toContainText('20mm 20mm 20mm 30mm');
+  await margins.selectOption('balanced');
+  await expect(style).toContainText('20mm 25mm 20mm 25mm');
+  await margins.selectOption('compact');
+  await expect(style).toContainText('margin: 20mm;');
+  await expect(editor).toHaveText(before);
+});

@@ -37,6 +37,11 @@ npm run dev
 - **Chưa tích hợp/đang HOLD:** C1 preservesPitch vào C2 scheduler, waveform thật, RNNoise, tự bỏ qua im lặng, Word numbering/pagination phức tạp, nhập file nén dài, backup đa-GB Windows và TC01–TC38.
 - **Theo dõi:** [docs/G00_FEATURE_BACKLOG.md](../docs/G00_FEATURE_BACKLOG.md), [STATUS.md](../docs/STATUS.md), [ACCEPTANCE_TESTS.md](../docs/ACCEPTANCE_TESTS.md). Mỗi module cần **Code SHA, Tested SHA, PASS/FAIL/NOT_RUN** trước khi chuyển trạng thái.
 
+## G00 — Lựa chọn lề A4 khi xuất Word / In PDF (18/11/2026)
+
+- Ba cấu hình cố định: **Biên bản** (trái 3cm, còn lại 2cm), **Cân đối** (trái/phải 2,5cm, trên/dưới 2cm), **Lề đều 2cm**. DOCX lấy giá trị twip đúng từ cùng bảng cấu hình. Print native CSS `@page` dùng lề tương ứng. Lựa chọn chỉ ảnh hưởng bản xuất/in, **không sửa văn bản hay mốc ghi âm**, không thay thế sao lưu `.bbhop`.
+- Kiểm thử unit cho các giá trị và E2E Chromium xác nhận đổi print rule không sửa nội dung. Đây chưa phải trình dàn trang Word có phân trang hoàn toàn giống Microsoft Word desktop.
+
 ## G00 — Điều hướng vào nội dung tìm kiếm toàn cuộc họp (18/11/2026)
 
 - Trong sidebar, tìm tiếng Việt không dấu qua MiniSearch, nhấp cuộc họp phù hợp sẽ chọn và cuộn tới đoạn chứa từ khóa đầu tiên trong văn bản; nếu chỉ trùng tiêu đề thì mở cuộc họp và thông báo không có đoạn nội dung chính xác.

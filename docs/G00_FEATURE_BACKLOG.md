@@ -10,7 +10,7 @@
 | 02 | Căn lề, giãn dòng, thụt dòng, nhiều cấp, Heading | **Một phần** | Đã thêm thụt dòng đầu (0–72pt), sink/lift danh sách, Heading; DOCX nested list vẫn làm phẳng thành prefix thay vì numbering native; cần hồi quy đủ ca |
 | 03 | Tìm/thay | **Có chức năng cơ bản** | Ctrl+F/H, chặn thay tự động văn bản gắn `timeSpan` hợp lệ |
 | 04 | Bảng/ô gộp | **Một phần** | Thao tác TableKit, DOCX `colspan`/`rowspan`; ô hợp nhất và bảng dài qua trang chưa nghiệm thu Word desktop |
-| 05 | DOCX định dạng/A4/lề | **Một phần** | DOCX A4, font/cỡ/giãn dòng, ảnh/link/ngắt trang; lề trang hiện cố định, không đầy đủ pagination Word |
+| 05 | DOCX định dạng/A4/lề | **Một phần** | DOCX A4, font/cỡ/giãn dòng, ảnh/link/ngắt trang; có 3 mức lề Word/PDF, chưa đủ pagination Word desktop |
 | 06 | Nghe tập trung/phím tắt | **Có chức năng cơ bản** | Nghe 15/30/60s hoặc liên tục; Alt+Enter tại mốc |
 | 07 | Lặp A–B, tua, tốc độ | **Một phần** | Lặp A–B **chỉ cùng vùng mẫu liền mạch đã xác minh**; tua ±10s; tốc độ chọn 0,5–2×; chưa nối A–B qua segment/gap/multi-session; tốc độ khác 1× đổi cao độ |
 | 08 | Nhập âm thanh sẵn | **Một phần** | WAV PCM/float mono, stereo → mono theo chunk ≤2GB/3h; MP3/M4A/WebM/OGG nếu `decodeAudioData` hỗ trợ ≤32MB/30 phút. Lưu OPFS commit, liên kết khi đang phát; chưa streaming giải mã file nén dài, pause-to-type chưa nghiệm thu |

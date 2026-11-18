@@ -15,6 +15,7 @@ import {TableKit} from '@tiptap/extension-table';
 import {FindAndReplace} from '@tiptap/extension-find-and-replace';
 import {canReplaceFindResults} from './word-guards.mjs';
 import {exportWord} from './rich-docx.mjs';
+import {printPageRule} from './page-margins.mjs';
 import {importSafeDOCX} from './word-import.mjs';
 import {buildMeetingSearchIndex,plainTextFromDoc,searchMeetings} from './meeting-search.mjs';
 import {firstMeetingTextMatch} from './meeting-search-position.mjs';
@@ -205,7 +206,7 @@ function renderMeetings(){
       const editor=state.run.editor;
       const range=firstMeetingTextMatch(editor.state.doc,query);
       if(!range){$('meeting-search-status').textContent='Đã mở cuộc họp; từ khóa chỉ có trong tên hoặc không có vị trí chính xác.';return;}
-      editor.chain().setTextSelection(range).scrollIntoView().run();
+      editor.chain().focus().setTextSelection(range).scrollIntoView().run();
       $('meeting-search-status').textContent='Đã đến đoạn phù hợp trong biên bản (không sửa mốc âm thanh).';
     };
     row.append(button);
@@ -486,7 +487,7 @@ async function exportText(format){
   const run=state.run;if(!run)return;
   try{
     if(run.releaseLease)await run.queue.drain();
-    const data={title:run.meeting.title,document:run.editor.getJSON(),includeTimestamps:$('include-time').checked};
+    const data={title:run.meeting.title,document:run.editor.getJSON(),includeTimestamps:$('include-time').checked,pageMarginPreset:$('page-margin-preset').value};
     const fns={txt:exportTXT,md:exportMarkdown,csv:exportCSV};
     const result=format==='docx'?await exportWord(data):fns[format](data);
     download('bien-ban-hop-'+run.meetingId+'.'+format,result,mime[format]);
@@ -743,7 +744,10 @@ function wireWordTools(){
       if(!file||!run?.releaseLease||state.switching||transferBusy)return;
       const json=await imageNodeFromFile(file);
       if(run!==state.run)throw Error('Cuộc họp đã thay đổi');
-      run.editor.chain().focus().insertContent(json).run();
+      // Insert AFTER the current selection, not REPLACE a selected page-break
+      // or another atomic node when the native file picker returns.
+      const after=run.editor.state.selection.to;
+      run.editor.chain().focus().insertContentAt(after,json).run();
       show('Đã chèn ảnh nhỏ vào ghi chú. Ảnh được lưu trong tài liệu và bản sao lưu.');
     }catch(error){show('Không chèn được ảnh: '+error.message,'error');}
     finally{$('word-image-file').value='';}
@@ -934,6 +938,14 @@ function wire(){
   $('audio-file').onchange=e=>importAudioSelectedFile(e.target.files?.[0]);
   $('import-word').onclick=()=>$('word-file').click();
   $('word-file').onchange=e=>importWordFile(e.target.files?.[0]);
+  $('page-margin-preset').onchange=e=>{
+    const style=$('print-page-margins');
+    if(style)style.textContent=printPageRule(e.target.value);
+  };
+  const pageStyle=document.createElement('style');
+  pageStyle.id='print-page-margins';
+  pageStyle.textContent=printPageRule($('page-margin-preset').value);
+  document.head.append(pageStyle);
   $('print-document').onclick=()=>window.print();
   $('backup').onclick=backup;
   $('import-backup').onclick=()=>$('import-file').click();
