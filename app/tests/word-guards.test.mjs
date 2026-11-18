@@ -6,7 +6,7 @@ import {overlapsTimeSpan,canReplaceFindResults} from '../src/word-guards.mjs';
 function fakeDoc(chars,links){
   return {nodesBetween(from,to,fn){
     for(let i=from;i<to;i++)fn({isText:true,nodeSize:1,
-      marks:links.has(i)?[{type:{name:'timeSpan'},attrs:{anchorId:'a'+i}}]:[]},i);
+      marks:links.has(i)?[{type:{name:'timeSpan'},attrs:{anchorId:'a'+i,recordingId:'rec-fixture',audioOffsetMs:i*1000}}]:[]},i);
   }};
 }
 test('G00 replace guard: results involving a timeSpan never get silently replaced',()=>{

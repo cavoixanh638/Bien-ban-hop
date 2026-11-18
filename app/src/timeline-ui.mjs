@@ -145,7 +145,8 @@ export class MeetingTimelineUI {
       return;
     }
     const result=await this.player.start(at.recordingId,at.localMs,{
-      preRollMs:0,rate:Number($('play-rate').value)
+      preRollMs:0,rate:Number($('play-rate').value),
+      maxDurationMs:Number($('focus-duration').value)
     });
     if(result.status==='valid'){
       $('timeline-notice').textContent='Đang nghe phiên '+at.session+' từ '+fmt(at.localMs)+

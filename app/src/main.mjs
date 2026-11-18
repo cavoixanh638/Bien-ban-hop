@@ -394,7 +394,8 @@ async function listenAtCursor(clickedAnchor=null){
     await timelineUI?.settle();
     if(state.run!==run)return;
     const result=await player.start(anchor.recordingId,anchor.audioOffsetMs,
-      {preRollMs:Number($('preroll').value),rate:Number($('play-rate').value)});
+      {preRollMs:Number($('preroll').value),rate:Number($('play-rate').value),
+        maxDurationMs:Number($('focus-duration').value)});
     // AudioPlayer already reports unavailable through the source-aware callback.
   }catch(e){show('Không nghe lại được: '+e.message,'error');}
 }
@@ -628,6 +629,9 @@ function wire(){
   $('rec-pause').onclick=pauseRecording;
   $('rec-stop').onclick=stopRecording;
   $('play-stop').onclick=()=>{player.stop();show('Đã dừng phát lại.');};
+  $('voice-filter').onchange=e=>{
+    try{player.setVoiceMode(e.target.value);}catch(error){show(error.message,'error');}
+  };
   $('backup').onclick=backup;
   $('import-backup').onclick=()=>$('import-file').click();
   $('import-file').onchange=event=>importSelectedFile(event.target.files?.[0]);

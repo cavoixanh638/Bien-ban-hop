@@ -2,6 +2,7 @@ import {CaptureClockMapper} from '../../poc/02-capture/src/clock-mapper.mjs';
 import {resolveMedia,choosePreRoll} from '../../poc/05-player/timeline.js';
 import {contextFor,resolvePending} from './clock-bridge.mjs';
 import {selectCommittedPlayback} from './playback-start.mjs';
+import {createVoiceEQ,setVoiceEQ,capPlaybackEnd} from './voice-eq.mjs';
 
 const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
 const withTimeout=(p,ms,label)=>Promise.race([p,new Promise((_,reject)=>setTimeout(()=>reject(Error(label+' quá thời hạn')),ms))]);
@@ -195,7 +196,11 @@ export class AudioPlayer {
     this.schedulingComplete=false;this.serial=0;this.lastRenderedSample=0;
     // Serialize worker setup and playback starts. A cancelled/older seek
     // must never resume after Stop, switching meetings, or a newer seek.
-    this.startChain=Promise.resolve();
+    this.startChain=Promise.resolve();this.voiceMode='off';this.voiceChain=null;
+  }
+  setVoiceMode(mode){
+    this.voiceMode=mode;
+    setVoiceEQ(this.voiceChain,mode);
   }
   async releaseReader(){
     const reader=this.reader;
@@ -221,7 +226,7 @@ export class AudioPlayer {
       throw e;
     }
   }
-  async start(recordingId,offsetMs,{preRollMs=0,rate=1}={}){
+  async start(recordingId,offsetMs,{preRollMs=0,rate=1,maxDurationMs=0}={}){
     // Stop synchronously, before any await, so the previous request cannot
     // schedule audio after a rapid seek or an explicit Stop.
     this.stop();
@@ -236,13 +241,17 @@ export class AudioPlayer {
         this.rate=rate;
         const check=selectCommittedPlayback(this.manifest,recordingId,offsetMs,preRollMs);
         if(check.status!=='valid'){this.onEvent('unavailable',check);return check;}
-        if(!this.context)this.context=new AudioContext();
+        if(!this.context){
+          this.context=new AudioContext();
+          this.voiceChain=createVoiceEQ(this.context);
+          setVoiceEQ(this.voiceChain,this.voiceMode);
+        }
         await this.context.resume();
         if(run!==this.currentRun)return cancelled();
         this.playing=true;
         this.schedulingComplete=false;
         this.nextSample=check.startSample;
-        this.endSampleExclusive=check.endSampleExclusive;
+        this.endSampleExclusive=capPlaybackEnd(check,this.manifest.sampleRate,maxDurationMs);
         this.scheduledUntil=this.context.currentTime+0.06;
         this.startOffsetMs=check.startMs;this.lastRenderedSample=check.startSample;this.underruns=0;
         // Preserve the request epoch across all asynchronous seek/fill steps.
@@ -324,7 +333,7 @@ export class AudioPlayer {
         buffer.getChannelData(0).set(pcm);
         const node=this.context.createBufferSource();
         node.buffer=buffer;node.playbackRate.value=this.rate;
-        node.connect(this.context.destination);this.sources.add(node);
+        node.connect(this.voiceChain?.input??this.context.destination);this.sources.add(node);
         const firstSample=this.nextSample;
         node.onended=()=>{
           this.sources.delete(node);
@@ -366,5 +375,5 @@ export class AudioPlayer {
     await this.startChain;
     await this.releaseReader();
   }
-  async dispose(){await this.closeReader();await this.context?.close();this.context=null;}
+  async dispose(){await this.closeReader();await this.context?.close();this.context=null;this.voiceChain=null;}
 }

@@ -30,6 +30,12 @@ npm run dev
 - Xuất **DOCX bằng thư viện docx** có font/cỡ/căn lề/bảng, trang A4 và thông tin mốc tùy chọn. **DOCX chỉ là bản văn bản**, không thay thế sao lưu audio `.bbhop`. Trong bảng, ô gộp theo chiều dọc cần kiểm chứng riêng trước khi tuyên bố đúng 100%.
 - Thử nghiệm unit `fast-check` để phát hiện nguy cơ thay thế chữ có mốc; CI vẫn cần thử UniKey/EVKey thật trên Windows.
 
+## G00 — Nghe tập trung và làm rõ giọng không phá bản ghi gốc
+
+- Tùy chọn **Nghe tập trung 15/30/60 giây** giới hạn cửa sổ nghe sau mốc (có pre-roll), hoặc **Liên tục** như trước. Không suy diễn điểm bắt đầu/kết thúc của câu nói.
+- **Làm rõ giọng** có Gốc (mặc định), Nhẹ và Rõ hơn. Bộ lọc Web Audio: high-pass, EQ tăng tần số lời nói, compressor, trộn dry/wet. Chỉ xử lý ở đầu ra nghe, **không đổi WAV/OPFS/timeSpan**, không phải AI khử ồn chuyên sâu.
+- Chưa nghiệm thu giọng nói thật hoặc độ trễ nghe trên Windows. Không khẳng định lọc được lời nói chồng nhau và chưa dùng SoundTouchJS/RNNoise trong sản phẩm; đây là các PoC riêng.
+
 ## Kiến trúc thực tế của bản này
 
 - **G01:** `InputTracker`, `timeSpan`, `PendingLinkJournal`, Tiptap Editor thật; không nhúng status động vào Mark.

@@ -319,3 +319,16 @@ test('G00 Word DOCX export produces a complete file from a table and formatted t
   const file=await result.path();
   expect(file).toBeTruthy();
 });
+
+
+test('G00 playback presets: focused 30s and voice EQ do not modify saved note',async({page})=>{
+  await page.goto('/');
+  await expect(page.locator('#focus-duration')).toHaveValue('0');
+  await expect(page.locator('#voice-filter')).toHaveValue('off');
+  const before=await page.locator('.tiptap').innerText();
+  await page.locator('#focus-duration').selectOption('30000');
+  await page.locator('#voice-filter').selectOption('clear');
+  await expect(page.locator('#focus-duration')).toHaveValue('30000');
+  await expect(page.locator('#voice-filter')).toHaveValue('clear');
+  await expect(page.locator('.tiptap')).toHaveText(before);
+});

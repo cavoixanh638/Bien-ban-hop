@@ -100,6 +100,18 @@
           <label for="preroll">Nghe lùi trước mốc
             <select id="preroll"><option value="0">Không</option><option value="3000">3 giây</option><option value="5000" selected>5 giây</option><option value="10000">10 giây</option></select>
           </label>
+          <label for="focus-duration">Nghe tập trung
+            <select id="focus-duration" aria-label="Giới hạn đoạn nghe sau mốc">
+              <option value="0">Liên tục</option><option value="15000">15 giây</option>
+              <option value="30000">30 giây</option><option value="60000">60 giây</option>
+            </select>
+          </label>
+          <label for="voice-filter">Làm rõ giọng
+            <select id="voice-filter" aria-label="Bộ lọc giọng nói khi nghe">
+              <option value="off">Gốc</option><option value="clear">Nhẹ</option>
+              <option value="stronger">Rõ hơn</option>
+            </select>
+          </label>
           <div id="anchor-status" class="anchor-status" role="status" aria-live="polite">Chọn một đoạn chữ đã gắn mốc để nghe lại.</div>
         </div>
         <div id="timeline-sessions" class="timeline-sessions" aria-label="Danh sách phiên ghi âm"></div>

@@ -161,3 +161,8 @@
   border:1px solid #a3d2ca;background:#ffffffda;border-radius:8px;
   padding:9px 10px;color:#1b515a;font-size:12px;outline-offset:2px}
 .meeting-search-status{min-height:14px;margin:0 7px 8px;font-size:10px;color:#467e7d}
+
+
+/* Focused listening and non-destructive voice EQ controls in the playback dock */
+.timeline-playback-options #focus-duration,
+.timeline-playback-options #voice-filter{max-width:116px}
