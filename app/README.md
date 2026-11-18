@@ -1,13 +1,13 @@
 # G10 — Ứng dụng Biên bản họp V1.2 tích hợp thử nghiệm
 
-**Tên chương trình:** **Biên bản họp**. Tên package npm chính thức: `bien-ban-hop`. **Tên hiển thị và tên tệp xuất:** **Biên bản họp**. Gói sao lưu mới có tên `bien-ban-hop-<meetingId>.bbhop` (ZIP64 v2). **Vẫn nhập được tệp `.mochop` cũ (v1/v2).** Chỉ đổi phần mở rộng tệp và nhãn hiển thị; định dạng nội dung ZIP, `format: "mochop"`, API, IndexedDB/OPFS giữ nguyên để tương thích dữ liệu.
+**Tên chương trình:** **Biên bản họp**. Tên package npm chính thức: `bien-ban-hop`. **Tên hiển thị và tên tệp xuất:** **Biên bản họp**. Gói sao lưu mới có tên `bien-ban-hop-<meetingId>.bbhop` (ZIP64 v2). **Vẫn nhập được tệp `.mochop` cũ (v1/v2).** Giữ định dạng nội dung ZIP, `format: "mochop"` và IndexedDB/OPFS để không mất dữ liệu; API localhost có tên mới cùng đường dẫn tương thích bản cũ.
 
 **Trạng thái:** `INTEGRATION_ALPHA`, **không** phải bản phát hành và **không** có bằng chứng nghiệm thu TC01–TC38. Được dựng trên nhánh `integration/20261115-g10-v1.2`, giữ nguyên `main` và chín nhánh PoC. Không sử dụng dữ liệu họp quan trọng cho đến khi qua cổng Windows và kiểm thử crash/quota/restore.
 
 ## Tên cũ trong code và cách cập nhật `package-lock.json`
 
 - `mochop-g10-integration` đã đổi thành **`bien-ban-hop`** trong `app/package.json`; các package PoC cũng đã đổi tiền tố thành `bien-ban-hop-poc-...`.
-- **`app/package-lock.json` trước đây được npm sinh trên máy và chưa nằm trong GitHub**. Khi Pull bản mới, chạy `cd app` rồi `npm install --package-lock-only --ignore-scripts` (hoặc `npm install`) để đồng bộ **cả `name` ở đầu lock và `packages[""].name`**. Nếu file đang nằm trong GitHub Desktop Changes, đó là file tạo tại máy bạn.
+- **`app/package-lock.json` đã được tạo trên GitHub Actions và commit vào cùng nhánh G00**, với cả `name` đầu tệp và `packages[""].name` đều là `bien-ban-hop`. Không cần chạy npm trên PC để đổi tên hay **Push origin**. Nếu GitHub Desktop đang liệt kê lock cũ dưới dạng file mới chưa theo dõi, hãy **chỉ** đưa file đó ra ngoài repository hoặc Discard Changes của chính file đó trước khi Pull, tránh lỗi ghi đè file cục bộ. Không ảnh hưởng dữ liệu ghi âm.
 - **Không đổi** mã nhận diện gói ZIP v1/v2 `format: "mochop"`, tên DB IndexedDB cũ và khóa bảo trì PWA khi chưa có bước di chuyển dữ liệu được kiểm thử; thay bừa sẽ gây mất quyền truy cập dữ liệu cuộc họp cũ. API nội bộ đã chuyển sang tên `bien_ban_hop` và vẫn có alias để bản đang mở cũ không lỗi.
 - Danh sách các tên phải giữ tương thích được ghi tại [docs/NAMING_COMPATIBILITY.md](../docs/NAMING_COMPATIBILITY.md).
 
@@ -19,7 +19,7 @@
 ```powershell
 cd app
 node --version
-npm install
+npm ci
 npm run test
 npm run build
 npm run dev

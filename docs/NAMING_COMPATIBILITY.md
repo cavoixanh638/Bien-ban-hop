@@ -27,16 +27,13 @@ Những định danh trên không xuất hiện như nhãn sản phẩm trên m�
 
 ## `package-lock.json` trong GitHub Desktop
 
-Tại thời điểm cập nhật này, `app/package-lock.json` **chưa được quản lý trong nhánh tích hợp**; tệp màu xanh trong GitHub Desktop là file npm tạo cục bộ. Nó sao chép tên package từ `app/package.json`, nên vẫn có tên cũ nếu người dùng chưa chạy lại npm.
+**Đã đồng bộ trên GitHub:** G00 dùng GitHub Actions tạo `app/package-lock.json` từ `app/package.json` phiên bản hiện tại, rồi commit vào nhánh tích hợp. Cả hai trường `name` (gốc và `packages[""].name`) đều là `bien-ban-hop`. Sau đó xóa workflow tạo lockfile một lần và đổi GitHub CI sang `npm ci` để kiểm tra toàn bộ dependency được khóa chính xác.
 
-Sau khi Pull commit đổi tên, trong PowerShell hoặc Terminal tại thư mục dự án:
+**Không cần** chạy `npm install --package-lock-only` hoặc **Push origin** trên PC để hoàn tất việc đổi tên. Chỉ cần cập nhật nhánh bằng **Fetch origin → Pull origin** trên GitHub Desktop.
 
-```powershell
-cd app
-npm install --package-lock-only --ignore-scripts
-```
+**Lưu ý xung đột file cũ:** Nếu `app/package-lock.json` trên PC hiện là file **untracked** do npm tạo (dấu + màu xanh ở Changes), nó có thể cản trở Pull vì Git sẽ không ghi đè file chưa theo dõi. Hãy di chuyển riêng file này ra một thư mục sao lưu **ngoài repository**, hoặc chọn **Discard Changes** chỉ cho đúng `app/package-lock.json` nếu chắc chắn đó là file npm tự sinh. Sau đó Pull lại. Không dùng Discard All Changes, không xóa `node_modules`, OPFS/IndexedDB hoặc WAV.
 
-Lệnh này đồng bộ `"name"` ở đầu lock và `"packages": {"": {"name": ...}}` theo tên `bien-ban-hop`. Sau đó có thể chạy `npm install` và `npm test`. Không xóa `node_modules`, OPFS/IndexedDB hay file ghi âm để đổi tên package. Không commit một lockfile cũ thiếu các dependency mới.
+Muốn chạy ứng dụng sau khi cập nhật mã, dùng `npm ci` trong `app/` để cài dependencies đã được khóa, nhưng đây là **bước cài phần mềm**, không phải bước đồng bộ GitHub.
 
 ## Kiểm thử bắt buộc trước khi nghiệm thu đổi tên
 
