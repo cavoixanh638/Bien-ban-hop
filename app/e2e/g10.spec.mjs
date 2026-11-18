@@ -240,3 +240,47 @@ test('G00 export: TXT and portable filename use Biên bản họp product name',
   expect(pwaManifest.name).toContain('Biên bản họp');
   expect(pwaManifest.short_name).toBe('Biên bản họp');
 });
+
+
+test('G00 Word editor: style survives autosave and old note remains editable',async({page})=>{
+  await page.goto('/');
+  const editor=page.locator('.tiptap');
+  await expect(editor).toBeVisible();
+  await editor.click();
+  await page.keyboard.type('Van ban thu nghiem Word.');
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.locator('[data-action="underline"]').click();
+  await expect(editor.locator('u')).toContainText('Van ban thu nghiem Word.');
+  await page.locator('#word-menu summary').click();
+  await page.locator('#word-font').selectOption('Arial');
+  await page.locator('#word-size').selectOption('20');
+  await page.locator('[data-word="alignCenter"]').click();
+  await expect(editor.locator('p')).toHaveAttribute('style',/text-align: center/);
+  await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+  await page.reload();
+  await expect(editor.locator('u')).toContainText('Van ban thu nghiem Word.');
+  await expect(editor.locator('p')).toHaveAttribute('style',/text-align: center/);
+  await expect(editor.locator('[style*="font-family"]')).toContainText('Van ban thu nghiem Word.');
+});
+
+test('G00 Word editor: find/replace unlinked text and create a table',async({page})=>{
+  await page.goto('/');
+  const editor=page.locator('.tiptap');
+  await expect(editor).toBeVisible();
+  await editor.click();
+  await page.keyboard.type('Kien nghi ve cong viec. Kien nghi cua thanh pho.');
+  await page.locator('#open-find').click();
+  await page.locator('#find-query').fill('Kien nghi');
+  await expect(page.locator('#find-count')).toContainText('/ 2');
+  await page.locator('#find-replacement').fill('De xuat');
+  await page.locator('#find-replace-all').click();
+  await expect(editor).toContainText('De xuat ve cong viec. De xuat cua thanh pho.');
+  await page.locator('#find-close').click();
+  await page.locator('#word-menu summary').click();
+  await page.locator('[data-word="insertTable"]').click();
+  await expect(editor.locator('table')).toHaveCount(1);
+  await expect(editor.locator('tr')).toHaveCount(3);
+  await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+  await page.reload();
+  await expect(editor.locator('table')).toHaveCount(1);
+});

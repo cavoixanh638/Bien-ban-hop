@@ -1,6 +1,11 @@
 import './style.css';
 import {Editor} from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
+import {TextStyleKit} from '@tiptap/extension-text-style';
+import TextAlign from '@tiptap/extension-text-align';
+import {TableKit} from '@tiptap/extension-table';
+import {FindAndReplace} from '@tiptap/extension-find-and-replace';
+import {canReplaceFindResults} from './word-guards.mjs';
 import {InputTracker,TimeSpan,createTrackingExtension,readAnchorAtCursor} from '../../poc/01-editor/src/tracker.mjs';
 import {MeetingLease} from '../../poc/09-pwa/lease.js';
 import {MeetingStore,SaveQueue} from './meeting-store.mjs';
@@ -174,7 +179,7 @@ function updateAnchor(){
 }
 function syncControls(){const run=state.run;setRecordingUI();
   $('meeting-title').disabled=!run?.releaseLease;
-  document.querySelectorAll('[data-action]').forEach(b=>{b.disabled=!run?.releaseLease;});
+  document.querySelectorAll('[data-action],[data-word],#word-heading,#word-font,#word-size,#word-color,#word-highlight,#word-lineheight,#find-replace,#find-replace-all').forEach(b=>{b.disabled=!run?.releaseLease;});
 }
 async function safelyCloseCurrent(){
   const run=state.run;if(!run)return;
@@ -217,7 +222,11 @@ async function openMeeting(meetingId){
     });
     run.queue=queue;
     run.editor=new Editor({
-      element:$('editor'),extensions:[StarterKit,TimeSpan,createTrackingExtension(tracker)],
+      element:$('editor'),extensions:[
+        StarterKit,TextStyleKit,TextAlign.configure({types:['paragraph','heading']}),
+        TableKit,FindAndReplace.configure({searchDebounceMs:0}),TimeSpan,
+        createTrackingExtension(tracker)
+      ],
       // Native browser spellcheck/grammar overlays are too distracting while taking notes.
       // This does not alter text, timeSpan marks, cursor behavior or audio linking.
       editorProps:{attributes:{
@@ -225,7 +234,7 @@ async function openMeeting(meetingId){
         'data-gramm':'false','data-gramm_editor':'false','data-enable-grammarly':'false'
       }},
       content:run.note.content,editable:!!releaseLease,autofocus:false,
-      onUpdate:()=>{queue.edit();noteFollower?.onDocChange();requestAnimationFrame(updateAnchor);},
+      onUpdate:()=>{queue.edit();noteFollower?.onDocChange();requestAnimationFrame(updateAnchor);requestAnimationFrame(updateFindCount);},
       onSelectionUpdate:()=>{noteFollower?.captureChanged();requestAnimationFrame(updateAnchor);}
     });
     if(run.pendingState)tracker.restorePendingState(run.pendingState,run.editor.state.doc);
@@ -234,6 +243,7 @@ async function openMeeting(meetingId){
     if(!releaseLease)show('Cuộc họp đang được một tab khác chỉnh sửa. Tab này chỉ có quyền xem.','error');
     await refreshMeetings();
     updateAnchor();
+    updateFindCount();
     timelineUI?.refresh(run).catch(e=>show('Không mở được thanh tua: '+e.message,'error'));
   }catch(error){show('Không mở được cuộc họp: '+error.message,'error');}
   finally{state.switching=false;syncControls();}
@@ -480,7 +490,87 @@ async function importSelectedFile(file){
     syncControls();setRecordingUI();
   }
 }
+
+function updateFindCount(){
+  const run=state.run,storage=run?.editor?.storage?.findAndReplace;
+  const results=storage?.results??[];
+  const selected=Number.isInteger(storage?.currentIndex)?storage.currentIndex+1:0;
+  $('find-count').textContent=selected+' / '+results.length;
+}
+function openFind(replace=false){
+  $('find-panel').hidden=false;
+  $('find-query').focus();
+  $('find-query').select();
+  if(replace)$('find-replacement').focus();
+  updateFindCount();
+}
+function closeFind(){
+  $('find-panel').hidden=true;
+  state.run?.editor?.commands.clearSearch?.();
+}
+function runFindReplacement(all=false){
+  const run=state.run,editor=run?.editor;
+  if(!editor||!run.releaseLease)return;
+  const {results=[],currentIndex=null}=editor.storage.findAndReplace??{};
+  if(!results.length){show('Không có kết quả cần thay.');return;}
+  const guard=canReplaceFindResults(editor.state.doc,results,currentIndex,all);
+  if(!guard.ok){
+    show('Có đoạn chữ đang liên kết âm thanh; không tự thay để tránh sai mốc. Hãy sửa trực tiếp đoạn đó.', 'error');
+    return;
+  }
+  editor.commands.setReplaceTerm($('find-replacement').value);
+  all?editor.commands.replaceAll():editor.commands.replace();
+  requestAnimationFrame(updateFindCount);
+}
+function wireWordTools(){
+  const editor=()=>state.run?.editor,runCmd=cb=>{
+    if(!state.run?.releaseLease||!editor())return;
+    cb(editor().chain().focus()).run();
+  };
+  $('word-heading').onchange=e=>{
+    const level=Number(e.target.value);
+    runCmd(chain=>level?chain.setHeading({level}):chain.setParagraph());
+  };
+  $('word-font').onchange=e=>runCmd(chain=>chain.setFontFamily(e.target.value));
+  $('word-size').onchange=e=>runCmd(chain=>chain.setFontSize(e.target.value+'px'));
+  $('word-color').oninput=e=>runCmd(chain=>chain.setColor(e.target.value));
+  $('word-highlight').oninput=e=>runCmd(chain=>chain.setBackgroundColor(e.target.value));
+  $('word-lineheight').onchange=e=>runCmd(chain=>chain.setLineHeight(e.target.value));
+  const actions={
+    alignLeft:chain=>chain.setTextAlign('left'),
+    alignCenter:chain=>chain.setTextAlign('center'),
+    alignRight:chain=>chain.setTextAlign('right'),
+    alignJustify:chain=>chain.setTextAlign('justify'),
+    insertTable:chain=>chain.insertTable({rows:3,cols:3,withHeaderRow:true}),
+    addRowAfter:chain=>chain.addRowAfter(),
+    addColumnAfter:chain=>chain.addColumnAfter(),
+    deleteRow:chain=>chain.deleteRow(),
+    deleteColumn:chain=>chain.deleteColumn(),
+    mergeOrSplit:chain=>chain.mergeOrSplit(),
+    deleteTable:chain=>chain.deleteTable()
+  };
+  document.querySelectorAll('[data-word]').forEach(b=>b.onclick=()=>{
+    if(actions[b.dataset.word])runCmd(actions[b.dataset.word]);
+  });
+  $('open-find').onclick=()=>openFind(false);
+  $('find-close').onclick=closeFind;
+  $('find-query').oninput=e=>{
+    editor()?.commands.setSearchTerm(e.target.value);
+    requestAnimationFrame(updateFindCount);
+  };
+  $('find-replacement').oninput=e=>editor()?.commands.setReplaceTerm(e.target.value);
+  $('find-prev').onclick=()=>{editor()?.commands.goToPreviousResult();updateFindCount();};
+  $('find-next').onclick=()=>{editor()?.commands.goToNextResult();updateFindCount();};
+  $('find-replace').onclick=()=>runFindReplacement(false);
+  $('find-replace-all').onclick=()=>runFindReplacement(true);
+  $('find-query').onkeydown=e=>{
+    if(e.key==='Enter'){e.preventDefault();editor()?.commands.goToNextResult();updateFindCount();}
+    if(e.key==='Escape'){e.preventDefault();closeFind();}
+  };
+}
+
 function wire(){
+  wireWordTools();
   $('new-meeting').onclick=createMeeting;
   $('meeting-title-save').onclick=()=>saveTitle();
   $('meeting-title-cancel').onclick=hideTitleEditor;
@@ -515,6 +605,9 @@ function wire(){
     listenAtCursor(verified);
   });
   document.addEventListener('keydown',e=>{
+    if((e.ctrlKey||e.metaKey)&&!e.altKey&&['f','h'].includes(e.key.toLowerCase())){
+      e.preventDefault();openFind(e.key.toLowerCase()==='h');return;
+    }
     if(e.altKey&&e.key==='Enter'){e.preventDefault();listenAtCursor();}
     if(e.key==='Escape')player.stop();
   });

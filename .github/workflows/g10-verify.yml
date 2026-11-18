@@ -26,12 +26,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Test G10 core and local WAV Recording backend (native Node)
-        working-directory: app
-        run: npm test
       - name: Install exact-version Tiptap/Vite dependencies
         working-directory: app
         run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Test G10 core and local WAV Recording backend (native Node)
+        working-directory: app
+        run: npm test
       - name: Build integrated application
         working-directory: app
         run: npm run build
