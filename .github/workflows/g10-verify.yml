@@ -26,9 +26,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install exact-version Tiptap/Vite dependencies
+      - name: Install exact locked dependencies (no package-lock drift)
         working-directory: app
-        run: npm install --ignore-scripts --no-audit --no-fund
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Test G10 core and local WAV Recording backend (native Node)
         working-directory: app
         run: npm test
