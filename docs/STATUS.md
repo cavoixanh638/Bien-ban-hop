@@ -6,6 +6,14 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Đối chiếu giãn dòng theo OpenXML Word (18/11/2026)
+
+- **Code SHA = Tested SHA:** `5e19937a69f44ecc4dc029d93fc5b7a9ddf968d2`, nhánh `integration/20261115-g10-v1.2`. [GitHub Actions #44298830946](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44298830946) **SUCCESS** Windows/Linux G10 unit **55/55 PASS** mỗi hệ; Vite build và các PoC PASS; Chromium dev **21 PASS + 1 intentional PWA SKIP**, production/PWA **22/22 PASS**, không FAIL.
+- **Kết quả kỹ thuật:** DOCX sinh bởi `docx` dùng `w:spacing w:lineRule="auto"`, `w:line` đúng tỷ lệ **240 (1,0), 276 (1,15), 360 (1,5), 480 (2,0)** theo OpenXML Microsoft (240 đơn vị/dòng). Test thực sự giải ZIP và đọc `word/document.xml`, kiểm `w:before="0"`/`w:after="0"`, legacy inline 1,5 và fallback 1,15; không chỉ kiểm công thức.
+- **Web preview:** test Chromium 4 mức `CSS line-height` = 1/1.15/1.5/2 lần `font-size`, paragraph margins 0 và giữ giá trị sau lưu/tải lại. **Cảnh báo**: hệ số đúng nhưng pixel/glyph metrics trên Chrome khác Word, không tuyên bố pixel-perfect. Chọn không có khoảng trắng trước/sau đoạn theo yêu cầu ghi chú, **không giống cấu hình Normal có after-spacing của một số bản Word**.
+- **Không cần sửa production:** mã tính `Math.round(240 * height)` và `lineRule:'auto'` đang chính xác; chỉ bổ sung unit/E2E kiểm chứng và giải thích trong `app/README.md`. Không đụng `timeSpan`, audio, backup.
+- **NOT_RUN / RELEASE HOLD:** mở đối chiếu DOCX bằng Microsoft Word desktop trên Windows thật, các trường hợp font hỗn hợp/Unicode phức tạp, IME Việt, ghi âm dài/quota/crash và full TC01–TC38. PR tiếp tục Draft; không merge/publish.
+
 ## G00 — Sửa khoảng cách đoạn văn khi giãn dòng 1,0 (18/11/2026)
 
 - **Code SHA = Tested SHA:** `c7dedabc328320513a8925984c2aef28a0935ca9`; **CI PASS** [GitHub Actions #44296715379](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44296715379) — Windows và Linux G10 **53/53 unit PASS** mỗi hệ, Vite build/các PoC PASS; Chromium dev **20 PASS + 1 PWA-only SKIP**, Chromium production/PWA **21/21 PASS**, **0 FAIL**.
