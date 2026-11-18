@@ -14,7 +14,10 @@ import {randomUUID,createHash} from 'node:crypto';
 const LIMIT_BYTES=256*1024*1024; // one 5-minute 192kHz mono f32 segment fits
 const RECORD=/^rec-[a-zA-Z0-9_-]{10,96}$/;
 const FILE=/^seg-\d+\.wav$/;
-const PREFIX='/__moc_hop_local_recording/';
+const PREFIX='/__bien_ban_hop_local_recording/';
+// Legacy route is read-only identity compatibility for older open clients,
+// not a different storage location. New UI always uses PREFIX.
+const LEGACY_PREFIX='/__moc_hop_local_recording/';
 const HEADER='recording-v1';
 
 function answer(res,code,data){
@@ -42,10 +45,14 @@ export function createLocalRecordingMiddleware(appRoot,{origin='http://127.0.0.1
   const base=resolve(appRoot,'Recording');
   return async (req,res,next)=>{
     const raw=req.url?.split('?')[0]??'';
-    if(!raw.startsWith(PREFIX))return next();
-    const relative=raw.slice(PREFIX.length);
+    const matchedPrefix=raw.startsWith(PREFIX)?PREFIX:
+      raw.startsWith(LEGACY_PREFIX)?LEGACY_PREFIX:null;
+    if(!matchedPrefix)return next();
+    const relative=raw.slice(matchedPrefix.length);
     // Keep the companion bound to the local development origin only.
-    if(req.headers['x-mochop-local']!==HEADER ||
+    const hasLocalToken=req.headers['x-bienbanhop-local']===HEADER ||
+      req.headers['x-mochop-local']===HEADER; // old PWA clients
+    if(!hasLocalToken ||
        (req.headers.origin && req.headers.origin!==origin) ||
        req.headers.host!==new URL(origin).host){
       answer(res,403,{error:'Chỉ ứng dụng Biên bản họp chạy cục bộ được ghi WAV'});return;

@@ -1,4 +1,4 @@
-/** G10 portable .mochop v2 contracts. No browser-dependent code.
+/** G10 portable .bbhop v2 contracts with .mochop legacy support. No browser-dependent code.
  * Preserve all note/history and G03 sample journals; remap IDs on import.
  */
 export const PORTABLE_VERSION=2;

@@ -17,8 +17,8 @@ import {CaptureSession,AudioPlayer,AudioRPC} from './audio.mjs';
 import {MicProbe} from './mic-probe.mjs';
 import {mirrorRecordingToLocalFolder,localRecordingStatus} from './recording-mirror.mjs';
 import {exportDOCX,exportTXT,exportMarkdown,exportCSV,mime} from '../../poc/08-export/exporter.mjs';
-import {exportMochopV2,importMochopV2,probeMochopVersion} from './portable-archive.mjs';
-import {importLegacyMochop} from './portable-legacy.mjs';
+import {exportMeetingArchiveV2,importMeetingArchiveV2,probeMeetingArchiveVersion} from './portable-archive.mjs';
+import {importLegacyMeetingArchive} from './portable-legacy.mjs';
 import {loadPortableSource,createBrowserImportRepo} from './portable-storage.mjs';
 import {MeetingTimelineUI} from './timeline-ui.mjs';
 import {NoteAudioFollower} from './note-follow.mjs';
@@ -448,7 +448,7 @@ async function backup(){
     const sink=new WritableStream({
       write:bytes=>writable.write(bytes),close:()=>writable.close(),abort:error=>writable.abort(error)
     });
-    const result=await exportMochopV2(source,sink,{onProgress:pos=>{
+    const result=await exportMeetingArchiveV2(source,sink,{onProgress:pos=>{
       if(pos-lastProgress>5*1024*1024){lastProgress=pos;
         $('transfer-status').textContent='Đang xuất '+(pos/1048576).toFixed(1)+' MB…';}
     }});
@@ -496,13 +496,13 @@ async function importSelectedFile(file){
     if(state.run?.releaseLease)await state.run.queue.drain();
     await timelineUI?.settle();
     await player.closeReader();
-    const version=await probeMochopVersion(file);
+    const version=await probeMeetingArchiveVersion(file);
     if(version===1){
-      imported=await importLegacyMochop(file,state.store,{signal:controller.signal,
+      imported=await importLegacyMeetingArchive(file,state.store,{signal:controller.signal,
         onProgress:displayImportProgress});
     }else{
       const repo=createBrowserImportRepo(state.store);
-      imported=await importMochopV2(file,repo,{signal:controller.signal,
+      imported=await importMeetingArchiveV2(file,repo,{signal:controller.signal,
         onProgress:displayImportProgress});
     }
     $('transfer-status').textContent='Đã khôi phục '+imported.recordings+

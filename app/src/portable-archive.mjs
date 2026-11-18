@@ -4,6 +4,8 @@
  */
 import {ZipStoreWriter,ZipStoreReader,blobSource,Crc32,Sha256,jsonBytes,fileName} from '../../poc/07-backup/zip-stream.mjs';
 import {PORTABLE_VERSION,LIMITS,checkBundle,remapBundle} from './portable-model.mjs';
+// Wire format ID for historical ZIP v1/v2 archives; do NOT rename without a format migration.
+const LEGACY_ARCHIVE_FORMAT='mochop';
 const decoder=new TextDecoder('utf-8',{fatal:true});
 const isSafe=x=>Number.isSafeInteger(x)&&x>=0;
 const fail=s=>{throw Error('Lỗi sao lưu/khôi phục: '+s);};
@@ -12,7 +14,7 @@ const journalPath=id=>'recordings/'+id+'/journal.json';
 const audioPath=(id,segmentId)=>'audio/'+id+'/'+segmentId+'.wav';
 const bytesJSON=value=>{const b=jsonBytes(value);if(b.byteLength>LIMITS.maxJson)fail('metadata vượt giới hạn');return b;};
 const recordIds=meeting=>meeting.recordingIds??[];
-export async function exportMochopV2(source,sink,{signal,onProgress}={}){
+export async function exportMeetingArchiveV2(source,sink,{signal,onProgress}={}){
   checkBundle(source.meeting,source.note,source.history,source.pendingState,source.recordings);
   if(!source.openAudio||typeof source.openAudio!=='function')fail('thiếu nguồn WAV');
   const writer=new ZipStoreWriter(sink,{signal,onProgress}),files=[];
@@ -37,7 +39,7 @@ export async function exportMochopV2(source,sink,{signal,onProgress}={}){
         files.push(saved);
       }
     }
-    const manifest={format:'mochop',formatVersion:PORTABLE_VERSION,schemaVersion:1,
+    const manifest={format:LEGACY_ARCHIVE_FORMAT,formatVersion:PORTABLE_VERSION,schemaVersion:1,
       appVersion:'g10-portable',meetingIds:[source.meeting.meetingId],recordingIds:recordIds(source.meeting),
       files,createdAt:new Date().toISOString()};
     if(jsonBytes(manifest).byteLength>LIMITS.maxManifest)fail('quá nhiều file trong manifest');
@@ -78,7 +80,7 @@ async function loadJson(reader,entry,declared,signal){
   for(const c of chunks){data.set(c,at);at+=c.byteLength;}
   try{return JSON.parse(decoder.decode(data));}catch(e){fail('JSON '+entry.name+': '+e.message);}
 }
-export async function importMochopV2(blob,repo,{signal,onProgress,makeId,now}={}){
+export async function importMeetingArchiveV2(blob,repo,{signal,onProgress,makeId,now}={}){
   if(!blob||!Number.isSafeInteger(blob.size)||blob.size<22)fail('file không phải ZIP hợp lệ');
   const reader=new ZipStoreReader(blobSource(blob),{maxEntries:LIMITS.maxEntries});
   const entries=await reader.entries(),files=new Map(),folded=new Set();
@@ -99,7 +101,7 @@ export async function importMochopV2(blob,repo,{signal,onProgress,makeId,now}={}
   // ZIP central CRC for manifest; it does not have a self-referential SHA.
   const header=await loadJson(reader,m,{size:m.size,sha256:(await hashEntry(reader,m)),
     path:'manifest.json'},signal);
-  if(header?.format!=='mochop'||header.formatVersion!==2||
+  if(header?.format!==LEGACY_ARCHIVE_FORMAT||header.formatVersion!==2||
      header.schemaVersion!==1||!Array.isArray(header.files)||
      !Array.isArray(header.recordingIds)||!Array.isArray(header.meetingIds)||
      header.meetingIds.length!==1)fail('định dạng tệp sao lưu chưa được hỗ trợ');
@@ -184,14 +186,14 @@ async function hashEntry(reader,entry){
 /** Inspect only the bounded, CRC-validated manifest to route older exports.
  * Each actual importer independently revalidates the complete ZIP again.
  */
-export async function probeMochopVersion(blob){
+export async function probeMeetingArchiveVersion(blob){
   const reader=new ZipStoreReader(blobSource(blob),{maxEntries:LIMITS.maxEntries});
   const entries=await reader.entries();
   const m=entries.find(e=>e.name==='manifest.json');
   if(!m||m.size>LIMITS.maxManifest)fail('file không chứa manifest hợp lệ');
   const digest=await hashEntry(reader,m);
   const manifest=await loadJson(reader,m,{path:m.name,size:m.size,sha256:digest});
-  if(manifest?.format!=='mochop'||![1,2].includes(manifest.formatVersion))
+  if(manifest?.format!==LEGACY_ARCHIVE_FORMAT||![1,2].includes(manifest.formatVersion))
     fail('định dạng tệp sao lưu không được hỗ trợ');
   return manifest.formatVersion;
 }

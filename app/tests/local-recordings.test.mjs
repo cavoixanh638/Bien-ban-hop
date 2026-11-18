@@ -10,7 +10,7 @@ import {verifyExistingLocalWav} from '../src/recording-mirror.mjs';
 import {wavHeader} from '../../poc/03-opfs/core.mjs';
 
 async function fixture(){
-  const root=await mkdtemp(join(tmpdir(),'mochop-g10-local-'));
+  const root=await mkdtemp(join(tmpdir(),'bien-ban-hop-local-'));
   let handler;const server=createServer((req,res)=>{
     handler(req,res,()=>{res.statusCode=404;res.end('Missing');}).catch(e=>{res.statusCode=500;res.end(e.message);});
   });
@@ -19,14 +19,14 @@ async function fixture(){
   handler=createLocalRecordingMiddleware(root,{origin});
   return {root,server,origin,async cleanup(){await new Promise(resolve=>server.close(resolve));await rm(root,{recursive:true,force:true});}};
 }
-const HEADERS={'X-MocHop-Local':'recording-v1'};
+const HEADERS={'X-BienBanHop-Local':'recording-v1'};
 const ID='rec-test-0000000001';
 const wav=Buffer.concat([Buffer.from(wavHeader(4,48000,1)),Buffer.alloc(4)]);
 
 test('G10 local mirror: stream WAV into app/Recording/<id> without overwriting',async()=>{
   const f=await fixture();
   try{
-    const root=f.origin+'/__moc_hop_local_recording/';
+    const root=f.origin+'/__bien_ban_hop_local_recording/';
     const status=await fetch(root+'status',{headers:HEADERS});
     assert.equal(status.status,200);assert.equal((await status.json()).folder,'app/Recording');
     const url=root+ID+'/seg-0.wav';
@@ -50,7 +50,7 @@ test('G10 local mirror: stream WAV into app/Recording/<id> without overwriting',
 test('G10 local mirror: reject foreign origin, arbitrary paths, and broken WAV',async()=>{
   const f=await fixture();
   try{
-    const root=f.origin+'/__moc_hop_local_recording/';
+    const root=f.origin+'/__bien_ban_hop_local_recording/';
     assert.equal((await fetch(root+'status')).status,403);
     assert.equal((await fetch(root+'status',{headers:{...HEADERS,Origin:'https://evil.example'}})).status,403);
     const forbidden=await fetch(root+'rec-no/seg-0.wav',{method:'PUT',headers:{...HEADERS,Origin:f.origin},body:wav});
@@ -65,7 +65,7 @@ test('G10 local mirror: reject foreign origin, arbitrary paths, and broken WAV',
 test('G10 local mirror: same-size corrupt WAV is rejected by SHA256, never silently reused',async()=>{
   const f=await fixture();
   try{
-    const url=f.origin+'/__moc_hop_local_recording/'+ID+'/seg-0.wav';
+    const url=f.origin+'/__bien_ban_hop_local_recording/'+ID+'/seg-0.wav';
     const created=await fetch(url,{method:'PUT',headers:{...HEADERS,Origin:f.origin},body:wav});
     assert.equal(created.status,201);
     const saved=join(f.root,'Recording',ID,'seg-0.wav');
@@ -74,5 +74,25 @@ test('G10 local mirror: same-size corrupt WAV is rejected by SHA256, never silen
     assert.equal((await stat(saved)).size,wav.length);
     await assert.rejects(()=>verifyExistingLocalWav(url,new Blob([wav])),/SHA256/);
     assert.deepEqual(await readFile(saved),corrupt);
+  }finally{await f.cleanup();}
+});
+
+
+test('G00 rename: legacy local URL and header remain compatible with existing clients',async()=>{
+  const f=await fixture();
+  try{
+    const legacy=f.origin+'/__moc_hop_local_recording/';
+    const oldHeaders={'X-MocHop-Local':'recording-v1'};
+    assert.equal((await fetch(legacy+'status',{headers:oldHeaders})).status,200);
+    const dest=legacy+ID+'/seg-0.wav';
+    assert.equal((await fetch(dest,{method:'PUT',
+      headers:{...oldHeaders,Origin:f.origin},body:wav})).status,201);
+    const modern=f.origin+'/__bien_ban_hop_local_recording/'+ID+'/seg-0.wav';
+    const current={'X-BienBanHop-Local':'recording-v1'};
+    const head=await fetch(modern,{method:'HEAD',headers:current});
+    assert.equal(head.status,200);
+    assert.equal(head.headers.get('X-Recording-Sha256'),
+      createHash('sha256').update(wav).digest('hex'));
+    assert.deepEqual(await readFile(join(f.root,'Recording',ID,'seg-0.wav')),wav);
   }finally{await f.cleanup();}
 });

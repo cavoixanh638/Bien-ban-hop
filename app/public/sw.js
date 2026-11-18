@@ -1,7 +1,8 @@
 // G10 offline shell. No audio, personal note, OPFS or IndexedDB contents in CacheStorage.
-const VERSION='g00-rich-editor-20261118';
-const CACHE='mochop-g10-shell-'+VERSION, SCOPE=self.registration.scope;
+const VERSION='bien-ban-hop-20261118-rebrand';
+const CACHE='bien-ban-hop-shell-'+VERSION, SCOPE=self.registration.scope;
 const url=relative=>new URL(relative,SCOPE).href;
+// Keep the old lock key: older and newer PWA clients must share the same safety lock.
 const MAINTENANCE_LOCK='mochop:poc09:maintenance';
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{

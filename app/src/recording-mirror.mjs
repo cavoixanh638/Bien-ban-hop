@@ -1,8 +1,8 @@
 import {AudioRPC} from './audio.mjs';
 import {Sha256} from '../../poc/07-backup/zip-stream.mjs';
 
-const ENDPOINT='/__moc_hop_local_recording/';
-const HEADERS={'X-MocHop-Local':'recording-v1'};
+const ENDPOINT='/__bien_ban_hop_local_recording/';
+const HEADERS={'X-BienBanHop-Local':'recording-v1'};
 const VALID_ID=/^rec-[a-zA-Z0-9_-]{10,96}$/;
 const VALID_SEGMENT=/^seg-\d+\.wav$/;
 

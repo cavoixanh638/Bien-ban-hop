@@ -1,5 +1,5 @@
 {
-  "name": "moc-hop-capture-poc",
+  "name": "bien-ban-hop-poc-02-capture",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -9,5 +9,7 @@
     "test:browser": "node tests/browser-runner.mjs",
     "serve": "node server.mjs"
   },
-  "engines": {"node": ">=22"}
+  "engines": {
+    "node": ">=22"
+  }
 }

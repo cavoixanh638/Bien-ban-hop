@@ -129,8 +129,8 @@ test('G10: ghi âm fake mic -> OPFS ACK -> gắn mốc -> dừng -> đọc lại
     const message=await page.locator('#technical-status').innerText();
     const recordingId=message.match(/rec-[a-z0-9-]+/i)?.[0];
     expect(recordingId).toBeTruthy();
-    const local=await page.request.head('/__moc_hop_local_recording/'+recordingId+'/seg-0.wav',
-      {headers:{'X-MocHop-Local':'recording-v1'}});
+    const local=await page.request.head('/__bien_ban_hop_local_recording/'+recordingId+'/seg-0.wav',
+      {headers:{'X-BienBanHop-Local':'recording-v1'}});
     expect(local.status()).toBe(200);
     expect(Number(local.headers()['x-recording-bytes'])).toBeGreaterThan(44);
   }else{

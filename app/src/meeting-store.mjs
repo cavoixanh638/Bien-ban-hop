@@ -3,6 +3,7 @@ import { openIndexedDB, NotesRepository } from '../../poc/06-notes/notes.mjs';
 /** G06 CAS/transaction semantics, extended to atomically commit pending-source sidecar. */
 export class MeetingStore {
   constructor(db) { this.db = db; this.notes = new NotesRepository(db); }
+  // Legacy IndexedDB name is immutable until a verified no-data-loss migration.
   static async open(name = 'mochop-g10-v1') { return new MeetingStore(await openIndexedDB(name)); }
   list() { return this.notes.listMeetings(); }
   create(title) { return this.notes.createMeeting(title); }

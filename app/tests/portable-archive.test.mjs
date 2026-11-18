@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {exportMochopV2,importMochopV2} from '../src/portable-archive.mjs';
+import {exportMeetingArchiveV2,importMeetingArchiveV2} from '../src/portable-archive.mjs';
 import {checkBundle,remapBundle,checkAudioJournal} from '../src/portable-model.mjs';
 import {wavHeader,crc32} from '../../poc/03-opfs/core.mjs';
 const ids=['rec-test-session-00000001','rec-test-session-00000002'];
@@ -37,7 +37,7 @@ function source({sessions=2,history=true}={}){
 async function archiveFor(s){
   const chunks=[];
   const sink=new WritableStream({write:x=>chunks.push(new Uint8Array(x))});
-  const {manifest,archive}=await exportMochopV2(s,sink);
+  const {manifest,archive}=await exportMeetingArchiveV2(s,sink);
   return {blob:new Blob(chunks,{type:'application/zip'}),manifest,archive};
 }
 function repo(){
@@ -63,10 +63,11 @@ function repo(){
 }
 test('G10 v2: export and import TWO recordings, remap all mark references, preserve note revision/history',async()=>{
   const src=source(),{blob,manifest}=await archiveFor(src),target=repo();
+  assert.equal(manifest.format,'mochop'); // v1/v2 wire ID stays stable for old backups
   assert.equal(manifest.formatVersion,2);assert.equal(manifest.recordingIds.length,2);
   assert.equal(manifest.files.filter(f=>f.path.endsWith('.wav')).length,2);
   const generated=['new-meeting-0001','new-note-0002','uuid-0003','uuid-0004'];
-  let n=0;const result=await importMochopV2(blob,target,{makeId:()=>generated[n++]});
+  let n=0;const result=await importMeetingArchiveV2(blob,target,{makeId:()=>generated[n++]});
   assert.ok(result.meetingId);
   assert.equal(target.result.published.length,1);
   const {bundle,stored}=target.result.published[0];
@@ -84,15 +85,15 @@ test('G10 v2: export and import TWO recordings, remap all mark references, prese
 });
 test('G10 v2: repeated import creates independent meetings and does not overwrite old note',async()=>{
   const src=source(),{blob}=await archiveFor(src),target=repo();let n=0;
-  const first=await importMochopV2(blob,target,{makeId:()=>('imported-'+(++n))});
-  const second=await importMochopV2(blob,target,{makeId:()=>('imported-'+(++n))});
+  const first=await importMeetingArchiveV2(blob,target,{makeId:()=>('imported-'+(++n))});
+  const second=await importMeetingArchiveV2(blob,target,{makeId:()=>('imported-'+(++n))});
   assert.notEqual(first.meetingId,second.meetingId);
   assert.notEqual(target.result.published[0].bundle.meeting.recordingIds[0],
     target.result.published[1].bundle.meeting.recordingIds[0]);
 });
 test('G10 v2: note-only meeting exports, imports and opens without WAV',async()=>{
   const src=source({sessions:0,history:false}),{blob}=await archiveFor(src);
-  const target=repo();await importMochopV2(blob,target);
+  const target=repo();await importMeetingArchiveV2(blob,target);
   assert.equal(target.result.published[0].bundle.recordings.size,0);
   assert.equal(target.result.published[0].bundle.note.revision,0);
 });
@@ -103,12 +104,12 @@ test('G10 v2: corrupted WAV CRC/SHA rejected, no meeting published; stage discar
     if(bytes[i]===sig[0]&&bytes[i+1]===sig[1]&&bytes[i+2]===sig[2]&&bytes[i+3]===sig[3]){at=i;break;}
   assert.ok(at>=0);bytes[at+88]^=1;
   const target=repo();
-  await assert.rejects(()=>importMochopV2(new Blob([bytes]),target),/SHA256\/CRC|ZIP|CRC|hash|checksum/i);
+  await assert.rejects(()=>importMeetingArchiveV2(new Blob([bytes]),target),/SHA256\/CRC|ZIP|CRC|hash|checksum/i);
   assert.equal(target.result.published.length,0);assert.equal(target.result.discarded,1);
 });
 test('G10 v2: fail during writing WAV triggers staged rollback, no meeting visible',async()=>{
   const {blob}=await archiveFor(source());let discarded=0,published=0;
-  await assert.rejects(()=>importMochopV2(blob,{async stage(){return{
+  await assert.rejects(()=>importMeetingArchiveV2(blob,{async stage(){return{
     async writeAudio(){throw Error('quota');},async publish(){published++;},
     async discard(){discarded++;}
   };}}),/quota/);
