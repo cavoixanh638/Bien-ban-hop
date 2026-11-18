@@ -193,8 +193,10 @@ test('G00 UX: bright sidebar, compact document, replay options in timeline, rena
   await page.goto('/');
   await expect(page).toHaveTitle(/Biên bản họp/);
   await expect(page.locator('.topbar')).toHaveCount(0);
-  await expect(page.locator('.toolbar #save-status')).toBeVisible();
-  await expect(page.locator('.toolbar #writer-status')).toContainText('Có quyền chỉnh sửa');
+  await expect(page.locator('.toolbar #save-status')).toHaveCount(0);
+  await expect(page.locator('.toolbar #writer-status')).toHaveCount(0);
+  await expect(page.locator('#save-status')).toContainText('Đã lưu');
+  await expect(page.locator('#writer-status')).toContainText('Có quyền chỉnh sửa');
   await expect(page.locator('.timeline-dock #play-stop')).toBeVisible();
   await expect(page.locator('.timeline-dock #play-rate')).toHaveValue('1');
   await expect(page.locator('.timeline-dock #preroll')).toHaveValue('5000');
@@ -352,4 +354,55 @@ test('G00 Word import sanitizes file, appends unlinked text, native A4 print wor
   await page.evaluate(()=>{window.__printInvoked=false;window.print=()=>{window.__printInvoked=true;};});
   await page.locator('#print-document').click();
   expect(await page.evaluate(()=>window.__printInvoked)).toBe(true);
+});
+
+
+test('G00 compact centered tools: hide hints and chips but keep save diagnostics',async({page})=>{
+  await page.setViewportSize({width:1600,height:900});
+  await page.goto('/');
+  await expect(page.locator('.tiptap')).toBeVisible();
+  await expect(page.locator('.toolbar-hint')).toHaveCount(0);
+  await expect(page.locator('.toolbar .top-status')).toHaveCount(0);
+  await expect(page.locator('#writer-status')).toContainText('Có quyền chỉnh sửa');
+  await expect(page.locator('#save-status')).toContainText('Đã lưu');
+  await expect(page.locator('.toolbar')).toHaveCSS('justify-content','center');
+  const shift=await page.evaluate(()=>{
+    const toolbar=document.querySelector('.toolbar');
+    const controls=[...toolbar.children].filter(el=>getComputedStyle(el).display!=='none');
+    const first=controls[0].getBoundingClientRect(),last=controls.at(-1).getBoundingClientRect();
+    const row=toolbar.getBoundingClientRect();
+    return Math.abs((first.left+last.right)/2-(row.left+row.right)/2);
+  });
+  expect(shift).toBeLessThan(15);
+  await page.locator('#open-find').click();
+  await expect(page.locator('#find-panel')).toHaveCSS('justify-content','center');
+});
+
+test('G00 Word sizes are pt, and paragraph line heights change, save, and reload',async({page})=>{
+  await page.goto('/');
+  const editor=page.locator('.tiptap'),paragraph=editor.locator('p').first();
+  await editor.click();
+  await page.keyboard.type('Dong thu nhat: kiem tra co chu va gian dong. Dong thu hai.');
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.locator('#word-menu summary').click();
+  await expect(page.locator('#word-size')).toHaveValue('14');
+  await page.locator('#word-size').selectOption('14');
+  const span=editor.locator('[style*="font-size"]').first();
+  await expect(span).toHaveAttribute('style',/font-size:\s*14pt/);
+  const px=await span.evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+  expect(px).toBeGreaterThan(18);
+  expect(px).toBeLessThan(19.3);
+  await page.locator('#word-lineheight').selectOption('1');
+  await expect(paragraph).toHaveAttribute('style',/line-height:\s*1(?:;|$)/);
+  const a=await paragraph.evaluate(el=>parseFloat(getComputedStyle(el).lineHeight));
+  await page.locator('#word-lineheight').selectOption('1.5');
+  await expect(paragraph).toHaveAttribute('style',/line-height:\s*1\.5/);
+  const b=await paragraph.evaluate(el=>parseFloat(getComputedStyle(el).lineHeight));
+  expect(b).toBeGreaterThan(a*1.35);
+  await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+  await page.reload();
+  await expect(paragraph).toHaveAttribute('style',/line-height:\s*1\.5/);
+  await expect(editor.locator('[style*="font-size"]').first()).toHaveAttribute('style',/font-size:\s*14pt/);
+  const c=await paragraph.evaluate(el=>parseFloat(getComputedStyle(el).lineHeight));
+  expect(c).toBeCloseTo(b,1);
 });

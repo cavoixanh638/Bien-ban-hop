@@ -2,6 +2,7 @@ import {
   Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,
   AlignmentType,HeadingLevel,WidthType
 } from 'docx';
+import {fontSizeToHalfPoints,paragraphLineHeight} from './word-layout.mjs';
 
 /* Rendering is deliberately one-way. The authoritative timeSpan marks and audio
    stay in the .bbhop backup; a DOCX is a standalone human-readable document. */
@@ -17,7 +18,6 @@ const clock=ms=>{
 const richRun=(node,{includeTimestamps=false,lastAnchor=null}={})=>{
   const text=String(node?.text??'');
   const style=textStyle(node),marks=new Set(node?.marks?.map(m=>m.type)??[]);
-  const fontSize=parseFloat(style.fontSize);
   const options={
     text,
     bold:marks.has('bold'),
@@ -25,7 +25,7 @@ const richRun=(node,{includeTimestamps=false,lastAnchor=null}={})=>{
     underline:marks.has('underline')?{type:'single'}:undefined,
     strike:marks.has('strike'),
     font:style.fontFamily||'Times New Roman',
-    size:Number.isFinite(fontSize)&&fontSize>=8&&fontSize<=128?Math.round(fontSize*1.5):27,
+    size:fontSizeToHalfPoints(style.fontSize),
     color:color(style.color)||'23353C',
     shading:color(style.backgroundColor)?{fill:color(style.backgroundColor)}:undefined
   };
@@ -55,11 +55,10 @@ function para(n,opts={},extra={}){
   const level=Number(n.attrs?.level);
   const h=n.type==='heading'&&level>=1&&level<=3?
     [HeadingLevel.HEADING_1,HeadingLevel.HEADING_2,HeadingLevel.HEADING_3][level-1]:undefined;
-  // Word line spacing is paragraph-level. Tiptap TextStyle lineHeight lives on
-  // text runs; use the first explicit value while retaining all run formatting.
+  // Line height is a block attribute; older notes may still contain the
+  // previous ineffective inline textStyle value, supported for export only.
   const firstStyled=blocks(n).find(x=>textStyle(x).lineHeight);
-  const lineHeight=Number(textStyle(firstStyled).lineHeight);
-  const height=Number.isFinite(lineHeight)&&lineHeight>=1&&lineHeight<=3?lineHeight:1.15;
+  const height=paragraphLineHeight(n.attrs?.lineHeight,textStyle(firstStyled).lineHeight);
   return new Paragraph({
     children:runsFrom(blocks(n),opts),
     heading:h,alignment:alignment(n.attrs?.textAlign),

@@ -1,7 +1,8 @@
 import './style.css';
 import {Editor} from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
-import {TextStyleKit} from '@tiptap/extension-text-style';
+import {TextStyleKit,LineHeight} from '@tiptap/extension-text-style';
+import {applyBlockLineHeight} from './word-layout.mjs';
 import TextAlign from '@tiptap/extension-text-align';
 import {TableKit} from '@tiptap/extension-table';
 import {FindAndReplace} from '@tiptap/extension-find-and-replace';
@@ -250,12 +251,16 @@ async function openMeeting(meetingId){
       if(phase==='saved'){meetingSearchIndex=null;status('save-status','Đã lưu • r'+run.revision);}
       else if(phase==='saving')status('save-status','Đang lưu…');
       else if(phase==='dirty')status('save-status','Chưa lưu');
-      else status('save-status','Lỗi lưu: '+(error?.message??'không rõ'),true);
+      else {
+        status('save-status','Lỗi lưu: '+(error?.message??'không rõ'),true);
+        show('Không lưu được ghi chú: '+(error?.message??'không rõ'),'error');
+      }
     });
     run.queue=queue;
     run.editor=new Editor({
       element:$('editor'),extensions:[
-        StarterKit,TextStyleKit,TextAlign.configure({types:['paragraph','heading']}),
+        StarterKit,TextStyleKit.configure({lineHeight:false}),
+        LineHeight.configure({types:['paragraph','heading']}),TextAlign.configure({types:['paragraph','heading']}),
         TableKit,FindAndReplace.configure({searchDebounceMs:0}),TimeSpan,
         createTrackingExtension(tracker)
       ],
@@ -565,10 +570,12 @@ function wireWordTools(){
     runCmd(chain=>level?chain.setHeading({level}):chain.setParagraph());
   };
   $('word-font').onchange=e=>runCmd(chain=>chain.setFontFamily(e.target.value));
-  $('word-size').onchange=e=>runCmd(chain=>chain.setFontSize(e.target.value+'px'));
+  $('word-size').onchange=e=>runCmd(chain=>chain.setFontSize(e.target.value+'pt'));
   $('word-color').oninput=e=>runCmd(chain=>chain.setColor(e.target.value));
   $('word-highlight').oninput=e=>runCmd(chain=>chain.setBackgroundColor(e.target.value));
-  $('word-lineheight').onchange=e=>runCmd(chain=>chain.setLineHeight(e.target.value));
+  $('word-lineheight').onchange=e=>{
+    if(state.run?.releaseLease&&state.run.editor)applyBlockLineHeight(state.run.editor,e.target.value);
+  };
   const actions={
     alignLeft:chain=>chain.setTextAlign('left'),
     alignCenter:chain=>chain.setTextAlign('center'),

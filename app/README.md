@@ -29,6 +29,13 @@ npm run dev
 4. Nhấn **Bắt đầu ghi**, gõ ghi chú ngay vào trang giấy; không phải nhập mã mốc. Sau khi dừng, nhấp đoạn chữ có gắn mốc để nghe. `Alt+Enter` nghe mốc tại con trỏ; `Esc` dừng phát. Ghi chú tự lưu với revision, báo "Đã lưu" chỉ sau IDB transaction hoàn tất.
 5. Có thể tạo/chuyển cuộc họp, đổi tên, sử dụng hai tab (chỉ một tab giữ writer lock), xuất DOCX/TXT/MD/CSV, **Sao lưu biên bản và ghi âm** và **Khôi phục biên bản từ tệp**. Khi nhập, chương trình kiểm tra checksum rồi tạo ID cuộc họp, ghi chú và phiên thu mới; không ghi đè cuộc họp đang có.
 
+## G00 — Căn giữa công cụ và sửa cỡ chữ/giãn dòng (18/11/2026)
+
+- Thanh công cụ và hàng Tìm/Thay được **căn giữa**; bỏ dòng hướng dẫn và chip quyền/lưu khỏi vùng nhìn. Trạng thái quyền/lưu vẫn ở vùng thông báo hỗ trợ đọc màn hình, lỗi lưu tiếp tục được báo trên màn hình.
+- Cỡ chữ trong menu Word là **point (pt)**: 14 pt được render là 14pt trong CSS (khoảng 18,67 px tại 96 dpi), và xuất DOCX là **28 half-points**. Các ghi chú cũ dùng `px` vẫn giữ nguyên nội dung và được chuyển đổi đúng khi xuất DOCX.
+- Giãn dòng **1,0 / 1,15 / 1,5 / 2,0** được lưu trên **cả đoạn văn/tiêu đề**, không còn chỉ đặt trên `span` chữ; không sửa `timeSpan`. Khoảng cách **giữa các đoạn** vẫn riêng với giãn dòng bên trong đoạn.
+- PWA service worker đã tăng phiên bản cache để nhận giao diện mới. Thử nghiệm Chromium lưu → tải lại kiểm tra cỡ 14 pt, computed line-height và bố cục.
+
 ## G00 — Soạn thảo Word và tìm kiếm offline
 
 - Thanh **Định dạng & bảng** dùng Tiptap 3.33.1: gạch chân/gạch ngang, font, cỡ, màu chữ/tô sáng, căn lề, giãn dòng theo vùng chữ, Heading 1–3, bảng 3×3, thêm/xóa dòng/cột và gộp/tách ô.

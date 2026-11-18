@@ -46,7 +46,7 @@
           <div class="word-menu-inner" aria-label="Các chức năng soạn thảo Word">
             <label>Kiểu đoạn <select id="word-heading"><option value="0">Văn bản</option><option value="1">Tiêu đề 1</option><option value="2">Tiêu đề 2</option><option value="3">Tiêu đề 3</option></select></label>
             <label>Phông chữ <select id="word-font"><option value="Times New Roman">Times New Roman</option><option value="Arial">Arial</option><option value="Calibri">Calibri</option></select></label>
-            <label>Cỡ chữ <select id="word-size"><option value="14">14</option><option value="16">16</option><option value="18" selected>18</option><option value="20">20</option><option value="24">24</option></select></label>
+            <label>Cỡ chữ (pt) <select id="word-size"><option value="12">12</option><option value="13">13</option><option value="14" selected>14</option><option value="16">16</option><option value="18">18</option><option value="20">20</option><option value="24">24</option></select></label>
             <label>Màu chữ <input id="word-color" type="color" value="#23353c" aria-label="Chọn màu chữ"></label>
             <label>Tô sáng <input id="word-highlight" type="color" value="#fff3a0" aria-label="Chọn màu tô sáng"></label>
             <label>Giãn dòng <select id="word-lineheight"><option value="1">1,0</option><option value="1.15">1,15</option><option value="1.5">1,5</option><option value="2">2,0</option></select></label>
@@ -65,8 +65,11 @@
             </div>
           </div>
         </details>
-        <span class="toolbar-hint">Gõ tự nhiên như một tài liệu. Nhấp chữ có mốc để nghe lại sau khi dừng thu.</span>
-        <div class="top-status"><span id="writer-status" class="chip">Chờ tải</span><span id="save-status" class="chip">Chưa tải</span></div>
+      </div>
+      <!-- Hidden visually, retained for screen readers and save/lease correctness. -->
+      <div class="sr-only" aria-live="polite" aria-atomic="false">
+        <span id="writer-status">Chờ tải</span>
+        <span id="save-status">Chưa tải</span>
       </div>
       <section id="find-panel" class="find-panel" aria-label="Tìm và thay thế" hidden>
         <input id="find-query" type="search" placeholder="Tìm trong ghi chú" aria-label="Từ cần tìm">
