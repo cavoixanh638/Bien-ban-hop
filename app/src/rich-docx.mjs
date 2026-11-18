@@ -1,9 +1,10 @@
 import {
-  Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,
+  Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,PageBreak,ImageRun,ExternalHyperlink,
   AlignmentType,HeadingLevel,WidthType
 } from 'docx';
 import {fontSizeToHalfPoints,paragraphLineHeight} from './word-layout.mjs';
 import {firstLineIndentTwips} from './paragraph-indent.mjs';
+import {safeLink,isSafeImageSource} from './word-media.mjs';
 
 /* Rendering is deliberately one-way. The authoritative timeSpan marks and audio
    stay in the .bbhop backup; a DOCX is a standalone human-readable document. */
@@ -38,7 +39,17 @@ const richRun=(node,{includeTimestamps=false,lastAnchor=null}={})=>{
     if(key!==lastAnchor)out.push(new TextRun({text:' ['+clock(mark.audioOffsetMs)+'] ',color:'6D7A7C',size:19}));
     lastAnchor=key;
   }
-  out.push(new TextRun(options));
+  const link=node?.marks?.find(m=>m.type==='meetingLink')?.attrs?.href;
+  let run=new TextRun(options);
+  if(link){
+    try{
+      run=new ExternalHyperlink({
+        children:[new TextRun({...options,color:color(style.color)||'0563C1',underline:{type:'single'}})],
+        link:safeLink(link)
+      });
+    }catch{/* Invalid or stale URL: preserve text without making an unsafe link. */}
+  }
+  out.push(run);
   return {runs:out,lastAnchor};
 };
 function runsFrom(nodes,opts){
@@ -97,7 +108,9 @@ function tableNode(n,opts){
       return new TableCell({
         children:content.length?content:[new Paragraph('')],
         columnSpan:Number.isSafeInteger(cell.attrs?.colspan)&&cell.attrs.colspan>=1?
-          Math.min(cell.attrs.colspan,20):1
+          Math.min(cell.attrs.colspan,20):1,
+        rowSpan:Number.isSafeInteger(cell.attrs?.rowspan)&&cell.attrs.rowspan>=1?
+          Math.min(cell.attrs.rowspan,20):1
       });
     })
   }));
@@ -105,6 +118,25 @@ function tableNode(n,opts){
     new TableCell({children:[new Paragraph('')]})
   ]})],width:{size:100,type:WidthType.PERCENTAGE}});
 }
+
+function embeddedImageParagraph(node){
+  const src=node?.attrs?.src;
+  if(!isSafeImageSource(src))return new Paragraph({text:'[Ảnh không hợp lệ hoặc quá lớn]'});
+  const [,fmt,base64]=/^data:image\/(png|jpeg);base64,([A-Za-z0-9+/]+=*)$/.exec(src);
+  const decoded=atob(base64);
+  const bytes=new Uint8Array(decoded.length);
+  for(let i=0;i<decoded.length;i++)bytes[i]=decoded.charCodeAt(i);
+  const width=Number(node.attrs.width),height=Number(node.attrs.height);
+  const alt=String(node.attrs.alt??'Ảnh ghi chú').slice(0,120);
+  return new Paragraph({children:[new ImageRun({
+    type:fmt==='jpeg'?'jpg':'png',
+    data:bytes,
+    transformation:{width:Math.max(1,Math.min(560,width||300)),
+      height:Math.max(1,Math.min(720,height||200))},
+    altText:{title:alt,description:alt,name:alt}
+  })]});
+}
+
 export function renderNodes(nodes,opts={}){
   const out=[];
   for(const node of nodes){
@@ -112,6 +144,8 @@ export function renderNodes(nodes,opts={}){
     else if(node.type==='bulletList'||node.type==='orderedList')
       out.push(...listBlocks(node,opts));
     else if(node.type==='table')out.push(tableNode(node,opts));
+    else if(node.type==='meetingPageBreak')out.push(new Paragraph({children:[new PageBreak()]}));
+    else if(node.type==='meetingImage')out.push(embeddedImageParagraph(node));
     else if(node.type==='blockquote'){
       for(const child of blocks(node))if(child.type==='paragraph')
         out.push(para(child,opts,{indent:{left:440}}));

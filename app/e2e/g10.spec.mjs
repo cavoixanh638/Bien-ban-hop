@@ -521,6 +521,9 @@ test('G00 A-B and skip controls exist; cannot invent a loop without recorded aud
 test('G00 imports existing PCM16 WAV to durable OPFS, binds typed notes to playback',async({page})=>{
   test.slow();
   await page.goto('/');
+  await expect(page.locator('.tiptap')).toBeVisible();
+  await expect(page.locator('#writer-status')).toContainText('Có quyền chỉnh sửa');
+  await expect(page.locator('#import-audio')).toBeEnabled();
   const frames=8000*6,bytes=Buffer.alloc(44+frames*2);
   bytes.write('RIFF',0);bytes.writeUInt32LE(bytes.length-8,4);bytes.write('WAVE',8);
   bytes.write('fmt ',12);bytes.writeUInt32LE(16,16);bytes.writeUInt16LE(1,20);
@@ -569,4 +572,34 @@ test('G00 clip and full SHA backup verification controls are visible and source-
   await page.locator('#export-clip').click();
   await expect(page.locator('#message')).toContainText('Không xuất được WAV A–B');
   await expect(page.locator('#transfer-status')).toContainText('Tệp sao lưu chứa');
+});
+
+
+test('G00 Word image, secure link and page break survive saving and export as DOCX',async({page})=>{
+  await page.goto('/');
+  const editor=page.locator('.tiptap');
+  await expect(editor).toBeVisible();
+  await editor.click();
+  await page.keyboard.type('Van ban co lien ket');
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.locator('#word-menu summary').click();
+  await page.locator('#word-link-url').fill('https://example.com');
+  await page.locator('#word-add-link').click();
+  await expect(editor.locator('a[href="https://example.com/"]')).toContainText('Van ban co lien ket');
+  await page.locator('#word-page-break').click();
+  await expect(editor.locator('[data-meeting-page-break]')).toHaveCount(1);
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==','base64');
+  await page.locator('#word-image-file').setInputFiles({
+    name:'test.png',mimeType:'image/png',buffer:png
+  });
+  await expect(editor.locator('img[data-meeting-image]')).toHaveCount(1);
+  await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+  const d=page.waitForEvent('download');
+  await page.locator('[data-export="docx"]').click();
+  const download=await d;
+  expect(download.suggestedFilename()).toMatch(/\.docx$/);
+  await page.reload();
+  await expect(editor.locator('img[data-meeting-image]')).toHaveCount(1);
+  await expect(editor.locator('[data-meeting-page-break]')).toHaveCount(1);
+  await expect(editor.locator('a[href="https://example.com/"]')).toHaveCount(1);
 });

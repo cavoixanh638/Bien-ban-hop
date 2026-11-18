@@ -8,6 +8,7 @@ import {importAudioFile,removeUnlinkedImportedAudio} from './import-audio.mjs';
 import {ImportantMark,collectImportantAnchors} from './important-mark.mjs';
 import {checkBrowserStorage} from './storage-health.mjs';
 import {exportVerifiedWavClip} from './audio-clip.mjs';
+import {MeetingImage,MeetingPageBreak,MeetingLink,imageNodeFromFile,safeLink} from './word-media.mjs';
 import {makeSafeLoop,jumpMeetingPosition} from './replay-tools.mjs';
 import TextAlign from '@tiptap/extension-text-align';
 import {TableKit} from '@tiptap/extension-table';
@@ -160,6 +161,8 @@ function setRecordingUI(){
   $('verify-backup').disabled=!!active||finalizing||state.switching||transferBusy;
   $('import-audio').disabled=!!active||finalizing||!run?.releaseLease||state.switching||transferBusy;
   $('bookmark-toggle').disabled=!run?.releaseLease||state.switching||transferBusy;
+  document.querySelectorAll('#word-add-link,#word-remove-link,#word-page-break,#word-insert-image,#word-link-url')
+    .forEach(el=>el.disabled=!run?.releaseLease||state.switching||transferBusy);
   $('export-clip').disabled=!!active||finalizing||state.switching||transferBusy;
   $('import-backup').disabled=!!active||finalizing||state.switching||transferBusy;
   $('mic-test').disabled=!!active;
@@ -317,6 +320,7 @@ async function openMeeting(meetingId,{allowTransfer=false}={}){
         LineHeight.configure({types:['paragraph','heading']}),TextAlign.configure({types:['paragraph','heading']}),
         ParagraphIndent,
         TableKit,FindAndReplace.configure({searchDebounceMs:0}),TimeSpan,ImportantMark,
+        MeetingImage,MeetingPageBreak,MeetingLink,
         createTrackingExtension(tracker)
       ],
       // Native browser spellcheck/grammar overlays are too distracting while taking notes.
@@ -708,6 +712,31 @@ function wireWordTools(){
   document.querySelectorAll('[data-word]').forEach(b=>b.onclick=()=>{
     if(actions[b.dataset.word])runCmd(actions[b.dataset.word]);
   });
+  $('word-add-link').onclick=()=>{
+    const e=editor();
+    if(!state.run?.releaseLease||!e)return;
+    if(e.state.selection.empty){show('Hãy bôi đen chữ cần gắn liên kết.','error');return;}
+    try{e.chain().focus().setMark('meetingLink',{href:safeLink($('word-link-url').value)}).run();}
+    catch(error){show('Liên kết không hợp lệ: '+error.message,'error');}
+  };
+  $('word-remove-link').onclick=()=>{
+    if(state.run?.releaseLease)runCmd(chain=>chain.unsetMark('meetingLink'));
+  };
+  $('word-page-break').onclick=()=>{
+    if(state.run?.releaseLease)runCmd(chain=>chain.insertContent({type:'meetingPageBreak'}));
+  };
+  $('word-insert-image').onclick=()=>$('word-image-file').click();
+  $('word-image-file').onchange=async ev=>{
+    const file=ev.target.files?.[0],run=state.run;
+    try{
+      if(!file||!run?.releaseLease||state.switching||transferBusy)return;
+      const json=await imageNodeFromFile(file);
+      if(run!==state.run)throw Error('Cuộc họp đã thay đổi');
+      run.editor.chain().focus().insertContent(json).run();
+      show('Đã chèn ảnh nhỏ vào ghi chú. Ảnh được lưu trong tài liệu và bản sao lưu.');
+    }catch(error){show('Không chèn được ảnh: '+error.message,'error');}
+    finally{$('word-image-file').value='';}
+  };
   $('open-find').onclick=()=>openFind(false);
   $('find-close').onclick=closeFind;
   $('find-query').oninput=e=>{

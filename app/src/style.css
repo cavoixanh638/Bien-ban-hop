@@ -199,3 +199,16 @@
 .bookmark-item{padding:5px 8px;border-radius:7px;font-size:11px;
   color:#235c55;border:1px solid #b5d5cb;background:#f7fbf4;text-align:left}
 #storage-health[data-level="warning"]{background:#fff5e8;color:#965210;border-left:3px solid #e8a548}
+
+/* Small, bounded image/link/page-break helpers keep Word-like editing local. */
+.word-link-field{display:inline-flex!important;flex-direction:row!important;align-items:center;
+  width:min(250px,100%);gap:5px;margin:0!important;font-size:11px}
+#word-link-url{min-width:90px;flex:1;padding:5px;border-radius:6px;
+  border:1px solid #c4dad5;color:#23585a;background:#fff;font-size:11px}
+.tiptap img[data-meeting-image]{display:block;max-width:100%;height:auto;object-fit:contain;margin:8px 0}
+.tiptap .meeting-page-break{display:block;min-height:13px;border-top:2px dashed #a4b9b9;
+  margin:14px 0;background:repeating-linear-gradient(-45deg,#f5f9f8,#f5f9f8 6px,#e9f0ee 6px,#e9f0ee 12px)}
+@media print{
+  .tiptap .meeting-page-break{height:0;min-height:0;break-after:page;page-break-after:always;
+    margin:0;border:0;background:none}
+}
