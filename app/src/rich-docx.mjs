@@ -3,6 +3,7 @@ import {
   AlignmentType,HeadingLevel,WidthType
 } from 'docx';
 import {fontSizeToHalfPoints,paragraphLineHeight} from './word-layout.mjs';
+import {firstLineIndentTwips} from './paragraph-indent.mjs';
 
 /* Rendering is deliberately one-way. The authoritative timeSpan marks and audio
    stay in the .bbhop backup; a DOCX is a standalone human-readable document. */
@@ -62,6 +63,8 @@ function para(n,opts={},extra={}){
   return new Paragraph({
     children:runsFrom(blocks(n),opts),
     heading:h,alignment:alignment(n.attrs?.textAlign),
+    indent:firstLineIndentTwips(n.attrs?.firstLineIndentPt)?{
+      firstLine:firstLineIndentTwips(n.attrs?.firstLineIndentPt)}:undefined,
     spacing:{before:0,after:0,line:Math.round(240*height),lineRule:'auto'},
     ...extra
   });

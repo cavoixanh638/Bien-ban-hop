@@ -484,3 +484,35 @@ test('G00 Word parity: all preset CSS line-height multipliers scale in 1:1.15:1.
   await page.reload();
   await expect(paragraph).toHaveAttribute('style',/line-height:\s*2(?:;|$)/);
 });
+
+
+test('G00 first-line indent is visible and persisted without changing the note content',async({page})=>{
+  await page.goto('/');
+  const editor=page.locator('.tiptap'),p=editor.locator('p').first();
+  await editor.click();
+  await page.keyboard.type('Noi dung thu dau dong');
+  await page.locator('#word-menu summary').click();
+  await page.locator('#indent-more').click();
+  await expect(p).toHaveAttribute('data-indent-first-pt','12');
+  await expect(p).toHaveCSS('text-indent','16px');
+  await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+  await page.reload();
+  await expect(editor.locator('p').first()).toHaveAttribute('data-indent-first-pt','12');
+  await page.locator('#word-menu summary').click();
+  await editor.locator('p').first().click();
+  await page.locator('#indent-less').click();
+  await expect(editor.locator('p').first()).not.toHaveAttribute('data-indent-first-pt','12');
+});
+
+test('G00 A-B and skip controls exist; cannot invent a loop without recorded audio',async({page})=>{
+  await page.goto('/');
+  await expect(page.locator('#loop-status')).toContainText('Chưa đặt A');
+  for(const id of ['loop-set-a','loop-set-b','loop-play','loop-clear','skip-back','skip-forward'])
+    await expect(page.locator('#'+id)).toBeVisible();
+  await page.locator('#loop-play').click();
+  await expect(page.locator('#message')).toContainText('Lặp A–B');
+  await page.locator('#loop-set-a').click();
+  await expect(page.locator('#message')).toContainText('Hãy chọn một vị trí có âm thanh');
+  await page.locator('#play-rate').selectOption('2');
+  await expect(page.locator('#play-rate')).toHaveValue('2');
+});

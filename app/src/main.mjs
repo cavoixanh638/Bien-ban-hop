@@ -3,6 +3,8 @@ import {Editor} from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import {TextStyleKit,LineHeight} from '@tiptap/extension-text-style';
 import {applyBlockLineHeight} from './word-layout.mjs';
+import {ParagraphIndent,adjustFirstLineIndent} from './paragraph-indent.mjs';
+import {makeSafeLoop,jumpMeetingPosition} from './replay-tools.mjs';
 import TextAlign from '@tiptap/extension-text-align';
 import {TableKit} from '@tiptap/extension-table';
 import {FindAndReplace} from '@tiptap/extension-find-and-replace';
@@ -27,6 +29,35 @@ import {NoteAudioFollower} from './note-follow.mjs';
 const $=id=>document.getElementById(id),state={store:null,run:null,lease:new MeetingLease(),switching:false};
 let timelineUI=null,noteFollower=null;
 let meetingSearchTimer=null,meetingSearchGeneration=0,meetingSearchTerm='',meetingSearchIds=null,meetingSearchIndex=null;
+let loopPoints={a:null,b:null,range:null,active:false},loopVersion=0;
+const loopLabel=ms=>Number.isFinite(ms)?(ms/1000).toFixed(1)+'s':'—';
+function refreshLoopUI(){
+  const el=$('loop-status');if(!el)return;
+  el.textContent='A: '+loopLabel(loopPoints.a)+' · B: '+loopLabel(loopPoints.b)+
+    (loopPoints.active?' · đang lặp':'');
+  $('loop-play').setAttribute('aria-pressed',String(loopPoints.active));
+}
+function clearLoop(stop=false){
+  loopVersion++;loopPoints={a:null,b:null,range:null,active:false};
+  if(stop)player.stop();
+  refreshLoopUI();
+}
+function endLoopReplay(type,detail={}){
+  if(type==='error'||type==='unavailable'){
+    loopPoints.active=false;loopVersion++;refreshLoopUI();return;
+  }
+  if(type!=='ended'||!loopPoints.active||!loopPoints.range)return;
+  const {range}=loopPoints;
+  if(detail.recordingId!==range.recordingId ||
+      !Number.isFinite(detail.offsetMs) || Math.abs(detail.offsetMs-range.endMs)>300)return;
+  const version=loopVersion,meetingId=state.run?.meetingId;
+  queueMicrotask(async()=>{
+    if(version!==loopVersion||!loopPoints.active||state.run?.meetingId!==meetingId)return;
+    try{await player.start(range.recordingId,range.startMs,{
+      preRollMs:0,rate:Number($('play-rate').value),maxDurationMs:range.durationMs});
+    }catch(e){loopPoints.active=false;refreshLoopUI();show('Không thể phát lặp: '+e.message,'error');}
+  });
+}
 const player=new AudioPlayer((type,detail)=>{
   if(type==='unavailable')show('Không phát được: '+(detail.reason??detail.status),'error');
   if(type==='error')show('Lỗi phát: '+detail.message,'error');
@@ -36,6 +67,7 @@ const player=new AudioPlayer((type,detail)=>{
   if(type==='ended')$('anchor-status').textContent='Đã phát hết đoạn âm thanh có dữ liệu. Nhấp chữ để nghe lại.';
   timelineUI?.onPlayer(type,detail);
   noteFollower?.playback(type,detail);
+  endLoopReplay(type,detail);
 });
 let noticeTimer=0,secondsTimer=0,localRecordingBusy=false,transferBusy=false,importController=null;
 const micProbe=new MicProbe({
@@ -226,6 +258,7 @@ async function safelyCloseCurrent(){
   timelineUI?.clear();
   noteFollower?.clear();
   await timelineUI?.settle();
+  clearLoop();
   await player.closeReader();
   run.editor.destroy();
   if(run.releaseLease)await run.releaseLease();
@@ -261,6 +294,7 @@ async function openMeeting(meetingId){
       element:$('editor'),extensions:[
         StarterKit,TextStyleKit.configure({lineHeight:false}),
         LineHeight.configure({types:['paragraph','heading']}),TextAlign.configure({types:['paragraph','heading']}),
+        ParagraphIndent,
         TableKit,FindAndReplace.configure({searchDebounceMs:0}),TimeSpan,
         createTrackingExtension(tracker)
       ],
@@ -576,6 +610,8 @@ function wireWordTools(){
   $('word-lineheight').onchange=e=>{
     if(state.run?.releaseLease&&state.run.editor)applyBlockLineHeight(state.run.editor,e.target.value);
   };
+  $('indent-more').onclick=()=>{if(state.run?.releaseLease)adjustFirstLineIndent(editor(),12);};
+  $('indent-less').onclick=()=>{if(state.run?.releaseLease)adjustFirstLineIndent(editor(),-12);};
   const actions={
     alignLeft:chain=>chain.setTextAlign('left'),
     alignCenter:chain=>chain.setTextAlign('center'),
@@ -587,7 +623,9 @@ function wireWordTools(){
     deleteRow:chain=>chain.deleteRow(),
     deleteColumn:chain=>chain.deleteColumn(),
     mergeOrSplit:chain=>chain.mergeOrSplit(),
-    deleteTable:chain=>chain.deleteTable()
+    deleteTable:chain=>chain.deleteTable(),
+    nestList:chain=>chain.sinkListItem('listItem'),
+    unnestList:chain=>chain.liftListItem('listItem')
   };
   document.querySelectorAll('[data-word]').forEach(b=>b.onclick=()=>{
     if(actions[b.dataset.word])runCmd(actions[b.dataset.word]);
@@ -658,7 +696,39 @@ function wire(){
   $('rec-start').onclick=startRecording;
   $('rec-pause').onclick=pauseRecording;
   $('rec-stop').onclick=stopRecording;
-  $('play-stop').onclick=()=>{player.stop();show('Đã dừng phát lại.');};
+  $('play-stop').onclick=()=>{
+    loopPoints.active=false;loopVersion++;refreshLoopUI();
+    player.stop();show('Đã dừng phát lại.');
+  };
+  const placeAB=key=>{
+    const ms=timelineUI?.selectedMs;
+    const at=timelineUI?.model&&Number.isSafeInteger(ms)?
+      jumpMeetingPosition(timelineUI.model,ms,0):null;
+    if(at?.status!=='valid'){show('Hãy chọn một vị trí có âm thanh trên thanh tua.','error');return;}
+    loopPoints[key]=ms;loopPoints.range=null;loopPoints.active=false;loopVersion++;
+    refreshLoopUI();
+  };
+  $('loop-set-a').onclick=()=>placeAB('a');
+  $('loop-set-b').onclick=()=>placeAB('b');
+  $('loop-clear').onclick=()=>clearLoop(true);
+  $('loop-play').onclick=async()=>{
+    try{
+      const range=makeSafeLoop(timelineUI?.model,loopPoints.a,loopPoints.b);
+      loopVersion++;loopPoints.range=range;loopPoints.active=true;refreshLoopUI();
+      const result=await player.start(range.recordingId,range.startMs,{
+        preRollMs:0,rate:Number($('play-rate').value),maxDurationMs:range.durationMs});
+      if(result.status!=='valid'){loopPoints.active=false;refreshLoopUI();}
+    }catch(e){loopPoints.active=false;refreshLoopUI();show('Lặp A–B: '+e.message,'error');}
+  };
+  const skip=async delta=>{
+    const current=timelineUI?.selectedMs;
+    const at=jumpMeetingPosition(timelineUI?.model,current,delta);
+    if(at.status!=='valid'){show(at.reason??'Không thể tua qua đoạn thiếu âm thanh.','error');return;}
+    loopPoints.active=false;loopVersion++;refreshLoopUI();
+    await timelineUI.seek(at.absoluteMs);
+  };
+  $('skip-back').onclick=()=>skip(-10000).catch(e=>show(e.message,'error'));
+  $('skip-forward').onclick=()=>skip(10000).catch(e=>show(e.message,'error'));
   $('voice-filter').onchange=e=>{
     try{player.setVoiceMode(e.target.value);}catch(error){show(error.message,'error');}
   };
@@ -693,6 +763,11 @@ function wire(){
       e.preventDefault();openFind(e.key.toLowerCase()==='h');return;
     }
     if(e.altKey&&e.key==='Enter'){e.preventDefault();listenAtCursor();}
+    if(e.altKey&&e.shiftKey&&!e.ctrlKey&&!e.metaKey&&!e.isComposing &&
+        (e.key==='ArrowLeft'||e.key==='ArrowRight')){
+      e.preventDefault();
+      (e.key==='ArrowLeft'?$('skip-back'):$('skip-forward')).click();
+    }
     if(e.key==='Escape')player.stop();
   });
   window.addEventListener('beforeunload',e=>{
@@ -733,6 +808,7 @@ async function main(){
   noteFollower=new NoteAudioFollower({getRun:()=>state.run,player,root:$('editor'),
     scrollArea:document.querySelector('.paper-wrap'),status:$('note-follow-status'),toggle:$('note-follow-toggle')});
   wire();
+  refreshLoopUI();
   refreshMicDevices().catch(()=>{});
   navigator.mediaDevices?.addEventListener?.('devicechange',()=>refreshMicDevices().catch(()=>{}));
   localRecordingStatus().then(r=>{

@@ -55,6 +55,10 @@
               <button type="button" data-word="alignCenter" title="Căn giữa">≡ Giữa</button>
               <button type="button" data-word="alignRight" title="Căn phải">≡ Phải</button>
               <button type="button" data-word="alignJustify" title="Căn đều">≡ Đều</button>
+              <button type="button" id="indent-more" title="Thụt dòng đầu thêm 12 pt">→ Đầu dòng</button>
+              <button type="button" id="indent-less" title="Giảm thụt đầu dòng 12 pt">← Đầu dòng</button>
+              <button type="button" data-word="nestList" title="Đưa mục danh sách xuống một cấp">↳ Danh sách</button>
+              <button type="button" data-word="unnestList" title="Đưa mục danh sách lên một cấp">↰ Danh sách</button>
               <button type="button" data-word="insertTable">＋ Bảng 3×3</button>
               <button type="button" data-word="addRowAfter">＋ Dòng</button>
               <button type="button" data-word="addColumnAfter">＋ Cột</button>
@@ -98,8 +102,23 @@
         <div class="timeline-playback-options" aria-label="Tùy chọn nghe lại">
           <button id="play-stop" type="button" title="Dừng phát lại">■ Dừng</button>
           <label for="play-rate">Tốc độ
-            <select id="play-rate"><option value="1">1,0×</option><option value="0.9">0,9×</option><option value="0.75">0,75×</option></select>
+            <select id="play-rate" title="Khi nghe bằng bộ phát Web Audio, tốc độ khác 1× cũng thay đổi cao độ giọng">
+              <option value="0.5">0,5×</option><option value="0.75">0,75×</option>
+              <option value="0.9">0,9×</option><option value="1" selected>1,0×</option>
+              <option value="1.1">1,1×</option><option value="1.25">1,25×</option>
+              <option value="1.5">1,5×</option><option value="1.75">1,75×</option>
+              <option value="2">2,0×</option>
+            </select>
           </label>
+          <div class="ab-controls" aria-label="Lặp đoạn A đến B">
+            <button id="skip-back" type="button" title="Lùi 10 giây (Alt+Shift+Mũi tên trái)">−10s</button>
+            <button id="skip-forward" type="button" title="Tiến 10 giây (Alt+Shift+Mũi tên phải)">+10s</button>
+            <button id="loop-set-a" type="button" title="Đặt điểm A ở vị trí thanh tua">Đặt A</button>
+            <button id="loop-set-b" type="button" title="Đặt điểm B ở vị trí thanh tua">Đặt B</button>
+            <button id="loop-play" type="button" title="Nghe lặp đoạn A–B (cùng vùng WAV đã xác minh)">Lặp A–B</button>
+            <button id="loop-clear" type="button" title="Tắt lặp A–B và bỏ hai mốc">Xóa A–B</button>
+            <span id="loop-status" role="status" aria-live="polite">Chưa đặt A–B</span>
+          </div>
           <label for="preroll">Nghe lùi trước mốc
             <select id="preroll"><option value="0">Không</option><option value="3000">3 giây</option><option value="5000" selected>5 giây</option><option value="10000">10 giây</option></select>
           </label>
