@@ -1,5 +1,5 @@
 // G10 offline shell. No audio, personal note, OPFS or IndexedDB contents in CacheStorage.
-const VERSION='g00-ui-20261117';
+const VERSION='g00-rich-editor-20261118';
 const CACHE='mochop-g10-shell-'+VERSION, SCOPE=self.registration.scope;
 const url=relative=>new URL(relative,SCOPE).href;
 const MAINTENANCE_LOCK='mochop:poc09:maintenance';
