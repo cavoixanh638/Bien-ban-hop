@@ -633,9 +633,15 @@ function wire(){
   $('import-file').onchange=event=>importSelectedFile(event.target.files?.[0]);
   $('import-cancel').onclick=()=>importController?.abort();
   document.querySelectorAll('[data-export]').forEach(b=>b.onclick=()=>exportText(b.dataset.export));
+  const editorCommands={
+    bold:'toggleBold',italic:'toggleItalic',underline:'toggleUnderline',
+    strike:'toggleStrike',bulletList:'toggleBulletList',
+    orderedList:'toggleOrderedList',undo:'undo',redo:'redo'
+  };
   document.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>{
-    const cmd=b.dataset.action,editor=state.run?.editor;
-    if(editor&&state.run.releaseLease)editor.chain().focus()[cmd]().run();
+    const cmd=editorCommands[b.dataset.action],editor=state.run?.editor;
+    if(editor&&state.run.releaseLease&&typeof editor.chain().focus()[cmd]==='function')
+      editor.chain().focus()[cmd]().run();
   });
   $('editor').addEventListener('click',e=>{
     const element=e.target.closest?.('[data-time-anchor-id]'),run=state.run;

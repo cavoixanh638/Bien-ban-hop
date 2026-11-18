@@ -24,3 +24,13 @@ test('G00 replace guard: replace-all blocks any linked result; plain result rema
   assert.equal(canReplaceFindResults(d,[{from:2,to:3}],0,false).ok,false);
   assert.equal(canReplaceFindResults(d,[],null,true).ok,false);
 });
+
+
+test('G00 replace guard: unlinked timeSpan has no valid recording and may be replaced',()=>{
+  const doc={nodesBetween(_from,_to,visit){
+    visit({isText:true,nodeSize:4,marks:[{
+      type:{name:'timeSpan'},attrs:{recordingId:null,audioOffsetMs:null,source:'unlinked'}
+    }]},0);
+  }};
+  assert.equal(canReplaceFindResults(doc,[{from:0,to:4}],0,true).ok,true);
+});

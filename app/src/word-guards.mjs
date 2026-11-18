@@ -9,7 +9,8 @@ export function overlapsTimeSpan(doc,{from,to}){
     doc.nodesBetween(from,to,(node,pos)=>{
       if(!node?.isText)return;
       if(pos<to && pos+node.nodeSize>from &&
-        node.marks?.some(m=>m.type?.name==='timeSpan'||m.type==='timeSpan'))found=true;
+        node.marks?.some(m=>(m.type?.name==='timeSpan'||m.type==='timeSpan') &&
+          typeof m.attrs?.recordingId==='string' && m.attrs.recordingId.length>0))found=true;
     });
   }catch{return true;}
   return found;
