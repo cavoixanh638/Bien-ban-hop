@@ -506,7 +506,7 @@ test('G00 first-line indent is visible and persisted without changing the note c
 
 test('G00 A-B and skip controls exist; cannot invent a loop without recorded audio',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('#loop-status')).toContainText('Chưa đặt A');
+  await expect(page.locator('#loop-status')).toContainText('A: — · B: —');
   for(const id of ['loop-set-a','loop-set-b','loop-play','loop-clear','skip-back','skip-forward'])
     await expect(page.locator('#'+id)).toBeVisible();
   await page.locator('#loop-play').click();
