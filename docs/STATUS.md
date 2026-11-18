@@ -6,6 +6,14 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Sửa khoảng cách đoạn văn khi giãn dòng 1,0 (18/11/2026)
+
+- **Code SHA = Tested SHA:** `c7dedabc328320513a8925984c2aef28a0935ca9`; **CI PASS** [GitHub Actions #44296715379](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44296715379) — Windows và Linux G10 **53/53 unit PASS** mỗi hệ, Vite build/các PoC PASS; Chromium dev **20 PASS + 1 PWA-only SKIP**, Chromium production/PWA **21/21 PASS**, **0 FAIL**.
+- **Nguyên nhân:** `.tiptap p{margin:0 0 .75em}` làm mỗi phím Enter tạo thêm `0.75em` khoảng cách sau đoạn, dù kiểu đoạn đã đặt `line-height:1`. Giãn dòng và khoảng cách đoạn là hai thuộc tính khác nhau; trước đây bộ xuất DOCX còn thêm `after:120` twips (6pt).
+- **Thay đổi đã kiểm thử:** `.tiptap p{margin:0}` để dòng đơn liên tiếp sát nhau, xuất DOCX `spacing.before=0` và `after=0` cho paragraph, mặc định dropdown giãn dòng `1,15` khớp editor; chọn 1,0 không còn khoảng cách đoạn ẩn, 1,5 tăng tương ứng. SW cache version mới `bien-ban-hop-20261118-paragraph-spacing`.
+- **Browser E2E hồi quy:** gõ 3 đoạn bằng Enter, chọn tất cả, đặt 1,0 và 1,5, đo khoảng cách hai đoạn và `getComputedStyle(marginBottom)` = 0, lưu/tải lại, kiểm tra chế độ in A4. Các `timeSpan` và dữ liệu ghi âm không thay đổi.
+- **NOT_RUN / RELEASE HOLD:** test UniKey/EVKey và Microsoft Word trên Windows thật, ghi âm nhiều giờ, quota/crash/đổi phiên PWA khi đang ghi và toàn bộ TC01–TC38. PR tiếp tục DRAFT, không merge `main`/publish.
+
 ## G00 — Sửa thanh công cụ và định dạng Word (18/11/2026)
 
 - **Code SHA = Tested SHA:** `45d3595186fa2985d7e3a6c32eeccf42a49184ce` trên `integration/20261115-g10-v1.2`. [GitHub Actions #44293515004](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44293515004) **SUCCESS**: Windows/Linux unit G10 **53/53 PASS mỗi hệ**, build + các PoC PASS; Chromium dev **19 PASS, 1 PWA-only SKIP**, Chromium production/PWA **20/20 PASS**, 0 FAIL.
