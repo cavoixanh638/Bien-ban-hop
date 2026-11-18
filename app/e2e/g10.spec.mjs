@@ -545,3 +545,18 @@ test('G00 imports existing PCM16 WAV to durable OPFS, binds typed notes to playb
   await expect(page.locator('#timeline-summary')).toContainText('1 phiên',{timeout:15000});
   await expect(page.locator('.tiptap [data-time-source="imported_playback"]')).not.toHaveCount(0);
 });
+
+
+test('G00 bookmark control rejects unlinked prose; never creates a fake timeSpan',async({page})=>{
+  await page.goto('/');
+  const editor=page.locator('.tiptap');
+  await editor.click();
+  await page.keyboard.type('Cau khong co am thanh');
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.locator('#bookmark-toggle').click();
+  await expect(page.locator('#message')).toContainText('mốc âm thanh hợp lệ');
+  await expect(editor.locator('[data-important-note]')).toHaveCount(0);
+  await expect(editor.locator('[data-time-recording-id]')).toHaveCount(0);
+  await expect(page.locator('#bookmark-count')).toHaveText('0');
+  await expect(page.locator('#storage-health')).toContainText('MB');
+});

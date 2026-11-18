@@ -5,6 +5,8 @@ import {TextStyleKit,LineHeight} from '@tiptap/extension-text-style';
 import {applyBlockLineHeight} from './word-layout.mjs';
 import {ParagraphIndent,adjustFirstLineIndent} from './paragraph-indent.mjs';
 import {importAudioFile,removeUnlinkedImportedAudio} from './import-audio.mjs';
+import {ImportantMark,collectImportantAnchors} from './important-mark.mjs';
+import {checkBrowserStorage} from './storage-health.mjs';
 import {makeSafeLoop,jumpMeetingPosition} from './replay-tools.mjs';
 import TextAlign from '@tiptap/extension-text-align';
 import {TableKit} from '@tiptap/extension-table';
@@ -155,6 +157,7 @@ function setRecordingUI(){
   $('rec-stop').disabled=!active||rec?.state==='stopping';
   $('backup').disabled=!!active||finalizing||!run?.releaseLease||state.switching||transferBusy;
   $('import-audio').disabled=!!active||finalizing||!run?.releaseLease||state.switching||transferBusy;
+  $('bookmark-toggle').disabled=!run?.releaseLease||state.switching||transferBusy;
   $('import-backup').disabled=!!active||finalizing||state.switching||transferBusy;
   $('mic-test').disabled=!!active;
   $('mic-device').disabled=!!active||micProbe.state!=='idle';
@@ -278,8 +281,8 @@ function importedPlaybackContext(run){
   return {source:'imported_playback',recordingId:id,
     audioOffsetMs:Math.round(sample*1000/manifest.sampleRate),coverage:'valid'};
 }
-async function openMeeting(meetingId){
-  if(state.switching||transferBusy||state.run?.meeting.meetingId===meetingId)return;
+async function openMeeting(meetingId,{allowTransfer=false}={}){
+  if(state.switching||transferBusy&&!allowTransfer||state.run?.meeting.meetingId===meetingId)return;
   state.switching=true;syncControls();
   try{
     await safelyCloseCurrent();
@@ -310,7 +313,7 @@ async function openMeeting(meetingId){
         StarterKit,TextStyleKit.configure({lineHeight:false}),
         LineHeight.configure({types:['paragraph','heading']}),TextAlign.configure({types:['paragraph','heading']}),
         ParagraphIndent,
-        TableKit,FindAndReplace.configure({searchDebounceMs:0}),TimeSpan,
+        TableKit,FindAndReplace.configure({searchDebounceMs:0}),TimeSpan,ImportantMark,
         createTrackingExtension(tracker)
       ],
       // Native browser spellcheck/grammar overlays are too distracting while taking notes.
@@ -320,7 +323,8 @@ async function openMeeting(meetingId){
         'data-gramm':'false','data-gramm_editor':'false','data-enable-grammarly':'false'
       }},
       content:run.note.content,editable:!!releaseLease,autofocus:false,
-      onUpdate:()=>{queue.edit();noteFollower?.onDocChange();requestAnimationFrame(updateAnchor);requestAnimationFrame(updateFindCount);},
+      onUpdate:()=>{queue.edit();noteFollower?.onDocChange();requestAnimationFrame(updateAnchor);
+        requestAnimationFrame(updateFindCount);requestAnimationFrame(refreshBookmarks);},
       onSelectionUpdate:()=>{noteFollower?.captureChanged();requestAnimationFrame(updateAnchor);}
     });
     if(run.pendingState)tracker.restorePendingState(run.pendingState,run.editor.state.doc);
@@ -330,6 +334,7 @@ async function openMeeting(meetingId){
     await refreshMeetings();
     updateAnchor();
     updateFindCount();
+    refreshBookmarks();
     timelineUI?.refresh(run).catch(e=>show('Không mở được thanh tua: '+e.message,'error'));
   }catch(error){show('Không mở được cuộc họp: '+error.message,'error');}
   finally{state.switching=false;syncControls();}
@@ -565,7 +570,7 @@ async function importSelectedFile(file){
     await refreshMeetings();
     if(state.run?.capture&&['starting','capturing','paused','stopping'].includes(state.run.capture.state))
       throw Error('Không thể chuyển khi đang ghi âm');
-    await openMeeting(imported.meetingId);
+    await openMeeting(imported.meetingId,{allowTransfer:true});
     show('Đã nhập thành công '+imported.recordings+' phiên ghi âm. Bấm chữ để nghe lại.');
   }catch(error){
     $('transfer-status').textContent='Không thể khôi phục gói: '+error.message;
@@ -609,6 +614,34 @@ function runFindReplacement(all=false){
   all?editor.commands.replaceAll():editor.commands.replace();
   requestAnimationFrame(updateFindCount);
 }
+function refreshBookmarks(){
+  const root=$('bookmark-list');if(!root)return;
+  root.replaceChildren();
+  const run=state.run;
+  const list=run?.editor?collectImportantAnchors(run.editor.getJSON(),run.tracker.allowed):[];
+  $('bookmark-count').textContent=String(list.length);
+  if(!list.length){root.textContent='Chưa có đoạn chữ được đánh dấu cùng mốc âm thanh.';return;}
+  for(const item of list){
+    const button=document.createElement('button');
+    button.type='button';button.className='bookmark-item';
+    button.textContent=timing(item.audioOffsetMs)+' · '+(item.label||'Đoạn có âm thanh');
+    button.title='Bấm để nghe đoạn đã đánh dấu';
+    button.onclick=()=>listenAtCursor(item);
+    root.append(button);
+  }
+}
+async function refreshStorageHealth(){
+  const el=$('storage-health');if(!el)return;
+  try{
+    const result=await checkBrowserStorage(navigator);
+    el.textContent=result.label;
+    el.dataset.level=result.level;
+  }catch(e){
+    el.textContent='Không lấy được ước tính dung lượng: '+e.message;
+    el.dataset.level='unknown';
+  }
+}
+
 function wireWordTools(){
   const editor=()=>state.run?.editor,runCmd=cb=>{
     if(!state.run?.releaseLease||!editor())return;
@@ -695,6 +728,7 @@ async function importAudioSelectedFile(file){
     run.queue.edit();
     await run.queue.drain();
     await timelineUI?.refresh(run);
+    refreshStorageHealth().catch(()=>{});
     $('import-audio-status').textContent='Đã nhập '+(result.durationMs/60000).toFixed(1)+
       ' phút vào cuộc họp. Nhấn Phát rồi gõ để ghi chú tự gắn mốc theo vị trí nghe.';
     show('Đã lưu bản ghi có sẵn thành phiên âm thanh mới, không đụng dữ liệu cũ.');
@@ -797,6 +831,19 @@ function wire(){
   $('voice-filter').onchange=e=>{
     try{player.setVoiceMode(e.target.value);}catch(error){show(error.message,'error');}
   };
+  $('refresh-storage').onclick=()=>refreshStorageHealth();
+  $('bookmark-toggle').onclick=()=>{
+    const run=state.run;
+    if(!run?.releaseLease||!run.editor)return;
+    if(run.editor.state.selection.empty){
+      show('Hãy bôi đen chữ có mốc âm thanh để đánh dấu quan trọng.','error');return;
+    }
+    const checked=readAnchorAtCursor(run.editor.state,run.tracker.allowed);
+    if(checked.status!=='linked'){
+      show('Vùng chọn phải có cùng một mốc âm thanh hợp lệ.','error');return;
+    }
+    run.editor.chain().focus().toggleMark('important').run();
+  };
   $('import-audio').onclick=()=>$('audio-file').click();
   $('audio-file').onchange=e=>importAudioSelectedFile(e.target.files?.[0]);
   $('import-word').onclick=()=>$('word-file').click();
@@ -876,6 +923,8 @@ async function main(){
     scrollArea:document.querySelector('.paper-wrap'),status:$('note-follow-status'),toggle:$('note-follow-toggle')});
   wire();
   refreshLoopUI();
+  refreshBookmarks();
+  refreshStorageHealth().catch(()=>{});
   refreshMicDevices().catch(()=>{});
   navigator.mediaDevices?.addEventListener?.('devicechange',()=>refreshMicDevices().catch(()=>{}));
   localRecordingStatus().then(r=>{

@@ -28,7 +28,8 @@ const richRun=(node,{includeTimestamps=false,lastAnchor=null}={})=>{
     font:style.fontFamily||'Times New Roman',
     size:fontSizeToHalfPoints(style.fontSize),
     color:color(style.color)||'23353C',
-    shading:color(style.backgroundColor)?{fill:color(style.backgroundColor)}:undefined
+    shading:color(style.backgroundColor)?{fill:color(style.backgroundColor)}:
+      marks.has('important')?{fill:'FDE68A'}:undefined
   };
   const out=[];
   const mark=linkedMark(node);

@@ -41,6 +41,7 @@
         <button data-action="undo" title="Hoàn tác (Ctrl+Z)">↶</button>
         <button data-action="redo" title="Làm lại (Ctrl+Y)">↷</button>
         <button id="open-find" type="button" title="Tìm kiếm (Ctrl+F), thay thế (Ctrl+H)">⌕ Tìm</button>
+        <button id="bookmark-toggle" type="button" title="Chọn chữ có mốc âm thanh rồi đánh dấu để nghe lại">☆ Quan trọng</button>
         <details id="word-menu" class="word-menu">
           <summary>Định dạng &amp; bảng</summary>
           <div class="word-menu-inner" aria-label="Các chức năng soạn thảo Word">
@@ -142,6 +143,10 @@
           <span id="note-follow-status" role="status" aria-live="polite">Khi nghe lại, đoạn ghi chú gần mốc phát sẽ sáng lên.</span>
           <button id="note-follow-toggle" type="button" aria-pressed="true" title="Tự cuộn đến đoạn ghi chú có mốc âm thanh đang nghe">Tự cuộn: Bật</button>
         </div>
+        <details id="bookmark-panel" class="bookmark-panel">
+          <summary>Mốc quan trọng đã đánh dấu (<span id="bookmark-count">0</span>)</summary>
+          <div id="bookmark-list" class="bookmark-list" aria-label="Danh sách đoạn quan trọng"></div>
+        </details>
         <div id="timeline-notice" class="timeline-notice" role="status" aria-live="polite">Thanh tua sẽ xuất hiện sau khi bản ghi âm được lưu.</div>
       </section>
       <div id="message" class="message" role="status" aria-live="polite"></div>
@@ -172,6 +177,8 @@
       <input type="file" id="import-file" accept=".bbhop,.mochop,application/zip" style="display:none" aria-label="Chọn tệp sao lưu biên bản họp">
       <button id="import-cancel" class="wide" type="button" style="display:none">Hủy nhập dữ liệu</button>
       <div id="transfer-status" class="panel-small" role="status" aria-live="polite">Tệp sao lưu chứa biên bản, các mốc thời gian và toàn bộ phiên ghi âm; có thể chuyển sang máy khác.</div>
+      <div id="storage-health" class="panel-small" role="status" aria-live="polite">Đang kiểm tra dung lượng lưu trữ…</div>
+      <button id="refresh-storage" class="wide" type="button">Kiểm tra dung lượng</button>
       <label class="field"><input type="checkbox" id="include-time"> Kèm mốc thời gian trong file xuất</label>
       <div class="panel-divider"></div>
       <div id="technical-status" class="technical">Chưa có phiên ghi.</div>
