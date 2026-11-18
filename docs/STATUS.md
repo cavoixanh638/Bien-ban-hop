@@ -6,6 +6,16 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Hoàn thiện P0/P1 còn thiếu và sửa hồi quy (18/11/2026)
+
+- **Code SHA = Tested SHA:** `8478a1c45f37bca537cdcdf367578fa44809a20c`, nhánh `integration/20261115-g10-v1.2`. **CI SUCCESS**: [GitHub Actions #44314800214](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44314800214); Windows/Linux G10 unit **76/76 PASS trên mỗi hệ**, Vite build/các PoC PASS; Chromium dev **29 PASS + 1 PWA-only SKIP**, Chromium production/PWA **30/30 PASS**, **0 FAIL**.
+- **Tìm toàn bộ cuộc họp (#12):** Nhấp vào kết quả sidebar sẽ chọn và cuộn tới nội dung tìm thấy đầu tiên trong ProseMirror; hỗ trợ tiếng Việt không dấu, vùng chữ chia nhiều Mark định dạng; không sửa `timeSpan` hay bật nghe tự động. Nếu chỉ khớp tên cuộc họp, mở cuộc họp và giải thích không có đoạn chữ tương ứng. Đã sửa race khi danh sách search tự làm mới ghi đè thông báo vừa nhảy tới đoạn.
+- **Lề Word / In PDF (#05):** thêm 3 preset A4 chung: lề Biên bản (trái 3cm, còn lại 2cm), Cân đối (trái/phải 2,5cm), Lề đều 2cm. Cùng cấu hình twip DOCX và `@page` CSS in; thử trực tiếp XML `word/document.xml`, không sửa bản ghi chú hoặc file sao lưu gốc.
+- **Danh sách có cấu trúc trong DOCX (#02):** không còn làm phẳng thành chữ `1.`/`•`; xuất OOXML numbering riêng cho danh sách số/chấm và lồng nhau, giữ khả năng chỉnh danh sách trong Word. Unit mở `word/numbering.xml`, kiểm `w:numPr`, bullet/decimal và bắt đầu từ mục 3. Chưa đối chiếu danh sách dài trong Microsoft Word desktop.
+- **Sửa lỗi hồi quy:** thao tác chèn ngắt trang/ảnh sau vùng chọn không được ghi đè chữ gắn liên kết hoặc node ngắt trang; kết quả tìm kiếm phải focus vùng chữ; chỉnh bài E2E kiểm toàn bộ chữ liên kết thay vì bắt Tiptap chỉ tạo đúng 1 thẻ `a`; kiểm CSS `@page` bằng `textContent` (không dùng `innerText` của thẻ `style`).
+- **Giới hạn rõ ràng:** mục #09 giữ cao độ 0,5–2×, #16 waveform đầy đủ, #17 RNNoise WASM, #18 tự bỏ qua im lặng **CHƯA TÍCH HỢP**; có yêu cầu PoC độc lập CPU/latency, mốc sample/recordingId, OPFS và kiểm thử âm người thật trước khi can thiệp player. Các trường hợp audio dài, PWA upgrade đang ghi, dữ liệu >2GB/mất nguồn, Microsoft Word desktop, UniKey/EVKey và đầy đủ TC01–TC38 vẫn **NOT_RUN**.
+- **RELEASE HOLD:** PR tiếp tục DRAFT; không merge `main`, không publish và không tuyên bố DONE toàn bộ 18 tính năng. Danh mục chi tiết tại [G00_FEATURE_BACKLOG.md](G00_FEATURE_BACKLOG.md).
+
 ## G00 — Đối chiếu giãn dòng theo OpenXML Word (18/11/2026)
 
 - **Code SHA = Tested SHA:** `5e19937a69f44ecc4dc029d93fc5b7a9ddf968d2`, nhánh `integration/20261115-g10-v1.2`. [GitHub Actions #44298830946](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44298830946) **SUCCESS** Windows/Linux G10 unit **55/55 PASS** mỗi hệ; Vite build và các PoC PASS; Chromium dev **21 PASS + 1 intentional PWA SKIP**, production/PWA **22/22 PASS**, không FAIL.

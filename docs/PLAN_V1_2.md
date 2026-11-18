@@ -12,6 +12,12 @@
 
 > **Cấu trúc tài liệu tinh gọn:** đây là nguồn chính thức cho *sản phẩm, yêu cầu chức năng, phạm vi và lộ trình*. Schema/module thuộc [ARCHITECTURE.md](ARCHITECTURE.md); quy tắc gõ và thời gian thuộc [TIMELINE_RULES.md](TIMELINE_RULES.md); thu/phát âm thanh thuộc [AUDIO_DESIGN.md](AUDIO_DESIGN.md). Căn cứ so sánh công nghệ (17 nhóm, mỗi nhóm 4 phương án) tại [TECHNICAL_OPTIONS.md](TECHNICAL_OPTIONS.md); chỉ các quyết định có bằng chứng mới chuyển sang trạng thái đã kiểm chứng trong [STATUS.md](STATUS.md). **Tất cả mới là kế hoạch, chưa có PoC hay nghiệm thu.**
 
+## G00 — Checkpoint mở rộng P0/P1 sau tích hợp (18/11/2026)
+
+- Theo `STATUS.md`, Code/Tested SHA `8478a1c45f37bca537cdcdf367578fa44809a20c` đã PASS CI Windows/Linux và Chromium dev/production. Các bổ sung: điều hướng kết quả tìm kiếm tới đoạn, lựa chọn lề A4 chung Word/PDF, numbering OOXML Word, sửa bảo toàn chữ/link khi chèn ngắt trang hoặc ảnh.
+- **Không cập nhật mục 09/16/17/18 thành DONE:** giữ cao độ, waveform đầy đủ, RNNoise và bỏ im lặng là nhóm P2 có rủi ro định vị âm thanh. Cần PoC và nghiệm thu mốc sample chính xác, chất lượng giọng thật, hiệu năng trên Windows/Chrome/Edge trước khi tích hợp. Đọc bảng [G00_FEATURE_BACKLOG.md](G00_FEATURE_BACKLOG.md) và các cổng [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md).
+- Ưu tiên phát hành không đổi: bản ghi chữ do người dùng gõ là trung tâm, `timeSpan` trong ProseMirror, không đổi dữ liệu/OPFS/legacy `format:"mochop"` bừa bãi. Mọi thử nghiệm chưa chạy để `NOT_RUN`.
+
 ## Phụ lục triển khai G00 — Bổ sung chức năng 01–18 (18/11/2026)
 
 **Phạm vi vẫn là V1.2 / không thay đổi nguyên tắc nguồn âm thanh.** Bảng trạng thái tính năng và các giới hạn thực tế được theo dõi tại [G00_FEATURE_BACKLOG.md](G00_FEATURE_BACKLOG.md), bằng chứng Code SHA/Tested SHA tại [STATUS.md](STATUS.md). Đây là kế hoạch cập nhật sau khi có bản tích hợp alpha; nội dung nguyên bản V1.2 bên dưới không bị thay thế.
