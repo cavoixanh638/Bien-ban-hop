@@ -29,6 +29,14 @@ npm run dev
 4. Nhấn **Bắt đầu ghi**, gõ ghi chú ngay vào trang giấy; không phải nhập mã mốc. Sau khi dừng, nhấp đoạn chữ có gắn mốc để nghe. `Alt+Enter` nghe mốc tại con trỏ; `Esc` dừng phát. Ghi chú tự lưu với revision, báo "Đã lưu" chỉ sau IDB transaction hoàn tất.
 5. Có thể tạo/chuyển cuộc họp, đổi tên, sử dụng hai tab (chỉ một tab giữ writer lock), xuất DOCX/TXT/MD/CSV, **Sao lưu biên bản và ghi âm** và **Khôi phục biên bản từ tệp**. Khi nhập, chương trình kiểm tra checksum rồi tạo ID cuộc họp, ghi chú và phiên thu mới; không ghi đè cuộc họp đang có.
 
+## G00 — Đợt bổ sung tính năng 01–18 (18/11/2026)
+
+- **Âm thanh:** Lặp A–B giới hạn **cùng vùng mẫu liền mạch đã xác minh** (không tự vượt gap hoặc khác phiên), tua ±10 giây, 0,5–2×. Lưu ý **pitch hiện thay đổi cùng tốc độ**, chưa dùng giữ cao độ. Nhập WAV PCM/F32 mono/stereo theo chunk (≤2GB và ≤3 giờ), file nén MP3/M4A/WebM/OGG dùng decodeAudioData khi trình duyệt hỗ trợ (≤32MB, ≤30 phút); OPFS commit trước khi liên kết meeting. Khi phát file nhập và gõ, mốc lấy từ vị trí phát xác minh; không suy đoán khi pause/gap.
+- **Ghi chú Word:** thụt dòng đầu (0–72pt), tăng/giảm cấp danh sách, ảnh PNG/JPEG tối đa 300KB/ảnh, liên kết chỉ http(s)/mailto, ngắt trang. Export DOCX bao gồm media/relationships và rowSpan cơ bản, cần kiểm Microsoft Word thật trước nghiệm thu.
+- **Tính năng khác:** bookmark `important` lưu cùng văn bản, hiển thị danh sách các mốc hợp lệ; cảnh báo quota là ước tính, không thay đổi ghi âm; xuất WAV đoạn A–B ≤120s từ committed PCM; kiểm chứng riêng tệp sao lưu v2 bằng SHA-256/CRC từng file.
+- **Chưa tích hợp/đang HOLD:** C1 preservesPitch vào C2 scheduler, waveform thật, RNNoise, tự bỏ qua im lặng, Word numbering/pagination phức tạp, nhập file nén dài, backup đa-GB Windows và TC01–TC38.
+- **Theo dõi:** [docs/G00_FEATURE_BACKLOG.md](../docs/G00_FEATURE_BACKLOG.md), [STATUS.md](../docs/STATUS.md), [ACCEPTANCE_TESTS.md](../docs/ACCEPTANCE_TESTS.md). Mỗi module cần **Code SHA, Tested SHA, PASS/FAIL/NOT_RUN** trước khi chuyển trạng thái.
+
 ## G00 — Đối chiếu tỷ lệ giãn dòng với chuẩn Microsoft Word (18/11/2026)
 
 - **DOCX:** Các mức 1,0 / 1,15 / 1,5 / 2,0 phải ghi theo OpenXML `w:spacing w:lineRule="auto"` với `w:line` lần lượt **240 / 276 / 360 / 480** (đơn vị 1/240 dòng). Mã đang sử dụng `Math.round(240*height)`, đúng công thức quy định. CI có kiểm thử thực tế bằng cách xuất DOCX, mở `word/document.xml`, xác nhận đủ bốn giá trị, cùng `before=after=0`; kiểm thử cả fallback 1,15 và ghi chú cũ có giãn dòng inline.

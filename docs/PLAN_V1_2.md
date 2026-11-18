@@ -12,6 +12,16 @@
 
 > **Cấu trúc tài liệu tinh gọn:** đây là nguồn chính thức cho *sản phẩm, yêu cầu chức năng, phạm vi và lộ trình*. Schema/module thuộc [ARCHITECTURE.md](ARCHITECTURE.md); quy tắc gõ và thời gian thuộc [TIMELINE_RULES.md](TIMELINE_RULES.md); thu/phát âm thanh thuộc [AUDIO_DESIGN.md](AUDIO_DESIGN.md). Căn cứ so sánh công nghệ (17 nhóm, mỗi nhóm 4 phương án) tại [TECHNICAL_OPTIONS.md](TECHNICAL_OPTIONS.md); chỉ các quyết định có bằng chứng mới chuyển sang trạng thái đã kiểm chứng trong [STATUS.md](STATUS.md). **Tất cả mới là kế hoạch, chưa có PoC hay nghiệm thu.**
 
+## Phụ lục triển khai G00 — Bổ sung chức năng 01–18 (18/11/2026)
+
+**Phạm vi vẫn là V1.2 / không thay đổi nguyên tắc nguồn âm thanh.** Bảng trạng thái tính năng và các giới hạn thực tế được theo dõi tại [G00_FEATURE_BACKLOG.md](G00_FEATURE_BACKLOG.md), bằng chứng Code SHA/Tested SHA tại [STATUS.md](STATUS.md). Đây là kế hoạch cập nhật sau khi có bản tích hợp alpha; nội dung nguyên bản V1.2 bên dưới không bị thay thế.
+
+- **Ưu tiên P0 còn thiếu:** A–B chỉ phát trong vùng xác minh, thao tác tua + tốc độ, gõ có mốc khi nghe file nhập sẵn; Word thụt đầu dòng/list, bảng/gộp ô và DOCX. Không được tự nối qua khoảng mất audio.
+- **P1:** bookmark nằm trong tài liệu, quota browser (ước tính không phải cam kết), kiểm chứng tệp ZIP v2 riêng bằng checksum, xuất WAV clip có giới hạn; ảnh nhỏ/link/ngắt trang/PDF có kiểm tra đầu vào và xuất file.
+- **P2 giữ cổng:** waveform bounded, giữ cao độ bằng playback pipeline mới, RNNoise/WASM, skip silence/VAD. Chỉ triển khai sau benchmark, xác nhận mốc thời gian và kiểm thử nguồn audio thực; không biến PoC thành PASS.
+- **Điểm tích hợp bắt buộc:** OPFS commit trước khi gắn recording mới vào meeting; IDB rollback chỉ xóa ID nhập mới; timeSpan nhập file dùng actual verified `recordingId` + vị trí phát hiện tại; sao lưu v1/v2 vẫn nhập được.
+- **Release gate không đổi:** TC01–TC38, UniKey/EVKey và mic Windows thật, 3 giờ, khôi phục/quota/crash, ZIP lớn/2 máy thật. Mọi bài chưa chạy ghi `NOT_RUN`.
+
 ## I. Mục tiêu
 
 **Nội dung người dùng tự gõ là trung tâm.** Biên bản họp là trình soạn thảo giống Word có khả năng tự liên kết phần chữ với thời điểm trong bản ghi âm, không phải phần mềm ghi âm có thêm ô nhập. Người dùng tự chọn ý quan trọng để ghi; ứng dụng không cố ghi lại mọi lời nói.

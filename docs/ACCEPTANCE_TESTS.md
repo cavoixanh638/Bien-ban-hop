@@ -2,6 +2,26 @@
 
 **Trạng thái:** Bộ tiêu chí dự kiến, **chưa chạy test**, không có kết quả PASS được kế thừa. Nguồn phạm vi: [PLAN_V1_2.md](PLAN_V1_2.md); **trạng thái thực tế và dẫn chứng chỉ ghi tại [STATUS.md](STATUS.md)**. Tài liệu kiểm thử này không tự thể hiện một ca đã PASS chỉ vì tiêu chí đã được viết.
 
+## G00 — Subcase kiểm thử 18 tính năng bổ sung (18/11/2026)
+
+**Giữ nguyên mã TC01–TC38.** Các subcase sau gắn với mã TC gốc, không tự tạo trạng thái PASS. Các bài unit/e2e chỉ có chứng cứ khi GitHub Actions kết thúc SUCCESS tại đúng Code SHA. Mọi trường hợp cần thiết bị thật vẫn `NOT_RUN` cho tới khi có số liệu và log.
+
+| Subcase | TC hiện hành | Phương pháp và điều kiện đạt |
+|---|---|---|
+| A–B liên tục / gap / phiên | TC23/TC25 | Cặp A,B cùng vùng sample durable được phép; A/B băng qua gap, khác phiên, quá 120s bị chặn. Phải thử loop nhiều vòng, Stop/Seek/switch không tự resume từ task cũ; đo gap/drop/duplicate khi qua segment. |
+| Tua ±10s/tốc độ | TC22–TC26 | Tua tuyệt đối trên timeline, từ chối vùng missing; thử 0,5–2×. Hiện C2 `playbackRate` có đổi pitch; pitch-preserving `NOT_RUN`. |
+| Thụt đầu dòng/nested list | TC01/TC09/TC36 | `firstLineIndentPt` 0–72, lưu/reopen, export DOCX twip đúng; sink/lift nested list; không làm thay `timeSpan`. |
+| Nhập WAV/MP3 | TC27/TC28/TC30 | WAV PCM mono/stereo 8–192k, chunk ≤32k frames, rollback OPFS nếu lỗi trước IDB ref; MP3/M4A/WebM/OGG chỉ nếu decode thành công và nằm trong giới hạn; nhập file lớn phải chặn rõ, không crash. |
+| Gõ khi phát file nhập | TC02/TC22/TC27/TC28 | `imported_playback` chỉ khi player đang phát, sampleRange xác minh, đúng meeting; pause/seek/gap hoặc đổi meeting không gán audioOffsetMs giả. |
+| Bookmark trong ghi chú | TC02/TC09/TC26 | Chỉ bôi đen chữ có một mốc hợp lệ mới đánh dấu; lưu `important` trong ProseMirror, tập hợp theo recordingId/anchorId, click nghe; không phá Undo, paste, nguồn gốc. |
+| Quota cảnh báo | TC19/TC29 | `navigator.storage.estimate()` chỉ hiển thị ước tính, báo WARNING ở ngưỡng; thiếu API báo UNKNOWN, không báo lưu giả. |
+| Verify ZIP toàn bộ | TC30/TC31/TC38 | Chọn tệp sao lưu v2, đọc stream SHA256/CRC từng entry; thiếu/hỏng entry trả FAIL, không thay đổi bản gốc, không giả kết quả v1. |
+| Xuất riêng WAV A–B | TC23/TC25/TC30 | Chỉ cho phép vùng contiguous đã commit; header WAV PCM f32 chuẩn, dung lượng chính xác, không vượt gap/phiên, không sửa OPFS. |
+| DOCX ảnh/link/ngắt trang | TC09/TC36 | PNG/JPEG ≤300KB, link allowlist http(s)/mailto, pageBreak; mở file DOCX trong Word/LibreOffice có ảnh/quan hệ link/pagebreak hợp lệ. Bài Microsoft Word Windows thật `NOT_RUN`. |
+| Table colspan/rowspan | TC09/TC36 | Tiptap gộp/tách ô, XML DOCX có gridSpan/vMerge đúng; bảng dài và Word Windows thật `NOT_RUN`. |
+| Waveform + VAD/RNNoise/pitch | TC16/TC23/TC25/TC27 | Chỉ thử độc lập; đo CPU/RAM, source mapping, nhảy im lặng giữ nguyên audioOffsetMs; không merge nếu gây gán sai nguồn. |
+| Legacy restore sau tích hợp | TC30/TC35/TC38 | Sau mọi thay đổi player/editor kiểm restore v1/v2 và chuyển vào meeting mới (internal transition cho phép dù đang transfer), không overwrite meeting hiện có. |
+
 ## Nguyên tắc
 
 - Kiểm thử tự động (unit/integration/e2e) **và** thao tác bộ gõ thật trên Windows Chrome/Edge.

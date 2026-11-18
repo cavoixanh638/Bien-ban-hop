@@ -5,6 +5,13 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function waitForCondition(check,{timeoutMs=4000,stepMs=10}={}){
+  const end=Date.now()+timeoutMs;
+  while(!check()){
+    if(Date.now()>end)throw Error('Chờ recycle MessagePort vượt 4 giây');
+    await delay(stepMs);
+  }
+}
 async function harness({batchFrames=2048,poolSize=4,maxQueue=3,delayMs=0,cpuBurnMs=0}={}) {
   const WorkerScript=readFileSync(new URL('../src/capture-processor.js',import.meta.url),'utf8');
   let Processor;
@@ -55,7 +62,7 @@ test('real MessagePort transfer detach + recycle, 2048 chunk',async()=>{
     for(let i=0;i<16;i++)h.feed();
     assert.equal(h.processor.inFlight,1);
     assert.equal(h.processor.pcm,null);
-    await delay(80);
+    await waitForCondition(()=>h.processor.recycled===1);
     assert.equal(h.processor.recycled,1);
     assert.equal(h.processor.free.length,4);
     for(let i=0;i<32;i++)h.feed();

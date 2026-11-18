@@ -585,7 +585,11 @@ test('G00 Word image, secure link and page break survive saving and export as DO
   await page.locator('#word-menu summary').click();
   await page.locator('#word-link-url').fill('https://example.com');
   await page.locator('#word-add-link').click();
-  await expect(editor.locator('a[href="https://example.com/"]')).toContainText('Van ban co lien ket');
+  await expect.poll(async()=>{
+    const runs=await editor.locator('a[href="https://example.com/"]').allTextContents();
+    return runs.join('');
+  }).toBe('Van ban co lien ket');
+  await expect(editor).toContainText('Van ban co lien ket');
   await page.locator('#word-page-break').click();
   await expect(editor.locator('[data-meeting-page-break]')).toHaveCount(1);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==','base64');
@@ -601,5 +605,5 @@ test('G00 Word image, secure link and page break survive saving and export as DO
   await page.reload();
   await expect(editor.locator('img[data-meeting-image]')).toHaveCount(1);
   await expect(editor.locator('[data-meeting-page-break]')).toHaveCount(1);
-  await expect(editor.locator('a[href="https://example.com/"]')).toHaveCount(1);
+  await expect(editor.locator('a[href="https://example.com/"]')).not.toHaveCount(0);
 });

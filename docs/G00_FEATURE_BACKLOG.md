@@ -1,0 +1,47 @@
+# G00 — Bảng theo dõi 18 tính năng bổ sung (18/11/2026)
+
+**Quản lý:** G00 · **Nhánh:** `integration/20261115-g10-v1.2` · **PR:** [Draft #1](https://github.com/cavoixanh638/Bien-ban-hop/pull/1) · **Mức nghiệm thu:** INTEGRATION_ALPHA / RELEASE HOLD.
+
+Đây là trạng thái **tích hợp sản phẩm**, không phải trạng thái riêng của các PoC. “Có mã” không đồng nghĩa “PASS nghiệm thu”; đối chiếu kết quả CI bằng đúng Code SHA/Tested SHA tại [STATUS.md](STATUS.md). Các chức năng liên quan dữ liệu ghi âm không được tự suy đoán thời gian: `timeSpan` là mốc lúc gõ, không phải timestamp lời nói.
+
+| # | Hạng mục | Trạng thái tích hợp tại G00 | Phạm vi đã có / phần còn thiếu |
+|---|---|---|---|
+| 01 | Word cơ bản | **Có chức năng cơ bản** | Font pt, đậm/nghiêng/gạch, màu chữ; lưu và xuất DOCX |
+| 02 | Căn lề, giãn dòng, thụt dòng, nhiều cấp, Heading | **Một phần** | Đã thêm thụt dòng đầu (0–72pt), sink/lift danh sách, Heading; DOCX nested list vẫn làm phẳng thành prefix thay vì numbering native; cần hồi quy đủ ca |
+| 03 | Tìm/thay | **Có chức năng cơ bản** | Ctrl+F/H, chặn thay tự động văn bản gắn `timeSpan` hợp lệ |
+| 04 | Bảng/ô gộp | **Một phần** | Thao tác TableKit, DOCX `colspan`/`rowspan`; ô hợp nhất và bảng dài qua trang chưa nghiệm thu Word desktop |
+| 05 | DOCX định dạng/A4/lề | **Một phần** | DOCX A4, font/cỡ/giãn dòng, ảnh/link/ngắt trang; lề trang hiện cố định, không đầy đủ pagination Word |
+| 06 | Nghe tập trung/phím tắt | **Có chức năng cơ bản** | Nghe 15/30/60s hoặc liên tục; Alt+Enter tại mốc |
+| 07 | Lặp A–B, tua, tốc độ | **Một phần** | Lặp A–B **chỉ cùng vùng mẫu liền mạch đã xác minh**; tua ±10s; tốc độ chọn 0,5–2×; chưa nối A–B qua segment/gap/multi-session; tốc độ khác 1× đổi cao độ |
+| 08 | Nhập âm thanh sẵn | **Một phần** | WAV PCM/float mono, stereo → mono theo chunk ≤2GB/3h; MP3/M4A/WebM/OGG nếu `decodeAudioData` hỗ trợ ≤32MB/30 phút. Lưu OPFS commit, liên kết khi đang phát; chưa streaming giải mã file nén dài, pause-to-type chưa nghiệm thu |
+| 09 | Giữ cao độ giọng khi nghe chậm | **Chưa tích hợp** | C2 playbackRate thay pitch; PoC C1 có `preservesPitch` nhưng chưa tích hợp, cần đo và thử nghe giọng thật |
+| 10 | EQ làm rõ giọng | **Có chức năng cơ bản** | Gốc/Nhẹ/Rõ hơn chỉ trên luồng nghe, không sửa WAV; không phải AI denoise |
+| 11 | Ảnh/link/ngắt trang/PDF | **Một phần** | Ảnh PNG/JPEG ≤300KB/ảnh, link http(s)/mailto, ngắt trang, native Print PDF A4; ảnh lớn/cắt trang/định dạng Word nâng cao chưa nghiệm thu |
+| 12 | Tìm toàn cuộc họp | **Có chức năng cơ bản** | MiniSearch offline, có dấu/không dấu; chưa jump đúng match trong tài liệu |
+| 13 | Đánh dấu đoạn quan trọng | **Một phần** | Mark `important` lưu trong note JSON, danh sách lọc `timeSpan` hợp lệ, bấm nghe; cần thử tương tác dài với IME |
+| 14 | Cảnh báo quota/kiểm chứng sao lưu | **Một phần** | `navigator.storage.estimate()` chỉ ước tính + tự cảnh báo, chọn file v2 để verify SHA256/CRC từng entry; chưa tự verify ngay sau SaveFilePicker và chưa kiểm v1 |
+| 15 | Xuất clip WAV A–B | **Một phần** | Xuất từ một vùng PCM thật liên tục, có validation từ chối gap; chưa xuất xuyên segment/gap, chưa nghiệm thu dài/máy thật |
+| 16 | Waveform | **Chưa tích hợp** | Thanh tua hiện chỉ hiển thị dải recorded/gap, không phải waveform từ biên độ PCM |
+| 17 | RNNoise WASM | **Chưa tích hợp** | Cần PoC CPU/latency/âm người, tuyệt đối không lọc lại WAV gốc |
+| 18 | Tự bỏ qua im lặng | **Chưa tích hợp** | Cần VAD và bộ ánh xạ thời gian nguồn→phát không phá `timeSpan`; giữ OFF mặc định |
+
+## Phương án triển khai và thứ tự an toàn
+
+1. **P0 G00 đợt 1**: `e0063e68` + sửa test `df6939bf`: A–B có kiểm tra gap, tua, tốc độ, thụt đầu dòng, nested list. CI kiểm điểm xong mới đóng.
+2. **P0 G00 đợt 2**: `fb1aed7e`: nhập file có sẵn, streaming OPFS với giới hạn/rollback, gõ có mốc `imported_playback` khi nguồn hợp lệ. Phải tái kiểm tra E2E nhập WAV → nghe → gõ → lưu/tải lại.
+3. **P1 G00 đợt 3**: `a5cb80e2`: bookmark trong ProseMirror và cảnh báo quota; sửa regression khôi phục v1/v2.
+4. **P1 G00 đợt 4**: `ff57f907`: clip WAV A–B và verify ZIP v2 SHA256/CRC toàn bộ, chỉ đọc.
+5. **P0/P1 G00 đợt 5**: `1e2e7c9a`: link/ảnh/ngắt trang, DOCX rowSpan; test liên quan. Kết quả mã chính xác xem `STATUS.md`.
+
+**Nguyên tắc:** Không reset/xóa IndexedDB hay OPFS, không đổi `format:"mochop"` của ZIP legacy, không gán audioOffsetMs đoán từ thời gian tường, không tự phát qua gap, không coi `CI SUCCESS` là TC01–TC38 PASS. Khi thiếu bằng chứng nên ghi `NOT_RUN` / `HOLD`.
+
+## Những việc chưa nghiệm thu dù có giao diện hoặc PoC
+
+- **P0 chất lượng audio:** A–B xuyên nhiều WAV segment/phiên trong cùng meeting, kiểm sample-level drop/duplicate; phát 0,75×/0,9× giữ cao độ; nhập file nén dài qua bộ giải mã streaming; pause nghe file rồi gõ ghi đúng vị trí pause; backend file MP3 decoder support matrix.
+- **P1 DOCX:** list numbering gốc, table rowSpan trong Microsoft Word Windows thật, ảnh và page break đúng bố cục nhiều trang; lề in xuất tuỳ chỉnh.
+- **P2:** waveform PCM bounded, RNNoise WebAssembly benchmark, skip silence/VAD giữ mapping và không ảnh hưởng mốc.
+- **Release gate:** TC01–TC38 đầy đủ; Win + Chrome/Edge + UniKey/EVKey/micro thật, 3h, quota/crash, PWA upgrade đang ghi, sao lưu v1/v2/v2 GB, chuyển máy thực; `NOT_RUN` nếu chưa có bằng chứng.
+
+## Mẫu checkpoint bắt buộc
+
+`Code SHA | Tested SHA | CI URL | Unit pass/fail | Browser dev pass/fail/skip | Browser prod pass/fail/skip | TC subcase | Windows/device NOT_RUN | Dữ liệu/backup unchanged | G00 integration hold`.
