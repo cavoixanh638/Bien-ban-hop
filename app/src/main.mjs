@@ -223,7 +223,7 @@ function renderMeetings(){
 async function refreshMeetings(){
   state.meetings=await state.store.list();
   meetingSearchIndex=null;
-  if(meetingSearchTerm)runMeetingSearch().catch(e=>show('Không tìm được cuộc họp: '+e.message,'error'));
+  if(meetingSearchTerm)await runMeetingSearch().catch(e=>show('Không tìm được cuộc họp: '+e.message,'error'));
   renderMeetings();
 }
 async function runMeetingSearch(){
@@ -735,7 +735,12 @@ function wireWordTools(){
     if(state.run?.releaseLease)runCmd(chain=>chain.unsetMark('meetingLink'));
   };
   $('word-page-break').onclick=()=>{
-    if(state.run?.releaseLease)runCmd(chain=>chain.insertContent({type:'meetingPageBreak'}));
+    const editor=state.run?.editor;
+    if(!state.run?.releaseLease||!editor)return;
+    // Insertion after a selected link/text; never replace the user's existing
+    // words or their timeSpan marks with a page-break atom.
+    const after=editor.state.selection.to;
+    editor.chain().focus().insertContentAt(after,{type:'meetingPageBreak'}).run();
   };
   $('word-insert-image').onclick=()=>$('word-image-file').click();
   $('word-image-file').onchange=async ev=>{

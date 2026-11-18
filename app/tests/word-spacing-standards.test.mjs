@@ -83,3 +83,24 @@ test('G00 Word/OOXML: fallback 1.15 and legacy inline spacing are exported',asyn
   assert.match(tags[0],/w:line="276"/);
   assert.match(tags[1],/w:line="360"/);
 });
+
+
+test('G00 actual DOCX A4 margin presets match print selection',async()=>{
+  for(const [preset,left,right,top,bottom] of [
+    ['official',1701,1134,1134,1134],
+    ['balanced',1417,1417,1134,1134],
+    ['compact',1134,1134,1134,1134]
+  ]){
+    const file=await exportWord({
+      title:'Kiểm tra lề',
+      pageMarginPreset:preset,
+      document:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Biên bản họp'}]}]}
+    });
+    const xml=readEntry(Buffer.from(await file.arrayBuffer()),'word/document.xml');
+    const tag=xml.match(/<w:pgMar\b[^>]*\/>/)?.[0];
+    assert.ok(tag, 'required OOXML page margins for '+preset);
+    for(const [side,value] of Object.entries({left,right,top,bottom}))
+      assert.match(tag,new RegExp('w:'+side+'="'+value+'"'),preset+' '+side);
+    assert.match(xml,/<w:pgSz\b[^>]*w:w="11906"[^>]*w:h="16838"/);
+  }
+});

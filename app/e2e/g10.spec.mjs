@@ -592,6 +592,7 @@ test('G00 Word image, secure link and page break survive saving and export as DO
   await expect(editor).toContainText('Van ban co lien ket');
   await page.locator('#word-page-break').click();
   await expect(editor.locator('[data-meeting-page-break]')).toHaveCount(1);
+  await expect(editor.locator('a[href="https://example.com/"]')).toHaveCount(1);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==','base64');
   await page.locator('#word-image-file').setInputFiles({
     name:'test.png',mimeType:'image/png',buffer:png
@@ -643,10 +644,10 @@ test('G00 A4 margin selector updates browser print rule without changing meeting
   const margins=page.locator('#page-margin-preset');
   await expect(margins).toHaveValue('official');
   const style=page.locator('#print-page-margins');
-  await expect(style).toContainText('20mm 20mm 20mm 30mm');
+  await expect.poll(()=>style.evaluate(el=>el.textContent)).toContain('20mm 20mm 20mm 30mm');
   await margins.selectOption('balanced');
-  await expect(style).toContainText('20mm 25mm 20mm 25mm');
+  await expect.poll(()=>style.evaluate(el=>el.textContent)).toContain('20mm 25mm 20mm 25mm');
   await margins.selectOption('compact');
-  await expect(style).toContainText('margin: 20mm;');
+  await expect.poll(()=>style.evaluate(el=>el.textContent)).toContain('margin: 20mm;');
   await expect(editor).toHaveText(before);
 });
