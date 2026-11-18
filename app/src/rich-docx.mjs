@@ -84,16 +84,27 @@ function para(n,opts={},extra={}){
 }
 function listBlocks(n,opts={},depth=0){
   const out=[],ordered=n.type==='orderedList';
-  let count=Number.isSafeInteger(n.attrs?.start)?n.attrs.start:1;
+  const reference='meeting-list-'+(++opts.listCounter.value);
+  const level=Math.min(depth,8);
+  const start=Number.isSafeInteger(n.attrs?.start)&&n.attrs.start>0&&n.attrs.start<=100000?
+    n.attrs.start:1;
+  // Word-native numbering preserves editable list semantics. Each list has a
+  // separate reference, so a new list restarts rather than continuing a prior
+  // unrelated list. Nested child lists get their own real list reference.
+  opts.numbering.push({reference,levels:Array.from({length:9},(_,i)=>({
+    level:i,format:ordered?'decimal':'bullet',
+    text:ordered?('%'+(i+1)+'.'):'•',
+    alignment:AlignmentType.LEFT,
+    start:i===level?start:1,
+    style:{paragraph:{indent:{left:360*(i+1),hanging:180}}}
+  }))});
   for(const li of blocks(n)){
     let first=true;
     for(const child of blocks(li)){
       if(child.type==='paragraph'||child.type==='heading'){
-        // The explicit prefix is intentional: no unstable numbering relationship
-        // when exporting nested lists through the independent browser pipeline.
-        const prefix=first?(ordered?String(count++)+'. ':'• '):'';
-        const clone={...child,content:[{type:'text',text:prefix},...blocks(child)]};
-        out.push(para(clone,opts,{indent:{left:360*(depth+1),hanging:180}}));
+        const settings=first?{numbering:{reference,level}}:
+          {indent:{left:360*(depth+1)}};
+        out.push(para(child,opts,settings));
         first=false;
       }else if(child.type==='bulletList'||child.type==='orderedList'){
         out.push(...listBlocks(child,opts,Math.min(depth+1,8)));
@@ -139,6 +150,8 @@ function embeddedImageParagraph(node){
 }
 
 export function renderNodes(nodes,opts={}){
+  opts.numbering??=[];
+  opts.listCounter??={value:0};
   const out=[];
   for(const node of nodes){
     if(node.type==='paragraph'||node.type==='heading')out.push(para(node,opts));
@@ -158,13 +171,16 @@ export async function exportWord(input){
   const doc=input?.document??input;
   if(doc?.type!=='doc'||!Array.isArray(doc.content))throw Error('Nội dung ghi chú không hợp lệ');
   const title=String(input.title??'Biên bản họp');
+  const renderOptions={includeTimestamps:!!input.includeTimestamps,numbering:[],listCounter:{value:0}};
+  const content=renderNodes(doc.content,renderOptions);
   const page=new Document({
     creator:'Biên bản họp',
+    numbering:{config:renderOptions.numbering},
     sections:[{properties:{
       page:{size:{width:11906,height:16838},margin:pageMargins(input?.pageMarginPreset)}
     },children:[
       new Paragraph({text:title,heading:HeadingLevel.TITLE,spacing:{after:220}}),
-      ...renderNodes(doc.content,{includeTimestamps:!!input.includeTimestamps})
+      ...content
     ]}]
   });
   return Packer.toBlob(page);

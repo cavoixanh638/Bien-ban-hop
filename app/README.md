@@ -37,6 +37,12 @@ npm run dev
 - **Chưa tích hợp/đang HOLD:** C1 preservesPitch vào C2 scheduler, waveform thật, RNNoise, tự bỏ qua im lặng, Word numbering/pagination phức tạp, nhập file nén dài, backup đa-GB Windows và TC01–TC38.
 - **Theo dõi:** [docs/G00_FEATURE_BACKLOG.md](../docs/G00_FEATURE_BACKLOG.md), [STATUS.md](../docs/STATUS.md), [ACCEPTANCE_TESTS.md](../docs/ACCEPTANCE_TESTS.md). Mỗi module cần **Code SHA, Tested SHA, PASS/FAIL/NOT_RUN** trước khi chuyển trạng thái.
 
+## G00 — Danh sách Word có đánh số và thụt cấp native (18/11/2026)
+
+- Xuất Word dùng cấu trúc numbering OOXML gốc cho danh sách gạch đầu dòng/đánh số, kể cả lồng nhau; các danh sách riêng có reference riêng để không nối số thứ tự không mong muốn.
+- Giữ nguyên văn bản, `timeSpan` và các Mark trong nội dung gốc; không thêm tiền tố `1.` hay `•` thành chữ thật vào ghi chú.
+- Bài kiểm thử giải tệp DOCX xác nhận `word/numbering.xml` chứa định nghĩa decimal/bullet và `word/document.xml` chứa `w:numPr`. Cần thử Microsoft Word thực tế với danh sách rất dài, nhiều cấp, bảng xen kẽ trước khi nghiệm thu.
+
 ## G00 — Lựa chọn lề A4 khi xuất Word / In PDF (18/11/2026)
 
 - Ba cấu hình cố định: **Biên bản** (trái 3cm, còn lại 2cm), **Cân đối** (trái/phải 2,5cm, trên/dưới 2cm), **Lề đều 2cm**. DOCX lấy giá trị twip đúng từ cùng bảng cấu hình. Print native CSS `@page` dùng lề tương ứng. Lựa chọn chỉ ảnh hưởng bản xuất/in, **không sửa văn bản hay mốc ghi âm**, không thay thế sao lưu `.bbhop`.

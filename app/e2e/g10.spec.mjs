@@ -592,7 +592,10 @@ test('G00 Word image, secure link and page break survive saving and export as DO
   await expect(editor).toContainText('Van ban co lien ket');
   await page.locator('#word-page-break').click();
   await expect(editor.locator('[data-meeting-page-break]')).toHaveCount(1);
-  await expect(editor.locator('a[href="https://example.com/"]')).toHaveCount(1);
+  await expect.poll(async()=>{
+    const chunks=await editor.locator('a[href="https://example.com/"]').allTextContents();
+    return chunks.join('');
+  }).toBe('Van ban co lien ket');
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==','base64');
   await page.locator('#word-image-file').setInputFiles({
     name:'test.png',mimeType:'image/png',buffer:png

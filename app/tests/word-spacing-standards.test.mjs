@@ -104,3 +104,27 @@ test('G00 actual DOCX A4 margin presets match print selection',async()=>{
     assert.match(xml,/<w:pgSz\b[^>]*w:w="11906"[^>]*w:h="16838"/);
   }
 });
+
+
+test('G00 DOCX preserves native editable numbered and nested bullet lists',async()=>{
+  const p=text=>({type:'paragraph',content:[{type:'text',text}]});
+  const li=(name,more=[])=>({type:'listItem',content:[p(name),...more]});
+  const document={type:'doc',content:[
+    {type:'orderedList',attrs:{start:3},content:[li('Mục thứ ba'),li('Mục thứ tư',[
+      {type:'bulletList',content:[li('Ý phụ 1'),li('Ý phụ 2')]}
+    ])]},
+    p('Một đoạn văn bình thường'),
+    {type:'orderedList',content:[li('Danh sách mới bắt đầu từ một')]}
+  ]};
+  const before=JSON.stringify(document);
+  const file=await exportWord({document});
+  const bytes=Buffer.from(await file.arrayBuffer());
+  const xml=readEntry(bytes,'word/document.xml');
+  const numbering=readEntry(bytes,'word/numbering.xml');
+  assert.ok((xml.match(/<w:numPr>/g)||[]).length>=5,'native numbering for list items');
+  assert.match(numbering,/<w:abstractNum\b/);
+  assert.match(numbering,/<w:start w:val="3"\s*\/>/);
+  assert.match(numbering,/<w:numFmt w:val="bullet"\s*\/>/);
+  assert.match(numbering,/<w:numFmt w:val="decimal"\s*\/>/);
+  assert.equal(JSON.stringify(document),before,'export must not edit original note');
+});

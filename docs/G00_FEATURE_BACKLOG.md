@@ -7,7 +7,7 @@
 | # | Hạng mục | Trạng thái tích hợp tại G00 | Phạm vi đã có / phần còn thiếu |
 |---|---|---|---|
 | 01 | Word cơ bản | **Có chức năng cơ bản** | Font pt, đậm/nghiêng/gạch, màu chữ; lưu và xuất DOCX |
-| 02 | Căn lề, giãn dòng, thụt dòng, nhiều cấp, Heading | **Một phần** | Đã thêm thụt dòng đầu (0–72pt), sink/lift danh sách, Heading; DOCX nested list vẫn làm phẳng thành prefix thay vì numbering native; cần hồi quy đủ ca |
+| 02 | Căn lề, giãn dòng, thụt dòng, nhiều cấp, Heading | **Một phần** | Đã thêm thụt dòng đầu (0–72pt), sink/lift danh sách, Heading; DOCX xuất numbering gốc Word cho danh sách số/chấm và nhánh lồng nhau; vẫn cần kiểm tra danh sách dài/đa cấp trên Word desktop |
 | 03 | Tìm/thay | **Có chức năng cơ bản** | Ctrl+F/H, chặn thay tự động văn bản gắn `timeSpan` hợp lệ |
 | 04 | Bảng/ô gộp | **Một phần** | Thao tác TableKit, DOCX `colspan`/`rowspan`; ô hợp nhất và bảng dài qua trang chưa nghiệm thu Word desktop |
 | 05 | DOCX định dạng/A4/lề | **Một phần** | DOCX A4, font/cỡ/giãn dòng, ảnh/link/ngắt trang; có 3 mức lề Word/PDF, chưa đủ pagination Word desktop |
