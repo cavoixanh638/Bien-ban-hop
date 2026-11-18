@@ -25,6 +25,10 @@
 | 17 | RNNoise WASM | **Chưa tích hợp** | Cần PoC CPU/latency/âm người, tuyệt đối không lọc lại WAV gốc |
 | 18 | Tự bỏ qua im lặng | **Chưa tích hợp** | Cần VAD và bộ ánh xạ thời gian nguồn→phát không phá `timeSpan`; giữ OFF mặc định |
 
+## Checkpoint G00 — Sao lưu được kiểm chứng hậu ghi (18/11/2026)
+
+**Code SHA = Tested SHA:** `fad90119530817404d2e57e7bb73b197dde65021`; [CI #44317666582](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44317666582) **SUCCESS**: Windows/Linux unit 76/76, Chromium dev 30 PASS + 1 SKIP PWA, production 31/31 PASS. Đã thử tự verify file ZIP sau SaveFilePicker, khôi phục hai phiên trên browser profile mới, từ chối WAV sửa checksum. Nếu kiểm chứng không hỗ trợ/thất bại phải hiển thị CHƯA AN TOÀN, không báo DONE. #09/#16/#17/#18 vẫn chưa tích hợp và Windows/thiết bị thật NOT_RUN.
+
 ## Checkpoint G00 gần nhất (18/11/2026)
 
 **Code SHA = Tested SHA:** `8478a1c45f37bca537cdcdf367578fa44809a20c`; [CI #44314800214](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44314800214) **SUCCESS**: Windows/Linux G10 unit 76/76 PASS, Chromium dev 29 PASS + 1 intentional SKIP, production/PWA 30 PASS. Đã có: tìm toàn cuộc họp nhảy tới chữ đầu tiên, 3 preset lề DOCX/PDF, Word native numbering, các hồi quy ngắt trang/ảnh/link. Chưa tích hợp: #09/#16/#17/#18. Không merge/publish.

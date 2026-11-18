@@ -12,6 +12,12 @@
 
 > **Cấu trúc tài liệu tinh gọn:** đây là nguồn chính thức cho *sản phẩm, yêu cầu chức năng, phạm vi và lộ trình*. Schema/module thuộc [ARCHITECTURE.md](ARCHITECTURE.md); quy tắc gõ và thời gian thuộc [TIMELINE_RULES.md](TIMELINE_RULES.md); thu/phát âm thanh thuộc [AUDIO_DESIGN.md](AUDIO_DESIGN.md). Căn cứ so sánh công nghệ (17 nhóm, mỗi nhóm 4 phương án) tại [TECHNICAL_OPTIONS.md](TECHNICAL_OPTIONS.md); chỉ các quyết định có bằng chứng mới chuyển sang trạng thái đã kiểm chứng trong [STATUS.md](STATUS.md). **Tất cả mới là kế hoạch, chưa có PoC hay nghiệm thu.**
 
+## G00 — Bước kiểm chứng tệp sao lưu ngay sau ghi (18/11/2026)
+
+- Phần tính năng #14 hiện có checkbox kiểm chứng ngay sau SaveFilePicker (mặc định bật): đọc file ZIP vừa lưu, đối chiếu SHA-256 và CRC của tất cả entry. Khi lỗi/hủy/không có API `getFile`, thông báo chỉ xác nhận **đã ghi** chứ không xác nhận **an toàn**.
+- Code/Tested SHA `fad90119530817404d2e57e7bb73b197dde65021`, CI [#44317666582](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44317666582) Windows/Linux và Chromium success; việc áp dụng thực tế file đa GB và trên thiết bị Windows thật vẫn NOT_RUN.
+- Không thay `timeSpan`, OPFS/IndexedDB, format legacy; giữ cổng #09/#16/#17/#18 và full TC01–TC38 là HOLD. Chi tiết tại [STATUS.md](STATUS.md).
+
 ## G00 — Checkpoint mở rộng P0/P1 sau tích hợp (18/11/2026)
 
 - Theo `STATUS.md`, Code/Tested SHA `8478a1c45f37bca537cdcdf367578fa44809a20c` đã PASS CI Windows/Linux và Chromium dev/production. Các bổ sung: điều hướng kết quả tìm kiếm tới đoạn, lựa chọn lề A4 chung Word/PDF, numbering OOXML Word, sửa bảo toàn chữ/link khi chèn ngắt trang hoặc ảnh.

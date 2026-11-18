@@ -6,6 +6,14 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Tự kiểm chứng SHA-256/CRC sau khi xuất gói sao lưu (18/11/2026)
+
+- **Code SHA = Tested SHA:** `fad90119530817404d2e57e7bb73b197dde65021` trên `integration/20261115-g10-v1.2`. **CI SUCCESS** [GitHub Actions #44317666582](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44317666582): Windows/Linux G10 native unit **76/76 PASS mỗi hệ**, build/PoC PASS; Chromium dev **30 PASS, 1 PWA-only SKIP**, Chromium production/PWA **31/31 PASS**, **0 FAIL**.
+- **Mục #14:** Sau khi ghi và đóng gói `.bbhop` trên File System Access API, tùy chọn mặc định bật kiểm chứng tự động: `handle.getFile()` mở lại đúng tệp vừa lưu; `verifyPortableArchiveV2` đọc từng entry và đối chiếu kích thước, SHA-256, ZIP CRC, các WAV. Chỉ báo **đã sao lưu VÀ kiểm chứng** nếu đọc lại khớp. Nếu `getFile` thiếu, người dùng hủy, hoặc kiểm chứng lỗi, báo rõ **ĐÃ GHI NHƯNG CHƯA XÁC NHẬN AN TOÀN**; dữ liệu gốc không bị thay đổi.
+- **Bằng chứng E2E:** Chromium fixture `showSaveFilePicker` có `createWritable` và `getFile`, xác nhận đọc lại/verify ZIP thành công; hai bài thử chuyển 1/2 phiên WAV sang browser profile khác và từ chối WAV bị sửa checksum tiếp tục PASS. Test portable v2 dùng ID fixture xác định dài hợp lệ; không nới điều kiện kiểm tra recordingId.
+- **Checkpoint hệ thống:** README, `docs/G00_FEATURE_BACKLOG.md`, phiên bản SW `bien-ban-hop-20261118-postsave-verify`. `docs/PLAN_V1_2.md` cập nhật hiện trạng. **Hạn chế:** tự verify chỉ v2 và browser hỗ trợ `FileSystemFileHandle.getFile`; file >2 GB/hardware thực, hủy đang đọc hoặc mất điện chưa thử với thiết bị thật.
+- **NOT_RUN / RELEASE HOLD:** #09 giữ pitch khi nghe chậm, #16 waveform PCM hoàn chỉnh, #17 RNNoise/WASM, #18 skip silence/VAD chưa tích hợp; kiểm thử Windows micro/UniKey/EVKey, MS Word thực, 3 giờ, quota/crash/khôi phục đa máy thật và đầy đủ TC01–TC38 vẫn **NOT_RUN**. Giữ Draft PR; không merge/publish.
+
 ## G00 — Hoàn thiện P0/P1 còn thiếu và sửa hồi quy (18/11/2026)
 
 - **Code SHA = Tested SHA:** `8478a1c45f37bca537cdcdf367578fa44809a20c`, nhánh `integration/20261115-g10-v1.2`. **CI SUCCESS**: [GitHub Actions #44314800214](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44314800214); Windows/Linux G10 unit **76/76 PASS trên mỗi hệ**, Vite build/các PoC PASS; Chromium dev **29 PASS + 1 PWA-only SKIP**, Chromium production/PWA **30/30 PASS**, **0 FAIL**.
