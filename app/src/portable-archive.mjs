@@ -197,3 +197,60 @@ export async function probeMeetingArchiveVersion(blob){
     fail('định dạng tệp sao lưu không được hỗ trợ');
   return manifest.formatVersion;
 }
+
+
+/** Read-only integrity verification of a saved v2 backup, including every WAV.
+ * Uses bounded ZIP streaming and checks SHA256/CRC from the manifest. It never
+ * stages, publishes, deletes or alters a meeting or audio journal.
+ */
+export async function verifyPortableArchiveV2(blob,{signal,onProgress=()=>{}}={}){
+  if(!blob||!Number.isSafeInteger(blob.size)||blob.size<22)
+    fail('file kiểm chứng không hợp lệ');
+  const reader=new ZipStoreReader(blobSource(blob),{maxEntries:LIMITS.maxEntries});
+  const entries=await reader.entries(),byName=new Map(),seen=new Set();
+  let total=0;
+  for(const entry of entries){
+    fileName(entry.name);
+    const folded=entry.name.toLowerCase();
+    if(seen.has(folded))fail('ZIP có tên trùng hoặc chỉ khác chữ hoa/thường');
+    seen.add(folded);
+    if(!isSafe(entry.size)||!isSafe(entry.compressedSize)||
+       entry.size>Math.max(1,entry.compressedSize)*200)
+      fail('ZIP có kích thước không hợp lệ');
+    total+=entry.size;
+    if(total>LIMITS.maxTotal)fail('ZIP vượt giới hạn dung lượng');
+    byName.set(entry.name,entry);
+  }
+  const manifestEntry=byName.get('manifest.json');
+  if(!manifestEntry||manifestEntry.size>LIMITS.maxManifest)fail('Thiếu manifest gói v2');
+  const manifest=await loadJson(reader,manifestEntry,{
+    path:'manifest.json',size:manifestEntry.size,
+    sha256:await hashEntry(reader,manifestEntry)},signal);
+  if(manifest?.format!==LEGACY_ARCHIVE_FORMAT||manifest.formatVersion!==2||
+     manifest.schemaVersion!==1||!Array.isArray(manifest.files)||
+     !Array.isArray(manifest.recordingIds)||!Array.isArray(manifest.meetingIds))
+    fail('Gói sao lưu không đúng phiên bản v2');
+  if(manifest.files.length!==entries.length-1)fail('Số file ZIP không khớp manifest');
+  let checked=0;const declared=new Set();
+  for(const rec of manifest.files){
+    if(signal?.aborted)fail('Đã hủy kiểm chứng sao lưu');
+    if(!rec||typeof rec.path!=='string'||!isSafe(rec.size)||
+       !/^[a-f0-9]{64}$/.test(rec.sha256??'')||
+       declared.has(rec.path)||!byName.has(rec.path)||rec.path==='manifest.json')
+      fail('Manifest khai báo file không hợp lệ');
+    declared.add(rec.path);
+    const entry=byName.get(rec.path);
+    const stream=await verifiedStream(reader,entry,rec,LIMITS.maxTotal,signal);
+    const upstream=stream.getReader();
+    try{
+      for(;;){
+        const {value,done}=await upstream.read();
+        if(done)break;
+        checked+=value.byteLength;
+        onProgress({processed:checked,total:total-manifestEntry.size,path:rec.path});
+      }
+    }finally{upstream.releaseLock();}
+  }
+  return {formatVersion:2,files:declared.size,recordings:manifest.recordingIds.length,
+    bytesChecked:checked,valid:true};
+}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {exportMeetingArchiveV2,importMeetingArchiveV2} from '../src/portable-archive.mjs';
+import {exportMeetingArchiveV2,importMeetingArchiveV2,verifyPortableArchiveV2} from '../src/portable-archive.mjs';
 import {checkBundle,remapBundle,checkAudioJournal} from '../src/portable-model.mjs';
 import {wavHeader,crc32} from '../../poc/03-opfs/core.mjs';
 const ids=['rec-test-session-00000001','rec-test-session-00000002'];
@@ -137,4 +137,15 @@ test('G10 v2: unverified pending input is preserved as archive provenance but ne
     ()=>('uuid-long-id-'+(++seq)));
   assert.deepEqual(twice.history.at(-1).archivedPendingState,pending);
   assert.deepEqual(twice.pendingState.records,[]);
+});
+
+
+test('G00 full read-only integrity check verifies every v2 file without restoring any meetings',async()=>{
+  const {blob,manifest}=await archiveFor(source({sessions:1}));
+  const verified=await verifyPortableArchiveV2(blob);
+  assert.equal(verified.valid,true);
+  assert.equal(verified.formatVersion,2);
+  assert.equal(verified.recordings,1);
+  assert.equal(verified.files,manifest.files.length);
+  assert.ok(verified.bytesChecked>0);
 });

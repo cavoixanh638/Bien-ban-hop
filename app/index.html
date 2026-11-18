@@ -117,6 +117,7 @@
             <button id="loop-set-a" type="button" title="Đặt điểm A ở vị trí thanh tua">Đặt A</button>
             <button id="loop-set-b" type="button" title="Đặt điểm B ở vị trí thanh tua">Đặt B</button>
             <button id="loop-play" type="button" title="Nghe lặp đoạn A–B (cùng vùng WAV đã xác minh)">Lặp A–B</button>
+            <button id="export-clip" type="button" title="Xuất WAV từ mốc A đến B đã xác minh, tối đa 120 giây">Xuất WAV A–B</button>
             <button id="loop-clear" type="button" title="Tắt lặp A–B và bỏ hai mốc">Xóa A–B</button>
             <span id="loop-status" role="status" aria-live="polite">Chưa đặt A–B</span>
           </div>
@@ -174,6 +175,8 @@
       <button id="print-document" class="wide" type="button">In / Lưu PDF (A4)</button>
       <button id="backup" class="wide">Sao lưu biên bản và ghi âm</button>
       <button id="import-backup" class="wide" type="button">Khôi phục biên bản từ tệp</button>
+      <button id="verify-backup" class="wide" type="button">Kiểm chứng file sao lưu (SHA-256/CRC)</button>
+      <input type="file" id="verify-backup-file" accept=".bbhop,.mochop,application/zip" hidden aria-label="Chọn file sao lưu cần kiểm chứng">
       <input type="file" id="import-file" accept=".bbhop,.mochop,application/zip" style="display:none" aria-label="Chọn tệp sao lưu biên bản họp">
       <button id="import-cancel" class="wide" type="button" style="display:none">Hủy nhập dữ liệu</button>
       <div id="transfer-status" class="panel-small" role="status" aria-live="polite">Tệp sao lưu chứa biên bản, các mốc thời gian và toàn bộ phiên ghi âm; có thể chuyển sang máy khác.</div>

@@ -7,6 +7,7 @@ import {ParagraphIndent,adjustFirstLineIndent} from './paragraph-indent.mjs';
 import {importAudioFile,removeUnlinkedImportedAudio} from './import-audio.mjs';
 import {ImportantMark,collectImportantAnchors} from './important-mark.mjs';
 import {checkBrowserStorage} from './storage-health.mjs';
+import {exportVerifiedWavClip} from './audio-clip.mjs';
 import {makeSafeLoop,jumpMeetingPosition} from './replay-tools.mjs';
 import TextAlign from '@tiptap/extension-text-align';
 import {TableKit} from '@tiptap/extension-table';
@@ -23,7 +24,7 @@ import {CaptureSession,AudioPlayer,AudioRPC} from './audio.mjs';
 import {MicProbe} from './mic-probe.mjs';
 import {mirrorRecordingToLocalFolder,localRecordingStatus} from './recording-mirror.mjs';
 import {exportDOCX,exportTXT,exportMarkdown,exportCSV,mime} from '../../poc/08-export/exporter.mjs';
-import {exportMeetingArchiveV2,importMeetingArchiveV2,probeMeetingArchiveVersion} from './portable-archive.mjs';
+import {exportMeetingArchiveV2,importMeetingArchiveV2,probeMeetingArchiveVersion,verifyPortableArchiveV2} from './portable-archive.mjs';
 import {importLegacyMeetingArchive} from './portable-legacy.mjs';
 import {loadPortableSource,createBrowserImportRepo} from './portable-storage.mjs';
 import {MeetingTimelineUI} from './timeline-ui.mjs';
@@ -156,8 +157,10 @@ function setRecordingUI(){
   $('rec-pause').textContent=paused?'Tiếp tục':'Tạm dừng';
   $('rec-stop').disabled=!active||rec?.state==='stopping';
   $('backup').disabled=!!active||finalizing||!run?.releaseLease||state.switching||transferBusy;
+  $('verify-backup').disabled=!!active||finalizing||state.switching||transferBusy;
   $('import-audio').disabled=!!active||finalizing||!run?.releaseLease||state.switching||transferBusy;
   $('bookmark-toggle').disabled=!run?.releaseLease||state.switching||transferBusy;
+  $('export-clip').disabled=!!active||finalizing||state.switching||transferBusy;
   $('import-backup').disabled=!!active||finalizing||state.switching||transferBusy;
   $('mic-test').disabled=!!active;
   $('mic-device').disabled=!!active||micProbe.state!=='idle';
@@ -535,6 +538,33 @@ function displayImportProgress(progress){
     'Đang kiểm tra gói đời cũ: '+(progress.processed/1048576).toFixed(1)+' / '+
     (progress.total/1048576).toFixed(1)+' MB';
 }
+async function verifyBackupFile(file){
+  if(!file||transferBusy||state.switching)return;
+  if(state.run?.capture&&['capturing','paused','starting','stopping'].includes(state.run.capture.state)){
+    show('Kết thúc thu âm trước khi kiểm chứng tệp sao lưu.','error');return;
+  }
+  const controller=new AbortController();importController=controller;transferBusy=true;
+  $('import-cancel').style.display='block';
+  $('transfer-status').textContent='Đang kiểm tra từng tệp bên trong gói, gồm toàn bộ WAV…';
+  setRecordingUI();syncControls();
+  try{
+    const result=await verifyPortableArchiveV2(file,{signal:controller.signal,
+      onProgress:({processed,total})=>{
+        $('transfer-status').textContent='Kiểm chứng ZIP SHA-256/CRC: '+
+          (processed/1048576).toFixed(1)+' / '+(total/1048576).toFixed(1)+' MB';
+      }});
+    $('transfer-status').textContent='Đã kiểm chứng đầy đủ '+
+      result.files+' tệp trong gói v2, '+result.recordings+' phiên WAV; mọi SHA-256/CRC khớp.';
+    show('File sao lưu đã vượt kiểm chứng toàn bộ mà không thay đổi dữ liệu trong app.');
+  }catch(error){
+    $('transfer-status').textContent='Kiểm chứng file sao lưu thất bại: '+error.message;
+    show('Tệp sao lưu CHƯA được xác nhận an toàn: '+error.message,'error');
+  }finally{
+    importController=null;transferBusy=false;$('import-cancel').style.display='none';
+    $('verify-backup-file').value='';setRecordingUI();syncControls();
+  }
+}
+
 async function importSelectedFile(file){
   if(!file||transferBusy)return;
   if(state.run?.recordingFinalization){
@@ -810,6 +840,22 @@ function wire(){
   $('loop-set-a').onclick=()=>placeAB('a');
   $('loop-set-b').onclick=()=>placeAB('b');
   $('loop-clear').onclick=()=>clearLoop(true);
+  $('export-clip').onclick=async()=>{
+    if(transferBusy||state.switching||state.run?.capture&&
+       ['capturing','paused','starting','stopping'].includes(state.run.capture.state)){
+      show('Hãy kết thúc ghi âm và thao tác nhập trước khi xuất WAV.','error');return;
+    }
+    try{
+      const range=makeSafeLoop(timelineUI?.model,loopPoints.a,loopPoints.b);
+      loopPoints.active=false;loopVersion++;refreshLoopUI();
+      await timelineUI?.settle();
+      await player.closeReader();
+      const result=await exportVerifiedWavClip(range.recordingId,range.startMs,range.endMs);
+      download('bien-ban-hop-doan-'+Math.round(range.absoluteStart)+'-'+
+        Math.round(range.absoluteEnd)+'.wav',result.blob,'audio/wav');
+      show('Đã xuất '+(result.durationMs/1000).toFixed(1)+' giây WAV. File ghi âm gốc không đổi.');
+    }catch(e){show('Không xuất được WAV A–B: '+e.message,'error');}
+  };
   $('loop-play').onclick=async()=>{
     try{
       const range=makeSafeLoop(timelineUI?.model,loopPoints.a,loopPoints.b);
@@ -851,6 +897,8 @@ function wire(){
   $('print-document').onclick=()=>window.print();
   $('backup').onclick=backup;
   $('import-backup').onclick=()=>$('import-file').click();
+  $('verify-backup').onclick=()=>$('verify-backup-file').click();
+  $('verify-backup-file').onchange=e=>verifyBackupFile(e.target.files?.[0]);
   $('import-file').onchange=event=>importSelectedFile(event.target.files?.[0]);
   $('import-cancel').onclick=()=>importController?.abort();
   document.querySelectorAll('[data-export]').forEach(b=>b.onclick=()=>exportText(b.dataset.export));

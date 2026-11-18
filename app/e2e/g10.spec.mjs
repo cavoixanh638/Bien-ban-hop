@@ -560,3 +560,13 @@ test('G00 bookmark control rejects unlinked prose; never creates a fake timeSpan
   await expect(page.locator('#bookmark-count')).toHaveText('0');
   await expect(page.locator('#storage-health')).toContainText('MB');
 });
+
+
+test('G00 clip and full SHA backup verification controls are visible and source-guarded',async({page})=>{
+  await page.goto('/');
+  await expect(page.locator('#export-clip')).toBeVisible();
+  await expect(page.locator('#verify-backup')).toBeVisible();
+  await page.locator('#export-clip').click();
+  await expect(page.locator('#message')).toContainText('Không xuất được WAV A–B');
+  await expect(page.locator('#transfer-status')).toContainText('Tệp sao lưu chứa');
+});
