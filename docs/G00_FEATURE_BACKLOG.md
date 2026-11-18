@@ -17,7 +17,7 @@
 | 09 | Giữ cao độ giọng khi nghe chậm | **Chưa tích hợp** | C2 playbackRate thay pitch; PoC C1 có `preservesPitch` nhưng chưa tích hợp, cần đo và thử nghe giọng thật |
 | 10 | EQ làm rõ giọng | **Có chức năng cơ bản** | Gốc/Nhẹ/Rõ hơn chỉ trên luồng nghe, không sửa WAV; không phải AI denoise |
 | 11 | Ảnh/link/ngắt trang/PDF | **Một phần** | Ảnh PNG/JPEG ≤300KB/ảnh, link http(s)/mailto, ngắt trang, native Print PDF A4; ảnh lớn/cắt trang/định dạng Word nâng cao chưa nghiệm thu |
-| 12 | Tìm toàn cuộc họp | **Có chức năng cơ bản** | MiniSearch offline, có dấu/không dấu; chưa jump đúng match trong tài liệu |
+| 12 | Tìm toàn cuộc họp | **Có chức năng cơ bản, đang bổ sung điều hướng** | MiniSearch offline, có dấu/không dấu; nhấp cuộc họp phù hợp chuyển đến từ khóa đầu tiên trong nội dung bằng selection (không sửa `timeSpan`); giới hạn tìm kiếm tại đoạn tối đa 160k ký tự của bộ index, chưa liệt kê toàn bộ kết quả |
 | 13 | Đánh dấu đoạn quan trọng | **Một phần** | Mark `important` lưu trong note JSON, danh sách lọc `timeSpan` hợp lệ, bấm nghe; cần thử tương tác dài với IME |
 | 14 | Cảnh báo quota/kiểm chứng sao lưu | **Một phần** | `navigator.storage.estimate()` chỉ ước tính + tự cảnh báo, chọn file v2 để verify SHA256/CRC từng entry; chưa tự verify ngay sau SaveFilePicker và chưa kiểm v1 |
 | 15 | Xuất clip WAV A–B | **Một phần** | Xuất từ một vùng PCM thật liên tục, có validation từ chối gap; chưa xuất xuyên segment/gap, chưa nghiệm thu dài/máy thật |

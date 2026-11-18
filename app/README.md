@@ -37,6 +37,12 @@ npm run dev
 - **Chưa tích hợp/đang HOLD:** C1 preservesPitch vào C2 scheduler, waveform thật, RNNoise, tự bỏ qua im lặng, Word numbering/pagination phức tạp, nhập file nén dài, backup đa-GB Windows và TC01–TC38.
 - **Theo dõi:** [docs/G00_FEATURE_BACKLOG.md](../docs/G00_FEATURE_BACKLOG.md), [STATUS.md](../docs/STATUS.md), [ACCEPTANCE_TESTS.md](../docs/ACCEPTANCE_TESTS.md). Mỗi module cần **Code SHA, Tested SHA, PASS/FAIL/NOT_RUN** trước khi chuyển trạng thái.
 
+## G00 — Điều hướng vào nội dung tìm kiếm toàn cuộc họp (18/11/2026)
+
+- Trong sidebar, tìm tiếng Việt không dấu qua MiniSearch, nhấp cuộc họp phù hợp sẽ chọn và cuộn tới đoạn chứa từ khóa đầu tiên trong văn bản; nếu chỉ trùng tiêu đề thì mở cuộc họp và thông báo không có đoạn nội dung chính xác.
+- Bộ tìm vị trí đọc-only ánh xạ ký tự UTF-16 ProseMirror, hỗ trợ dấu tiếng Việt và văn bản bị chia thành nhiều node bởi định dạng; không thay đổi `timeSpan`, không thêm văn bản, không tự bật phát âm thanh.
+- Giới hạn hiện tại: điều hướng kết quả đầu tiên cho mỗi cuộc họp (chưa là UI danh sách tất cả match); bộ index hiện đọc tối đa 160.000 ký tự một cuộc họp. Đã có unit + Chromium E2E, nghiệm thu thực tế còn HOLD.
+
 ## G00 — Đối chiếu tỷ lệ giãn dòng với chuẩn Microsoft Word (18/11/2026)
 
 - **DOCX:** Các mức 1,0 / 1,15 / 1,5 / 2,0 phải ghi theo OpenXML `w:spacing w:lineRule="auto"` với `w:line` lần lượt **240 / 276 / 360 / 480** (đơn vị 1/240 dòng). Mã đang sử dụng `Math.round(240*height)`, đúng công thức quy định. CI có kiểm thử thực tế bằng cách xuất DOCX, mở `word/document.xml`, xác nhận đủ bốn giá trị, cùng `before=after=0`; kiểm thử cả fallback 1,15 và ghi chú cũ có giãn dòng inline.

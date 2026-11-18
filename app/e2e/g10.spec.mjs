@@ -607,3 +607,29 @@ test('G00 Word image, secure link and page break survive saving and export as DO
   await expect(editor.locator('[data-meeting-page-break]')).toHaveCount(1);
   await expect(editor.locator('a[href="https://example.com/"]')).not.toHaveCount(0);
 });
+
+
+test('G00 offline search jumps to matching text without changing notes',async({page})=>{
+  await page.goto('/');
+  const editor=page.locator('.tiptap');
+  await expect(editor).toBeVisible();
+  await editor.click();
+  await page.keyboard.type('Quy hoạch đô thị cần rà soát');
+  await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+  await page.locator('#new-meeting').click();
+  await expect(page.locator('#meeting-title-editor')).toBeVisible();
+  await page.locator('#meeting-title').fill('Cuộc họp công việc khác');
+  await page.locator('#meeting-title').press('Enter');
+  await expect(editor).toBeVisible();
+  await page.locator('#meeting-search').fill('quy hoach');
+  await expect(page.locator('#meeting-search-status')).toContainText('1 cuộc họp',{timeout:15000});
+  await page.locator('#meeting-list .meeting').first().click();
+  await expect(page.locator('#meeting-search-status')).toContainText('Đã đến đoạn phù hợp',{timeout:15000});
+  await expect(editor).toContainText('Quy hoạch đô thị cần rà soát');
+  const selection=await page.evaluate(()=>{
+    const selection=window.getSelection();
+    return selection?.toString();
+  });
+  expect(selection).toMatch(/Quy hoạch/i);
+  await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+});

@@ -17,6 +17,7 @@ import {canReplaceFindResults} from './word-guards.mjs';
 import {exportWord} from './rich-docx.mjs';
 import {importSafeDOCX} from './word-import.mjs';
 import {buildMeetingSearchIndex,plainTextFromDoc,searchMeetings} from './meeting-search.mjs';
+import {firstMeetingTextMatch} from './meeting-search-position.mjs';
 import {InputTracker,TimeSpan,createTrackingExtension,readAnchorAtCursor} from '../../poc/01-editor/src/tracker.mjs';
 import {MeetingLease} from '../../poc/09-pwa/lease.js';
 import {MeetingStore,SaveQueue} from './meeting-store.mjs';
@@ -196,7 +197,17 @@ function renderMeetings(){
     button.className='meeting'+(meeting.meetingId===run?.meeting.meetingId?' active':'');
     const heading=document.createElement('strong');heading.textContent=meeting.title;
     const small=document.createElement('small');small.textContent=new Date(meeting.updatedAt??meeting.createdAt).toLocaleDateString('vi-VN');
-    button.append(heading,small);button.onclick=()=>openMeeting(meeting.meetingId);
+    button.append(heading,small);
+    button.onclick=async()=>{
+      const query=meetingSearchTerm;
+      await openMeeting(meeting.meetingId);
+      if(!query||query!==meetingSearchTerm||state.run?.meetingId!==meeting.meetingId)return;
+      const editor=state.run.editor;
+      const range=firstMeetingTextMatch(editor.state.doc,query);
+      if(!range){$('meeting-search-status').textContent='Đã mở cuộc họp; từ khóa chỉ có trong tên hoặc không có vị trí chính xác.';return;}
+      editor.chain().setTextSelection(range).scrollIntoView().run();
+      $('meeting-search-status').textContent='Đã đến đoạn phù hợp trong biên bản (không sửa mốc âm thanh).';
+    };
     row.append(button);
     if(meeting.meetingId===run?.meeting.meetingId){
       const edit=document.createElement('button');
