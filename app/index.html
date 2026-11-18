@@ -161,6 +161,9 @@
       <button id="retry-local-recording" type="button" class="wide" disabled>Lưu lại WAV vào Recording</button>
       <div class="panel-title">TỆP & XUẤT</div>
       <div class="exports"><button data-export="docx">Word</button><button data-export="txt">TXT</button><button data-export="md">Markdown</button><button data-export="csv">CSV</button></div>
+      <button id="import-audio" class="wide" type="button">Nhập bản ghi âm có sẵn (WAV/MP3/M4A…)</button>
+      <input id="audio-file" type="file" accept=".wav,.mp3,.m4a,.mp4,.webm,.ogg,audio/*" hidden aria-label="Chọn file âm thanh có sẵn">
+      <div id="import-audio-status" class="panel-small" role="status" aria-live="polite">WAV tối đa 2 GB/3 giờ; file nén tối đa 32 MB/30 phút. Nhập không thay bản thu cũ.</div>
       <button id="import-word" class="wide" type="button">Chèn nội dung từ Word (.docx)</button>
       <input id="word-file" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden aria-label="Chọn tệp Word">
       <button id="print-document" class="wide" type="button">In / Lưu PDF (A4)</button>

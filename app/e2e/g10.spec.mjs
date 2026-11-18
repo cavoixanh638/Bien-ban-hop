@@ -516,3 +516,32 @@ test('G00 A-B and skip controls exist; cannot invent a loop without recorded aud
   await page.locator('#play-rate').selectOption('2');
   await expect(page.locator('#play-rate')).toHaveValue('2');
 });
+
+
+test('G00 imports existing PCM16 WAV to durable OPFS, binds typed notes to playback',async({page})=>{
+  test.slow();
+  await page.goto('/');
+  const frames=8000*6,bytes=Buffer.alloc(44+frames*2);
+  bytes.write('RIFF',0);bytes.writeUInt32LE(bytes.length-8,4);bytes.write('WAVE',8);
+  bytes.write('fmt ',12);bytes.writeUInt32LE(16,16);bytes.writeUInt16LE(1,20);
+  bytes.writeUInt16LE(1,22);bytes.writeUInt32LE(8000,24);
+  bytes.writeUInt32LE(16000,28);bytes.writeUInt16LE(2,32);bytes.writeUInt16LE(16,34);
+  bytes.write('data',36);bytes.writeUInt32LE(frames*2,40);
+  for(let i=0;i<frames;i++)
+    bytes.writeInt16LE(Math.round(7500*Math.sin(2*Math.PI*200*i/8000)),44+i*2);
+  await page.locator('#audio-file').setInputFiles({name:'thu-am-co-san.wav',mimeType:'audio/wav',buffer:bytes});
+  await expect(page.locator('#import-audio-status')).toContainText('Đã nhập',{timeout:45000});
+  await expect(page.locator('#timeline-summary')).toContainText('1 phiên',{timeout:30000});
+  await expect(page.locator('#timeline-play')).toBeEnabled();
+  await page.locator('#timeline-play').click();
+  await expect(page.locator('#timeline-play')).toContainText('Dừng',{timeout:10000});
+  const editor=page.locator('.tiptap');
+  await editor.click();
+  await page.keyboard.type('Ghi chu khi dang nghe file nhap');
+  await expect(editor.locator('[data-time-source="imported_playback"]')).not.toHaveCount(0,{timeout:15000});
+  await page.locator('#play-stop').click();
+  await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+  await page.reload();
+  await expect(page.locator('#timeline-summary')).toContainText('1 phiên',{timeout:15000});
+  await expect(page.locator('.tiptap [data-time-source="imported_playback"]')).not.toHaveCount(0);
+});

@@ -4,6 +4,7 @@ import StarterKit from '@tiptap/starter-kit';
 import {TextStyleKit,LineHeight} from '@tiptap/extension-text-style';
 import {applyBlockLineHeight} from './word-layout.mjs';
 import {ParagraphIndent,adjustFirstLineIndent} from './paragraph-indent.mjs';
+import {importAudioFile,removeUnlinkedImportedAudio} from './import-audio.mjs';
 import {makeSafeLoop,jumpMeetingPosition} from './replay-tools.mjs';
 import TextAlign from '@tiptap/extension-text-align';
 import {TableKit} from '@tiptap/extension-table';
@@ -153,6 +154,7 @@ function setRecordingUI(){
   $('rec-pause').textContent=paused?'Tiếp tục':'Tạm dừng';
   $('rec-stop').disabled=!active||rec?.state==='stopping';
   $('backup').disabled=!!active||finalizing||!run?.releaseLease||state.switching||transferBusy;
+  $('import-audio').disabled=!!active||finalizing||!run?.releaseLease||state.switching||transferBusy;
   $('import-backup').disabled=!!active||finalizing||state.switching||transferBusy;
   $('mic-test').disabled=!!active;
   $('mic-device').disabled=!!active||micProbe.state!=='idle';
@@ -264,8 +266,20 @@ async function safelyCloseCurrent(){
   if(run.releaseLease)await run.releaseLease();
   state.run=null;
 }
+function importedPlaybackContext(run){
+  const id=player.recordingId,manifest=player.manifest;
+  if(!player.playing||!id?.startsWith('rec-import-')||
+     !run?.tracker?.allowed?.has(id)||!manifest?.sampleRate||player.underruns>0)
+    return {source:'unlinked',coverage:'unlinked'};
+  const at=player.positionMs(),sample=Math.floor(at*manifest.sampleRate/1000);
+  if(!Number.isFinite(at)||at<0||
+     !manifest.sampleRanges?.some(r=>sample>=r.sampleStart&&sample<r.sampleEndExclusive))
+    return {source:'unlinked',coverage:'gap'};
+  return {source:'imported_playback',recordingId:id,
+    audioOffsetMs:Math.round(sample*1000/manifest.sampleRate),coverage:'valid'};
+}
 async function openMeeting(meetingId){
-  if(state.switching||state.run?.meeting.meetingId===meetingId)return;
+  if(state.switching||transferBusy||state.run?.meeting.meetingId===meetingId)return;
   state.switching=true;syncControls();
   try{
     await safelyCloseCurrent();
@@ -275,7 +289,8 @@ async function openMeeting(meetingId){
     $('meeting-title').value=run.meeting.title;
     $('meeting-title-editor').hidden=true;
     const tracker=new InputTracker({meetingId,recordingIds:run.meeting.recordingIds??[],
-      getAudioContext:mono=>run.capture?.getEditorContext(mono)??{source:'unlinked',coverage:'unlinked'}});
+      getAudioContext:mono=>run.capture&&['capturing','starting'].includes(run.capture.state)?
+        run.capture.getEditorContext(mono):importedPlaybackContext(run)});
     run.tracker=tracker;
     const queue=new SaveQueue(async()=>{
       if(!run.releaseLease)throw Error('Không có quyền ghi');
@@ -320,7 +335,7 @@ async function openMeeting(meetingId){
   finally{state.switching=false;syncControls();}
 }
 async function createMeeting(){
-  if(state.switching)return;
+  if(state.switching||transferBusy)return;
   const title='Cuộc họp mới '+new Date().toLocaleDateString('vi-VN');
   try{
     const meeting=await state.store.create(title);
@@ -648,6 +663,56 @@ function wireWordTools(){
 }
 
 
+async function importAudioSelectedFile(file){
+  const run=state.run;
+  if(!file||!run?.releaseLease||transferBusy||state.switching)return;
+  const active=run.capture;
+  if(run.recordingFinalization||
+     active&&['starting','capturing','paused','stopping'].includes(active.state)){
+    show('Kết thúc thu âm trước khi nhập bản ghi có sẵn.','error');return;
+  }
+  const recordingId='rec-import-'+crypto.randomUUID();
+  const controller=new AbortController();
+  transferBusy=true;importController=controller;
+  $('import-cancel').style.display='block';
+  $('import-audio-status').textContent='Đang chuẩn bị nhập file âm thanh vào OPFS…';
+  setRecordingUI();syncControls();
+  let linked=false;
+  try{
+    await run.queue.drain();
+    clearLoop(true);
+    await timelineUI?.settle();
+    await player.closeReader();
+    const result=await importAudioFile(file,{recordingId,signal:controller.signal,
+      onProgress:({frames,totalFrames})=>{
+        $('import-audio-status').textContent='Đang nhập bản ghi âm: '+
+          Math.floor(frames*100/totalFrames)+'% (đã xác nhận trên OPFS)';
+      }});
+    if(controller.signal.aborted||state.run!==run)throw Error('Đã hủy hoặc chuyển cuộc họp');
+    run.meeting=await state.store.addRecording(run.meetingId,recordingId,state.lease);
+    linked=true; // Never roll back a WAV after its meeting reference committed.
+    run.tracker.allowed.add(recordingId);
+    run.queue.edit();
+    await run.queue.drain();
+    await timelineUI?.refresh(run);
+    $('import-audio-status').textContent='Đã nhập '+(result.durationMs/60000).toFixed(1)+
+      ' phút vào cuộc họp. Nhấn Phát rồi gõ để ghi chú tự gắn mốc theo vị trí nghe.';
+    show('Đã lưu bản ghi có sẵn thành phiên âm thanh mới, không đụng dữ liệu cũ.');
+  }catch(error){
+    if(!linked){
+      try{await removeUnlinkedImportedAudio(recordingId);}
+      catch(cleanup){show('Không dọn được file nhập dở: '+cleanup.message,'error');}
+    }
+    $('import-audio-status').textContent='Nhập âm thanh thất bại: '+error.message;
+    show('Không nhập được âm thanh: '+error.message,'error');
+  }finally{
+    importController=null;transferBusy=false;
+    $('import-cancel').style.display='none';
+    $('audio-file').value='';
+    setRecordingUI();syncControls();
+  }
+}
+
 async function importWordFile(file){
   const run=state.run;
   if(!file||!run?.releaseLease||state.switching||transferBusy)return;
@@ -732,6 +797,8 @@ function wire(){
   $('voice-filter').onchange=e=>{
     try{player.setVoiceMode(e.target.value);}catch(error){show(error.message,'error');}
   };
+  $('import-audio').onclick=()=>$('audio-file').click();
+  $('audio-file').onchange=e=>importAudioSelectedFile(e.target.files?.[0]);
   $('import-word').onclick=()=>$('word-file').click();
   $('word-file').onchange=e=>importWordFile(e.target.files?.[0]);
   $('print-document').onclick=()=>window.print();
