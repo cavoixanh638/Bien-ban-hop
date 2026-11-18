@@ -406,3 +406,52 @@ test('G00 Word sizes are pt, and paragraph line heights change, save, and reload
   const c=await paragraph.evaluate(el=>parseFloat(getComputedStyle(el).lineHeight));
   expect(c).toBeCloseTo(b,1);
 });
+
+
+test('G00 Enter makes adjacent paragraphs with zero margin at 1.0; 1.5 expands',async({page})=>{
+  await page.goto('/');
+  const editor=page.locator('.tiptap');
+  await expect(editor).toBeVisible();
+  await editor.click();
+  await page.keyboard.type('Doan thu nhat');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Doan thu hai');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Doan thu ba');
+  const paragraphs=editor.locator('p');
+  await expect(paragraphs).toHaveCount(3);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.locator('#word-menu summary').click();
+  await expect(page.locator('#word-lineheight')).toHaveValue('1.15');
+  await page.locator('#word-lineheight').selectOption('1');
+  await expect(paragraphs.first()).toHaveAttribute('style',/line-height:\s*1(?:;|$)/);
+  const tight=await paragraphs.evaluateAll(nodes=>{
+    const a=nodes.map(n=>({y:n.getBoundingClientRect().top,
+      height:n.getBoundingClientRect().height,
+      marginBottom:parseFloat(getComputedStyle(n).marginBottom),
+      lineHeight:parseFloat(getComputedStyle(n).lineHeight)}));
+    return {a,interval:a[1].y-a[0].y};
+  });
+  expect(tight.a.every(v=>v.marginBottom===0)).toBe(true);
+  expect(Math.abs(tight.interval-tight.a[0].lineHeight)).toBeLessThan(1.5);
+  await page.locator('#word-lineheight').selectOption('1.5');
+  const roomy=await paragraphs.evaluateAll(nodes=>{
+    const a=nodes.map(n=>({y:n.getBoundingClientRect().top,
+      lineHeight:parseFloat(getComputedStyle(n).lineHeight),
+      marginBottom:parseFloat(getComputedStyle(n).marginBottom)}));
+    return {a,interval:a[1].y-a[0].y};
+  });
+  expect(roomy.a.every(v=>v.marginBottom===0)).toBe(true);
+  expect(roomy.interval).toBeGreaterThan(tight.interval*1.35);
+  expect(Math.abs(roomy.interval-roomy.a[0].lineHeight)).toBeLessThan(1.5);
+  await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+  await page.reload();
+  await expect(paragraphs).toHaveCount(3);
+  await expect(paragraphs.first()).toHaveAttribute('style',/line-height:\s*1\.5/);
+  const persisted=await paragraphs.evaluateAll(nodes=>nodes[1].getBoundingClientRect().top-
+    nodes[0].getBoundingClientRect().top);
+  expect(Math.abs(persisted-roomy.interval)).toBeLessThan(1.5);
+  await page.emulateMedia({media:'print'});
+  const printGap=await paragraphs.first().evaluate(n=>parseFloat(getComputedStyle(n).marginBottom));
+  expect(printGap).toBe(0);
+});

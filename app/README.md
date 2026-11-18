@@ -29,6 +29,13 @@ npm run dev
 4. Nhấn **Bắt đầu ghi**, gõ ghi chú ngay vào trang giấy; không phải nhập mã mốc. Sau khi dừng, nhấp đoạn chữ có gắn mốc để nghe. `Alt+Enter` nghe mốc tại con trỏ; `Esc` dừng phát. Ghi chú tự lưu với revision, báo "Đã lưu" chỉ sau IDB transaction hoàn tất.
 5. Có thể tạo/chuyển cuộc họp, đổi tên, sử dụng hai tab (chỉ một tab giữ writer lock), xuất DOCX/TXT/MD/CSV, **Sao lưu biên bản và ghi âm** và **Khôi phục biên bản từ tệp**. Khi nhập, chương trình kiểm tra checksum rồi tạo ID cuộc họp, ghi chú và phiên thu mới; không ghi đè cuộc họp đang có.
 
+## G00 — Khử khoảng cách thừa sau Enter khi chọn giãn dòng (18/11/2026)
+
+- **Nguyên nhân:** các lần nhấn Enter tạo `<p>` mới; CSS cũ `.tiptap p{margin:0 0 .75em}` cộng thêm khoảng cách sau mỗi đoạn bất kể giãn dòng đang chọn. Chữ trông vẫn cách xa khi đặt 1,0.
+- **Sửa:** xóa khoảng cách mặc định giữa hai paragraph bằng `.tiptap p{margin:0}`; chế độ 1,0 dùng đúng chiều cao dòng chữ, 1,15/1,5/2,0 tăng khoảng cách theo giá trị đã chọn, không tăng thêm 0,75em. **Nhấn Enter vẫn tạo đoạn mới**, không thay `timeSpan` hay định dạng lưu cũ.
+- **Xuất DOCX:** đặt `before:0, after:0` cho các đoạn thường; trước đây `after:120 twip` tự chèn thêm 6pt vào mỗi đoạn. Heading tiêu đề tài liệu vẫn có khoảng cách riêng.
+- **Kiểm thử thực tế:** nhập ba dòng bằng Enter; kiểm tra bằng vị trí bounding box và `getComputedStyle()` rằng 1,0 không có margin thêm và 1,5 tăng đáng kể; xác minh tải lại, print view. PWA shell cache đã tăng phiên bản để nhận CSS mới.
+
 ## G00 — Căn giữa công cụ và sửa cỡ chữ/giãn dòng (18/11/2026)
 
 - Thanh công cụ và hàng Tìm/Thay được **căn giữa**; bỏ dòng hướng dẫn và chip quyền/lưu khỏi vùng nhìn. Trạng thái quyền/lưu vẫn ở vùng thông báo hỗ trợ đọc màn hình, lỗi lưu tiếp tục được báo trên màn hình.

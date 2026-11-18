@@ -62,7 +62,7 @@ function para(n,opts={},extra={}){
   return new Paragraph({
     children:runsFrom(blocks(n),opts),
     heading:h,alignment:alignment(n.attrs?.textAlign),
-    spacing:{after:120,line:Math.round(240*height),lineRule:'auto'},
+    spacing:{before:0,after:0,line:Math.round(240*height),lineRule:'auto'},
     ...extra
   });
 }
