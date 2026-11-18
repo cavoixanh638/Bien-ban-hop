@@ -127,7 +127,9 @@ test('G10 v2: invalid audio journal checksum/length cannot be declared complete'
 test('G10 v2: unverified pending input is preserved as archive provenance but never activated on second machine',()=>{
   const src=source();
   const pending={schemaVersion:1,meetingId:src.meeting.meetingId,records:[{inputMonoMs:1500,recordingId:ids[0]}]};
-  const result=remapBundle({...src,pendingState:pending},()=>Math.random().toString(36).slice(2));
+  let seed=0;
+  // Stable, valid recording IDs: random base36 occasionally has <10 characters.
+  const result=remapBundle({...src,pendingState:pending},()=>('fixture-valid-id-'+(++seed)));
   assert.deepEqual(result.archivedPendingState,pending);
   assert.deepEqual(result.pendingState.records,[]);
   assert.deepEqual(result.history.at(-1).archivedPendingState,pending);
