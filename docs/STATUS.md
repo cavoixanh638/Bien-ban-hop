@@ -6,6 +6,16 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Nâng cấp soạn thảo Word, tìm kiếm offline và nghe lại (18/11/2026)
+
+- **Code SHA = Tested SHA:** `ae176ebc8fdda2b43ed4534b56699884a240b654` trên nhánh `integration/20261115-g10-v1.2`. **CI PASS:** [GitHub Actions #44280821059](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44280821059): Windows + Linux `npm test` G10 **45/45 PASS**, các bài PoC và Vite build **PASS**, Chromium dev **17 PASS + 1 PWA-only SKIP**, production/PWA **18/18 PASS**, **0 FAIL**. Test phát hành tại chính Code SHA, không dùng CI của commit cũ.
+- **Word/editor đã có mã và CI:** Tiptap 3.33.1 extension định dạng font/cỡ/màu/gạch chân/gạch ngang/căn lề/Heading/giãn dòng, bảng/thêm xóa hàng cột/gộp ô; `Ctrl+F`/`Ctrl+H`; guard không cho thay thế tự động đè vào text có `timeSpan` hợp lệ. Bổ sung `fast-check` sinh test boundary (không thay thế thử UniKey/EVKey thật).
+- **DOCX, tìm kiếm:** thư viện `docx` xuất DOCX A4 với paragraph/run format và bảng cơ bản; `MiniSearch` tìm toàn văn qua các cuộc họp offline, hỗ trợ không dấu và không ghi đổi dữ liệu gốc. `Mammoth + DOMPurify` chèn DOCX (dạng nội dung mới *không gắn mốc âm thanh giả*, hạn chế tệp 15 MB, lọc HTML và ảnh); Chrome/Edge native print ra A4/PDF.
+- **Nghe lại:** chế độ nghe tập trung 15/30/60 giây hoặc liên tục; bật/tắt EQ làm rõ giọng **chỉ trên đường phát** bằng Web Audio (Gốc/Nhẹ/Rõ hơn); WAV gốc, `timeSpan`, OPFS và manifest không đổi. Đây là EQ đơn giản, **không** phải khử ồn AI hay pitch-preserving time-stretch.
+- **PWA:** thay `app/public/sw.js` VERSION thành `g00-rich-editor-20261118` để trình duyệt nhận shell/bundle mới theo quy trình cập nhật an toàn.
+- **Đã cân nhắc nhưng KHÔNG tích hợp trực tiếp:** SoundTouchJS (pitch-preserving), RNNoise WASM (lọc nhiễu sâu), zip.js (thay bộ ZIP64), Paged.js (thay in A4 bản địa). Cần PoC riêng chứng minh độ chính xác mốc, nghe nối các segment/CPU, tương thích sao lưu v1/v2 và RAM gói lớn. Không tuyên bố PASS các phần đó.
+- **NOT_RUN / RELEASE HOLD:** UniKey/EVKey Telex/VNI trên Windows thật, micro thiết bị thật, ghi 3 giờ, A–B đa phiên, file âm thanh nhập sẵn, độ chính xác ghép giọng/giữ cao độ, gói 0,5–2 GB và >4 GB, quota/crash/mất nguồn, chuyển gói qua 2 máy Windows vật lý và full TC01–TC38. Chưa merge `main` và chưa deploy, PR vẫn DRAFT.
+
 ## G00 — Hoàn thiện tên gói sao lưu "Biên bản họp" (17/11/2026)
 
 - **Code SHA = Tested SHA:** `65e23d689c54be7686e3c9062609ca7801d36e5f` trên `integration/20261115-g10-v1.2`.
