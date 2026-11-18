@@ -347,7 +347,8 @@ test('G00 Word import sanitizes file, appends unlinked text, native A4 print wor
   const bytes=await readFile(await downloaded.path());
   await page.locator('#word-file').setInputFiles({name:'van-ban-thu.docx',
     mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',buffer:bytes});
-  await expect(editor).toContainText('Noi dung trong Word.Noi dung trong Word.',{timeout:20000});
+  await expect(editor).toContainText(/Noi dung trong Word\.[\s\S]*Cuộc họp đầu tiên[\s\S]*Noi dung trong Word\./,{timeout:20000});
+  await expect(editor.locator('[data-time-recording-id]')).toHaveCount(0);
   await page.evaluate(()=>{window.__printInvoked=false;window.print=()=>{window.__printInvoked=true;};});
   await page.locator('#print-document').click();
   expect(await page.evaluate(()=>window.__printInvoked)).toBe(true);
