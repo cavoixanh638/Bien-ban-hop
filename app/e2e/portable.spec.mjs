@@ -20,14 +20,18 @@ async function recordText(page,text){
 async function exportBuffer(page){
   await page.evaluate(()=>{
     window.__fileParts=[];
-    window.showSaveFilePicker=async()=>({createWritable:async()=>({
-      write:async bytes=>window.__fileParts.push(new Uint8Array(bytes)),
-      close:async()=>{window.__fileBlob=new Blob(window.__fileParts,{type:'application/zip'});},
-      abort:async()=>{window.__fileParts=[];}
-    })});
+    window.showSaveFilePicker=async()=>({
+      createWritable:async()=>({
+        write:async bytes=>window.__fileParts.push(new Uint8Array(bytes)),
+        close:async()=>{window.__fileBlob=new Blob(window.__fileParts,{type:'application/zip'});},
+        abort:async()=>{window.__fileParts=[];}
+      }),
+      getFile:async()=>window.__fileBlob
+    });
   });
   await page.locator('#backup').click();
-  await expect(page.locator('#transfer-status')).toContainText('Đã xuất',{timeout:35000});
+  await expect(page.locator('#transfer-status')).toContainText('Đã kiểm chứng đủ',{timeout:35000});
+  await expect(page.locator('#transfer-status')).toContainText('SHA-256/CRC khớp');
   const downloadPromise=page.waitForEvent('download');
   await page.evaluate(()=>{
     const url=URL.createObjectURL(window.__fileBlob),a=document.createElement('a');
