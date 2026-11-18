@@ -36,6 +36,12 @@ npm run dev
 - **Làm rõ giọng** có Gốc (mặc định), Nhẹ và Rõ hơn. Bộ lọc Web Audio: high-pass, EQ tăng tần số lời nói, compressor, trộn dry/wet. Chỉ xử lý ở đầu ra nghe, **không đổi WAV/OPFS/timeSpan**, không phải AI khử ồn chuyên sâu.
 - Chưa nghiệm thu giọng nói thật hoặc độ trễ nghe trên Windows. Không khẳng định lọc được lời nói chồng nhau và chưa dùng SoundTouchJS/RNNoise trong sản phẩm; đây là các PoC riêng.
 
+## G00 — Chèn Word và in PDF A4
+
+- Nút **Chèn nội dung từ Word (.docx)** sử dụng Mammoth + DOMPurify. Chỉ nhập sau khi dừng ghi; chặn tệp lớn, loại các thuộc tính `data-time-*`, script và ảnh; chèn nội dung không có liên kết âm thanh giả, không thay thế nội dung hiện có.
+- Nút **In / Lưu PDF (A4)** dùng chức năng in sẵn trong Chrome/Edge, định dạng trang A4 riêng; giao diện soạn thảo không bị chia trang trong lúc đang gõ.
+- Word nhập từ bên ngoài có thể khác một số chi tiết định dạng; không đảm bảo tương đương Word 100%. Bản sao lưu đầy đủ có âm thanh vẫn là `.bbhop`.
+
 ## Kiến trúc thực tế của bản này
 
 - **G01:** `InputTracker`, `timeSpan`, `PendingLinkJournal`, Tiptap Editor thật; không nhúng status động vào Mark.

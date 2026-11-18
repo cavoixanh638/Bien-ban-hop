@@ -7,6 +7,7 @@ import {TableKit} from '@tiptap/extension-table';
 import {FindAndReplace} from '@tiptap/extension-find-and-replace';
 import {canReplaceFindResults} from './word-guards.mjs';
 import {exportWord} from './rich-docx.mjs';
+import {importSafeDOCX} from './word-import.mjs';
 import {buildMeetingSearchIndex,plainTextFromDoc,searchMeetings} from './meeting-search.mjs';
 import {InputTracker,TimeSpan,createTrackingExtension,readAnchorAtCursor} from '../../poc/01-editor/src/tracker.mjs';
 import {MeetingLease} from '../../poc/09-pwa/lease.js';
@@ -210,7 +211,7 @@ function updateAnchor(){
 }
 function syncControls(){const run=state.run;setRecordingUI();
   $('meeting-title').disabled=!run?.releaseLease;
-  document.querySelectorAll('[data-action],[data-word],#word-heading,#word-font,#word-size,#word-color,#word-highlight,#word-lineheight,#find-replace,#find-replace-all').forEach(b=>{b.disabled=!run?.releaseLease;});
+  document.querySelectorAll('[data-action],[data-word],#word-heading,#word-font,#word-size,#word-color,#word-highlight,#word-lineheight,#find-replace,#find-replace-all,#import-word').forEach(b=>{b.disabled=!run?.releaseLease;});
 }
 async function safelyCloseCurrent(){
   const run=state.run;if(!run)return;
@@ -601,6 +602,28 @@ function wireWordTools(){
   };
 }
 
+
+async function importWordFile(file){
+  const run=state.run;
+  if(!file||!run?.releaseLease||state.switching||transferBusy)return;
+  if(run.recordingFinalization || run.capture&&
+     ['starting','capturing','paused','stopping'].includes(run.capture.state)){
+    show('Hãy kết thúc ghi âm và lưu đầy đủ trước khi chèn tài liệu Word.','error');return;
+  }
+  try{
+    await run.queue.drain();
+    const {html,warnings}=await importSafeDOCX(file);
+    if(state.run!==run)return;
+    // Sanitized Word content contains no data-time-* attributes. Append it as
+    // new unlinked paragraphs, never change original note or audio provenance.
+    const end=run.editor.state.doc.content.size;
+    run.editor.chain().focus().insertContentAt(end,html).run();
+    show('Đã chèn nội dung Word (không gắn nguồn âm thanh giả).'+
+      (warnings.length?' Một số định dạng có thể chưa chuyển đủ.':''));
+  }catch(error){show('Không nhập được Word: '+error.message,'error');}
+  finally{$('word-file').value='';}
+}
+
 function wire(){
   wireWordTools();
   $('meeting-search').oninput=e=>{
@@ -632,6 +655,9 @@ function wire(){
   $('voice-filter').onchange=e=>{
     try{player.setVoiceMode(e.target.value);}catch(error){show(error.message,'error');}
   };
+  $('import-word').onclick=()=>$('word-file').click();
+  $('word-file').onchange=e=>importWordFile(e.target.files?.[0]);
+  $('print-document').onclick=()=>window.print();
   $('backup').onclick=backup;
   $('import-backup').onclick=()=>$('import-file').click();
   $('import-file').onchange=event=>importSelectedFile(event.target.files?.[0]);

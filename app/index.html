@@ -139,6 +139,9 @@
       <button id="retry-local-recording" type="button" class="wide" disabled>Lưu lại WAV vào Recording</button>
       <div class="panel-title">TỆP & XUẤT</div>
       <div class="exports"><button data-export="docx">Word</button><button data-export="txt">TXT</button><button data-export="md">Markdown</button><button data-export="csv">CSV</button></div>
+      <button id="import-word" class="wide" type="button">Chèn nội dung từ Word (.docx)</button>
+      <input id="word-file" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden aria-label="Chọn tệp Word">
+      <button id="print-document" class="wide" type="button">In / Lưu PDF (A4)</button>
       <button id="backup" class="wide">Sao lưu biên bản và ghi âm</button>
       <button id="import-backup" class="wide" type="button">Khôi phục biên bản từ tệp</button>
       <input type="file" id="import-file" accept=".bbhop,.mochop,application/zip" style="display:none" aria-label="Chọn tệp sao lưu biên bản họp">

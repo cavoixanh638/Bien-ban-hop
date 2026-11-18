@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {readFile} from 'node:fs/promises';
 
 test('G10: mở ứng dụng, gõ chữ Việt và lưu/reopen bản ghi chú',async({page})=>{
   const errors=[];
@@ -331,4 +332,23 @@ test('G00 playback presets: focused 30s and voice EQ do not modify saved note',a
   await expect(page.locator('#focus-duration')).toHaveValue('30000');
   await expect(page.locator('#voice-filter')).toHaveValue('clear');
   await expect(page.locator('.tiptap')).toHaveText(before);
+});
+
+
+test('G00 Word import sanitizes file, appends unlinked text, native A4 print works',async({page})=>{
+  await page.goto('/');
+  const editor=page.locator('.tiptap');
+  await editor.click();
+  await page.keyboard.type('Noi dung trong Word.');
+  await expect(page.locator('#save-status')).toContainText('Đã lưu',{timeout:15000});
+  const downloadPromise=page.waitForEvent('download');
+  await page.locator('[data-export="docx"]').click();
+  const downloaded=await downloadPromise;
+  const bytes=await readFile(await downloaded.path());
+  await page.locator('#word-file').setInputFiles({name:'van-ban-thu.docx',
+    mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',buffer:bytes});
+  await expect(editor).toContainText('Noi dung trong Word.Noi dung trong Word.',{timeout:20000});
+  await page.evaluate(()=>{window.__printInvoked=false;window.print=()=>{window.__printInvoked=true;};});
+  await page.locator('#print-document').click();
+  expect(await page.evaluate(()=>window.__printInvoked)).toBe(true);
 });

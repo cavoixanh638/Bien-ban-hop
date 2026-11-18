@@ -166,3 +166,18 @@
 /* Focused listening and non-destructive voice EQ controls in the playback dock */
 .timeline-playback-options #focus-duration,
 .timeline-playback-options #voice-filter{max-width:116px}
+
+
+/* Native Chromium print/PDF from the current note without forcing live editor pagination. */
+@page{size:A4;margin:20mm}
+@media print{
+  html,body,#app{height:auto!important;min-height:0!important;display:block!important;
+    overflow:visible!important;background:#fff!important}
+  .sidebar,.panel,.toolbar,.find-panel,.timeline-dock,.message,.meeting-title-editor{display:none!important}
+  .workspace{display:block!important;max-height:none!important;min-height:0!important;overflow:visible!important}
+  .paper-wrap{display:block!important;overflow:visible!important;padding:0!important}
+  .paper{max-width:none!important;min-height:0!important;width:100%!important;border:0!important;
+    border-radius:0!important;padding:0!important;box-shadow:none!important}
+  .tiptap{min-height:0!important;color:#000!important;font-family:"Times New Roman",serif;font-size:12pt}
+  .tiptap table,.tiptap p,.tiptap h1,.tiptap h2,.tiptap h3{break-inside:avoid}
+}
