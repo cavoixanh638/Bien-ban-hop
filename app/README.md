@@ -29,6 +29,12 @@ npm run dev
 4. Nhấn **Bắt đầu ghi**, gõ ghi chú ngay vào trang giấy; không phải nhập mã mốc. Sau khi dừng, nhấp đoạn chữ có gắn mốc để nghe. `Alt+Enter` nghe mốc tại con trỏ; `Esc` dừng phát. Ghi chú tự lưu với revision, báo "Đã lưu" chỉ sau IDB transaction hoàn tất.
 5. Có thể tạo/chuyển cuộc họp, đổi tên, sử dụng hai tab (chỉ một tab giữ writer lock), xuất DOCX/TXT/MD/CSV, **Sao lưu biên bản và ghi âm** và **Khôi phục biên bản từ tệp**. Khi nhập, chương trình kiểm tra checksum rồi tạo ID cuộc họp, ghi chú và phiên thu mới; không ghi đè cuộc họp đang có.
 
+## G00 — Xem dạng sóng PCM lấy mẫu (20/11/2026, chưa nghiệm thu)
+
+- Sau khi dừng thu, bấm **Hiện dạng sóng** ở thanh tua. Ứng dụng đọc có giới hạn tối đa **128 vị trí × 1024 mẫu PCM** qua OPFS, tính RMS và vẽ các cột mức tín hiệu gần đúng. Bấm **Ẩn dạng sóng** để bỏ lớp biểu diễn. Không tự tải toàn bộ file dài khi mở cuộc họp.
+- **Các vùng xanh/xám của thanh tua vẫn là nguồn sự thật** về vùng ghi âm có dữ liệu và vùng gap. Các cột biên độ chỉ là mẫu đại diện, không chứng minh toàn bộ vùng có tiếng hay im lặng. Không sửa WAV, timeSpan, ghi chú, đoạn audio nguồn hay manifest.
+- Dừng phát trước khi hiển thị dạng sóng; tránh dùng cùng lúc với ghi âm, nhập hoặc khôi phục. Nếu worker không đọc được PCM, app báo không có dạng sóng, không được vẽ giá trị đoán. Kiểm thử node/browser đã viết nhưng **chưa xác nhận CI trên Code SHA mới**, Windows mic thật, dữ liệu nhiều giờ vẫn NOT_RUN.
+
 ## G00 — Đợt bổ sung tính năng 01–18 (18/11/2026)
 
 - **Âm thanh:** Lặp A–B giới hạn **cùng vùng mẫu liền mạch đã xác minh** (không tự vượt gap hoặc khác phiên), tua ±10 giây, 0,5–2×. Lưu ý **pitch hiện thay đổi cùng tốc độ**, chưa dùng giữ cao độ. Nhập WAV PCM/F32 mono/stereo theo chunk (≤2GB và ≤3 giờ), file nén MP3/M4A/WebM/OGG dùng decodeAudioData khi trình duyệt hỗ trợ (≤32MB, ≤30 phút); OPFS commit trước khi liên kết meeting. Khi phát file nhập và gõ, mốc lấy từ vị trí phát xác minh; không suy đoán khi pause/gap.
