@@ -21,7 +21,7 @@
 | 13 | Đánh dấu đoạn quan trọng | **Một phần** | Mark `important` lưu trong note JSON, danh sách lọc `timeSpan` hợp lệ, bấm nghe; cần thử tương tác dài với IME |
 | 14 | Cảnh báo quota/kiểm chứng sao lưu | **Một phần** | `navigator.storage.estimate()` chỉ ước tính + tự cảnh báo, chọn file v2 để verify SHA256/CRC từng entry; đã có chế độ tự kiểm chứng SHA256/CRC ngay sau SaveFilePicker (mặc định bật) hoặc kiểm thủ công; chưa xác minh v1 và trường hợp file đa GB trên Windows thật |
 | 15 | Xuất clip WAV A–B | **Một phần** | Xuất từ một vùng PCM thật liên tục, có validation từ chối gap; chưa xuất xuyên segment/gap, chưa nghiệm thu dài/máy thật |
-| 16 | Waveform | **Có mã thử nghiệm, CHƯA có CI đúng SHA** | Bấm **Hiện dạng sóng** để đọc tối đa 128 vị trí × 1024 PCM, vẽ RMS xấp xỉ lên thanh tua; chỉ lấy mẫu trong vùng đã ghi thật, giữ dải recorded/gap nguyên trạng. Chưa quét đầy đủ peak/dữ liệu nhiều giờ; chờ unit/Chromium CI và máy thật, không báo PASS |
+| 16 | Waveform | **Có chức năng lấy mẫu, CI PASS; nghiệm thu thực tế chưa đạt** | Bấm **Hiện dạng sóng** để đọc tối đa 128 vị trí × 1024 PCM, vẽ RMS xấp xỉ lên thanh tua; chỉ lấy mẫu trong vùng đã ghi thật, giữ dải recorded/gap nguyên trạng. Đã PASS unit và Chromium dev/production ở SHA c9f4860; chưa quét đầy đủ peak/dữ liệu nhiều giờ; máy Windows thực chưa nghiệm thu |
 | 17 | RNNoise WASM | **Chưa tích hợp** | Cần PoC CPU/latency/âm người, tuyệt đối không lọc lại WAV gốc |
 | 18 | Tự bỏ qua im lặng | **Chưa tích hợp** | Cần VAD và bộ ánh xạ thời gian nguồn→phát không phá `timeSpan`; giữ OFF mặc định |
 
@@ -29,7 +29,7 @@
 
 - Mã đang chờ kiểm chứng CI trên nhánh tích hợp: `app/src/waveform-envelope.mjs`, `timeline-ui.mjs`, giao diện/CSS, unit và Chromium E2E. Giao diện chỉ bật **theo yêu cầu người dùng**, không đọc toàn bộ WAV mỗi lần mở cuộc họp.
 - Mẫu lấy tối đa 128 bins × 1024 mẫu; từ OPFS đã xác minh; không suy diễn biên độ vùng gap; dùng RMS làm độ cao cột và giữ dải coverage độc lập. Có AbortController, đóng worker sau khi lấy xong hoặc hủy, không sửa WAV/manifest/note/timeSpan.
-- **Code SHA:** xem HEAD nhánh tại thời điểm nhận việc; **Tested SHA: NOT_RUN**, **CI: chưa xác nhận**, **Windows/device: NOT_RUN**. Không xem đây là waveform đầy đủ hoặc coi #16 đã nghiệm thu.
+- **Code SHA = Tested SHA:** `c9f4860ab93a19022b5434f9ee156d1c0cd2cd3a`; [CI #44578894987](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44578894987) SUCCESS: G10 Windows/Linux 80/80 unit, Chromium dev 31 PASS + 1 SKIP, Chromium production 32 PASS; **Windows/device: NOT_RUN**. Không xem đây là waveform đầy đủ hoặc coi #16 đã nghiệm thu.
 - Các mục #09/#17/#18 vẫn chưa tích hợp; RELEASE HOLD giữ nguyên.
 
 ## Checkpoint G00 — Sao lưu được kiểm chứng hậu ghi (18/11/2026)
