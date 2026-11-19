@@ -4,11 +4,11 @@ import {buildMeetingTimeline} from '../src/meeting-timeline.mjs';
 import {planWaveformProbes,pcmEnergy,readWaveformEnvelope,
   WAVEFORM_MAX_BINS,WAVEFORM_MAX_FRAMES} from '../src/waveform-envelope.mjs';
 
-const manifest=(id,ranges)=>({recordingId:id,sampleRate:1000,
+const manifest=(id,ranges)=>({recordingId:id,sampleRate:8000,
   sampleRanges:ranges.map(([sampleStart,sampleEndExclusive])=>({sampleStart,sampleEndExclusive}))});
 const model=()=>buildMeetingTimeline(['rec-one','rec-two'],new Map([
-  ['rec-one',manifest('rec-one',[[0,1000],[2000,3000]])],
-  ['rec-two',manifest('rec-two',[[0,2000]])]
+  ['rec-one',manifest('rec-one',[[0,8000],[16000,24000]])],
+  ['rec-two',manifest('rec-two',[[0,16000]])]
 ]));
 test('G00 waveform planner never probes missing regions, bounds PCM and keeps session identity',()=>{
   const t=model(),plan=planWaveformProbes(t,{bins:50,frames:256});
