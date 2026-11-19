@@ -33,7 +33,7 @@ npm run dev
 
 - Sau khi dừng thu, bấm **Hiện dạng sóng** ở thanh tua. Ứng dụng đọc có giới hạn tối đa **128 vị trí × 1024 mẫu PCM** qua OPFS, tính RMS và vẽ các cột mức tín hiệu gần đúng. Bấm **Ẩn dạng sóng** để bỏ lớp biểu diễn. Không tự tải toàn bộ file dài khi mở cuộc họp.
 - **Các vùng xanh/xám của thanh tua vẫn là nguồn sự thật** về vùng ghi âm có dữ liệu và vùng gap. Các cột biên độ chỉ là mẫu đại diện, không chứng minh toàn bộ vùng có tiếng hay im lặng. Không sửa WAV, timeSpan, ghi chú, đoạn audio nguồn hay manifest.
-- Dừng phát trước khi hiển thị dạng sóng; tránh dùng cùng lúc với ghi âm, nhập hoặc khôi phục. Nếu worker không đọc được PCM, app báo không có dạng sóng, không được vẽ giá trị đoán. Kiểm thử node/browser đã viết nhưng **chưa xác nhận CI trên Code SHA mới**, Windows mic thật, dữ liệu nhiều giờ vẫn NOT_RUN.
+- Dừng phát trước khi hiển thị dạng sóng; tránh dùng cùng lúc với ghi âm, nhập hoặc khôi phục. Nếu worker không đọc được PCM, app báo không có dạng sóng, không được vẽ giá trị đoán. Kiểm thử Node/Chromium **PASS trên CI tại SHA c9f4860ab93a19022b5434f9ee156d1c0cd2cd3a** ([Actions #44578894987](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44578894987)); Windows micro thật, dữ liệu nhiều giờ và các cổng phát hành vẫn NOT_RUN.
 
 ## G00 — Đợt bổ sung tính năng 01–18 (18/11/2026)
 
