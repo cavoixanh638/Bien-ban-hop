@@ -6,6 +6,14 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Waveform PCM xấp xỉ, giới hạn dữ liệu (20/11/2026)
+
+- **Mã đã push lên nhánh tích hợp; chưa được xác nhận CI đúng SHA.** Bổ sung bộ lập kế hoạch mẫu `app/src/waveform-envelope.mjs`, đọc PCM theo yêu cầu bằng OPFS reader với giới hạn tối đa 128 bins × 1024 frames, tính RMS, hiển thị waveform trên thanh tua, giữ dải recorded/gap làm thẩm quyền dữ liệu; nút **Hiện/Ẩn dạng sóng**.
+- Có xử lý hủy khi đổi cuộc họp, đóng worker trong `finally`, và tránh khởi động khi đang ghi hoặc phát. Không sửa nguồn WAV, manifest, `timeSpan` hay ghi chú; không đánh đồng sampled envelope với full waveform.
+- **Test bổ sung:** unit `app/tests/waveform-envelope.test.mjs` kiểm giới hạn, gap, độ dài PCM, dữ liệu NaN, hủy đọc; E2E `app/e2e/waveform.spec.mjs` kiểm thu giả lập, dừng, vẽ dạng sóng, không sửa liên kết ghi chú, ẩn lại.
+- **Code SHA:** theo HEAD mới nhất của nhánh; **Tested SHA = NOT_RUN (CI chưa có kết quả được xác minh)**. **Unit/browser: NOT_RUN** tại thời điểm cập nhật checkpoint. **Windows micro/UniKey/EVKey, ghi nhiều giờ, đa máy thật: NOT_RUN.** Giữ **INTEGRATION_ALPHA / RELEASE HOLD**; #09 giữ cao độ, #17 RNNoise, #18 VAD vẫn chưa tích hợp.
+- **Lưu ý tài liệu:** Không có TRACKER.md ở gốc; sử dụng `docs/STATUS.md` và `docs/G00_FEATURE_BACKLOG.md` làm hai nguồn điều phối thực tế, theo `AGENTS.md`.
+
 ## G00 — Tự kiểm chứng SHA-256/CRC sau khi xuất gói sao lưu (18/11/2026)
 
 - **Code SHA = Tested SHA:** `fad90119530817404d2e57e7bb73b197dde65021` trên `integration/20261115-g10-v1.2`. **CI SUCCESS** [GitHub Actions #44317666582](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44317666582): Windows/Linux G10 native unit **76/76 PASS mỗi hệ**, build/PoC PASS; Chromium dev **30 PASS, 1 PWA-only SKIP**, Chromium production/PWA **31/31 PASS**, **0 FAIL**.
