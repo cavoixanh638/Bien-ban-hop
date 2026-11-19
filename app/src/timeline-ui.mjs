@@ -17,7 +17,7 @@ export class MeetingTimelineUI {
   constructor({player,getRun,onError=()=>{}}){
     this.player=player;this.getRun=getRun;this.onError=onError;
     this.epoch=0;this.model=null;this.selectedMs=0;this.scrubbing=false;this.busy=false;
-    this.waveformBusy=false;this.waveformAbort=null;this.waveformData=null;
+    this.waveformBusy=false;this.waveformAbort=null;this.waveformData=null;this.waveformTask=null;
   }
   bind(){
     $('timeline-play').onclick=()=>this.toggle().catch(e=>this.onError('Không thể phát: '+e.message));
@@ -34,11 +34,17 @@ export class MeetingTimelineUI {
       this.scrubbing=false;
       this.seek(Math.round(Number(event.target.value))).catch(e=>this.onError('Không thể tua: '+e.message));
     });
-    $('waveform-load').onclick=()=>this.toggleWaveform().catch(e=>this.onError('Dạng sóng: '+e.message));
+    $('waveform-load').onclick=()=>{
+      const task=this.toggleWaveform();this.waveformTask=task;
+      task.catch(e=>this.onError('Dạng sóng: '+e.message)).finally(()=>{
+        if(this.waveformTask===task)this.waveformTask=null;
+      });
+    };
     this.renderEmpty('Chưa có bản ghi âm để tua.');
   }
   setBusy(busy){
     this.busy=!!busy;
+    if(this.busy)this.waveformAbort?.abort();
     const playable=!!this.model?.playableCount;
     const locked=this.busy||this.waveformBusy;
     $('timeline-play').disabled=locked||!playable;
@@ -74,10 +80,15 @@ export class MeetingTimelineUI {
     this.refreshPromise=task;
     try{await task;}finally{if(this.refreshPromise===task)this.refreshPromise=null;}
   }
-  async settle(){if(this.refreshPromise)await this.refreshPromise;}
+  async settle(){
+    if(this.waveformTask)await this.waveformTask.catch(()=>{});
+    if(this.refreshPromise)await this.refreshPromise;
+  }
   async load(run){
     const epoch=++this.epoch;
     this.resetWaveform();
+    // Old OPFS SyncAccessHandles must close before opening a new manifest.
+    if(this.waveformTask)await this.waveformTask.catch(()=>{});
     if(this.getRun()!==run)return;
     const ids=[...(run.meeting.recordingIds??[])];
     if(!ids.length){this.renderEmpty('Bản ghi âm sẽ xuất hiện ở đây sau khi bấm Kết thúc.');return;}
