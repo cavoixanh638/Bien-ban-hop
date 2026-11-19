@@ -4,6 +4,7 @@
  * wall-clock between Stop and a later new recording.
  */
 import {AudioRPC} from './audio.mjs';
+import {readWaveformEnvelope} from './waveform-envelope.mjs';
 import {buildMeetingTimeline,locateMeetingPosition,meetingPositionFor,firstPlayablePosition}
   from './meeting-timeline.mjs';
 
@@ -16,6 +17,7 @@ export class MeetingTimelineUI {
   constructor({player,getRun,onError=()=>{}}){
     this.player=player;this.getRun=getRun;this.onError=onError;
     this.epoch=0;this.model=null;this.selectedMs=0;this.scrubbing=false;this.busy=false;
+    this.waveformBusy=false;this.waveformAbort=null;this.waveformData=null;
   }
   bind(){
     $('timeline-play').onclick=()=>this.toggle().catch(e=>this.onError('Không thể phát: '+e.message));
@@ -32,22 +34,33 @@ export class MeetingTimelineUI {
       this.scrubbing=false;
       this.seek(Math.round(Number(event.target.value))).catch(e=>this.onError('Không thể tua: '+e.message));
     });
+    $('waveform-load').onclick=()=>this.toggleWaveform().catch(e=>this.onError('Dạng sóng: '+e.message));
     this.renderEmpty('Chưa có bản ghi âm để tua.');
   }
   setBusy(busy){
     this.busy=!!busy;
     const playable=!!this.model?.playableCount;
-    $('timeline-play').disabled=this.busy||!playable;
-    $('timeline-seek').disabled=this.busy||!playable;
-    $('timeline-sessions').querySelectorAll('button').forEach(b=>b.disabled=this.busy||b.dataset.unplayable==='true');
+    const locked=this.busy||this.waveformBusy;
+    $('timeline-play').disabled=locked||!playable;
+    $('timeline-seek').disabled=locked||!playable;
+    $('waveform-load').disabled=locked||!playable;
+    $('timeline-sessions').querySelectorAll('button').forEach(b=>b.disabled=locked||b.dataset.unplayable==='true');
     if(this.busy&&this.model?.recordingCount)
       $('timeline-notice').textContent='Kết thúc phiên ghi hoặc thao tác dữ liệu trước khi tua âm thanh.';
   }
+  resetWaveform(){
+    this.waveformAbort?.abort();this.waveformAbort=null;this.waveformData=null;
+    $('timeline-waveform')?.remove();
+    $('waveform-load').textContent='Hiện dạng sóng';
+    $('waveform-status').textContent='Dạng sóng lấy mẫu, không phải đồ thị toàn bộ từng mẫu PCM.';
+  }
   renderEmpty(message){
+    this.resetWaveform();
     this.model=null;this.selectedMs=0;this.scrubbing=false;
     $('timeline-bands').replaceChildren();$('timeline-sessions').replaceChildren();
     $('timeline-seek').max='1';$('timeline-seek').value='0';$('timeline-seek').disabled=true;
     $('timeline-play').textContent='▶ Phát';$('timeline-play').disabled=true;
+    $('waveform-load').disabled=true;
     $('timeline-current').textContent='00:00:00';$('timeline-total').textContent='00:00:00';
     $('timeline-summary').textContent='Chưa có phiên ghi âm';
     $('timeline-notice').textContent=message;
@@ -64,6 +77,7 @@ export class MeetingTimelineUI {
   async settle(){if(this.refreshPromise)await this.refreshPromise;}
   async load(run){
     const epoch=++this.epoch;
+    this.resetWaveform();
     if(this.getRun()!==run)return;
     const ids=[...(run.meeting.recordingIds??[])];
     if(!ids.length){this.renderEmpty('Bản ghi âm sẽ xuất hiện ở đây sau khi bấm Kết thúc.');return;}
@@ -126,6 +140,63 @@ export class MeetingTimelineUI {
     $('timeline-total').textContent=fmt(total);
     $('timeline-summary').textContent=model.recordingCount+' phiên · '+fmt(total)+' (không tính thời gian dừng giữa các phiên)';
     $('timeline-seek').max=String(Math.max(1,total));
+    this.renderWaveform();
+  }
+  renderWaveform(){
+    $('timeline-waveform')?.remove();
+    if(!this.waveformData?.levels||!this.model)return;
+    const track=document.createElement('div');
+    track.id='timeline-waveform';track.className='timeline-waveform';
+    track.setAttribute('aria-hidden','true');
+    const {levels}=this.waveformData;
+    for(let index=0;index<levels.length;index++){
+      const value=levels[index];if(!value)continue; // Gaps remain unpainted.
+      const bar=document.createElement('span');bar.className='timeline-waveform-bar';
+      bar.style.left=(index*100/levels.length)+'%';
+      bar.style.width=(100/levels.length)+'%';
+      bar.style.height=(Math.max(5,Math.min(100,value.rms*190)))+'%';
+      track.append(bar);
+    }
+    $('timeline-bands').append(track);
+  }
+  async toggleWaveform(){
+    if(this.waveformBusy)return;
+    if(this.waveformData){this.waveformData=null;this.renderWaveform();
+      $('waveform-load').textContent='Hiện dạng sóng';
+      $('waveform-status').textContent='Đã ẩn dạng sóng. Vùng dữ liệu âm thanh vẫn hiển thị.';return;}
+    if(this.busy||!this.model?.playableCount||this.player.playing){
+      $('waveform-status').textContent='Dừng ghi và phát âm thanh trước khi đọc dạng sóng.';return;
+    }
+    const model=this.model,epoch=this.epoch;
+    const controller=new AbortController();this.waveformAbort=controller;
+    this.waveformBusy=true;this.setBusy(this.busy);
+    $('waveform-status').textContent='Đang đọc mẫu PCM giới hạn; không quét toàn bộ bản ghi…';
+    let reader=null,activeId=null;
+    try{
+      await this.player.closeReader();
+      if(controller.signal.aborted||epoch!==this.epoch)return;
+      const envelope=await readWaveformEnvelope(model,async probe=>{
+        if(controller.signal.aborted)throw Error('Đã hủy đọc dạng sóng');
+        if(probe.recordingId!==activeId){
+          await reader?.dispose();reader=new AudioRPC();activeId=null;
+          await reader.call('init',{recordingId:probe.recordingId,reopen:true},[],120000);
+          activeId=probe.recordingId;
+        }
+        return reader.call('seek',{sample:probe.sample,count:probe.count},[],120000);
+      },{bins:128,frames:1024,signal:controller.signal});
+      if(controller.signal.aborted||epoch!==this.epoch||this.model!==model)return;
+      this.waveformData=envelope;this.renderWaveform();
+      $('waveform-load').textContent='Ẩn dạng sóng';
+      $('waveform-status').textContent='Đã lấy mẫu '+envelope.probesRead+' vị trí ('+
+        envelope.samplesRead.toLocaleString('vi-VN')+' mẫu PCM); dạng sóng xấp xỉ, vùng xám là thiếu dữ liệu.';
+    }catch(error){
+      if(!controller.signal.aborted&&epoch===this.epoch)
+        $('waveform-status').textContent='Không đọc được dạng sóng: '+error.message;
+    }finally{
+      await reader?.dispose();
+      if(this.waveformAbort===controller)this.waveformAbort=null;
+      this.waveformBusy=false;this.setBusy(this.busy);
+    }
   }
   setPosition(ms){
     if(!this.model||this.scrubbing)return;
@@ -134,7 +205,7 @@ export class MeetingTimelineUI {
     $('timeline-current').textContent=fmt(this.selectedMs);
   }
   async seek(ms){
-    if(this.busy||!this.model)return;
+    if(this.busy||this.waveformBusy||!this.model)return;
     this.selectedMs=ms;
     $('timeline-current').textContent=fmt(ms);
     const at=locateMeetingPosition(this.model,ms);
@@ -155,7 +226,7 @@ export class MeetingTimelineUI {
     this.updatePlayButton();
   }
   async toggle(){
-    if(this.busy||!this.model)return;
+    if(this.busy||this.waveformBusy||!this.model)return;
     if(this.player.playing){this.player.stop();this.updatePlayButton();return;}
     let ms=this.selectedMs;
     if(locateMeetingPosition(this.model,ms).status==='end'){
