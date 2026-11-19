@@ -8,10 +8,10 @@ Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn*
 
 ## G00 — Waveform PCM xấp xỉ, giới hạn dữ liệu (20/11/2026)
 
-- **Mã đã push lên nhánh tích hợp; chưa được xác nhận CI đúng SHA.** Bổ sung bộ lập kế hoạch mẫu `app/src/waveform-envelope.mjs`, đọc PCM theo yêu cầu bằng OPFS reader với giới hạn tối đa 128 bins × 1024 frames, tính RMS, hiển thị waveform trên thanh tua, giữ dải recorded/gap làm thẩm quyền dữ liệu; nút **Hiện/Ẩn dạng sóng**.
+- **Mã đã push lên nhánh tích hợp và CI đúng SHA đã SUCCESS.** Bổ sung bộ lập kế hoạch mẫu `app/src/waveform-envelope.mjs`, đọc PCM theo yêu cầu bằng OPFS reader với giới hạn tối đa 128 bins × 1024 frames, tính RMS, hiển thị waveform trên thanh tua, giữ dải recorded/gap làm thẩm quyền dữ liệu; nút **Hiện/Ẩn dạng sóng**.
 - Có xử lý hủy khi đổi cuộc họp, đóng worker trong `finally`, và tránh khởi động khi đang ghi hoặc phát. Không sửa nguồn WAV, manifest, `timeSpan` hay ghi chú; không đánh đồng sampled envelope với full waveform.
 - **Test bổ sung:** unit `app/tests/waveform-envelope.test.mjs` kiểm giới hạn, gap, độ dài PCM, dữ liệu NaN, hủy đọc; E2E `app/e2e/waveform.spec.mjs` kiểm thu giả lập, dừng, vẽ dạng sóng, không sửa liên kết ghi chú, ẩn lại.
-- **Code SHA:** theo HEAD mới nhất của nhánh; **Tested SHA = NOT_RUN (CI chưa có kết quả được xác minh)**. **Unit/browser: NOT_RUN** tại thời điểm cập nhật checkpoint. **Windows micro/UniKey/EVKey, ghi nhiều giờ, đa máy thật: NOT_RUN.** Giữ **INTEGRATION_ALPHA / RELEASE HOLD**; #09 giữ cao độ, #17 RNNoise, #18 VAD vẫn chưa tích hợp.
+- **Code SHA = Tested SHA:** `c9f4860ab93a19022b5434f9ee156d1c0cd2cd3a`. [GitHub Actions #44578894987](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44578894987) **SUCCESS**. G10 native Node Windows/Linux **80/80 PASS trên mỗi hệ**, Vite build và các PoC PASS; Chromium dev **31 PASS + 1 intentional PWA SKIP**, Chromium production/PWA **32/32 PASS**, **0 FAIL**. Test waveform E2E **PASS** trong cả hai chế độ. Các commit sau đó chỉ sửa hướng dẫn/checkpoint; không thay đổi logic mã đã kiểm thử. **Windows micro/UniKey/EVKey, ghi nhiều giờ, đa máy thật: NOT_RUN.** Giữ **INTEGRATION_ALPHA / RELEASE HOLD**; #09 giữ cao độ, #17 RNNoise, #18 VAD vẫn chưa tích hợp.
 - **Lưu ý tài liệu:** Không có TRACKER.md ở gốc; sử dụng `docs/STATUS.md` và `docs/G00_FEATURE_BACKLOG.md` làm hai nguồn điều phối thực tế, theo `AGENTS.md`.
 
 ## G00 — Tự kiểm chứng SHA-256/CRC sau khi xuất gói sao lưu (18/11/2026)
