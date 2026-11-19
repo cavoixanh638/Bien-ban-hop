@@ -19,7 +19,7 @@
 | Xuất riêng WAV A–B | TC23/TC25/TC30 | Chỉ cho phép vùng contiguous đã commit; header WAV PCM f32 chuẩn, dung lượng chính xác, không vượt gap/phiên, không sửa OPFS. |
 | DOCX ảnh/link/ngắt trang | TC09/TC36 | PNG/JPEG ≤300KB, link allowlist http(s)/mailto, pageBreak; mở file DOCX trong Word/LibreOffice có ảnh/quan hệ link/pagebreak hợp lệ. Bài Microsoft Word Windows thật `NOT_RUN`. |
 | Table colspan/rowspan | TC09/TC36 | Tiptap gộp/tách ô, XML DOCX có gridSpan/vMerge đúng; bảng dài và Word Windows thật `NOT_RUN`. |
-| Waveform + VAD/RNNoise/pitch | TC16/TC23/TC25/TC27 | Chỉ thử độc lập; đo CPU/RAM, source mapping, nhảy im lặng giữ nguyên audioOffsetMs; không merge nếu gây gán sai nguồn. |
+| Waveform lấy mẫu PCM (G00) | TC16/TC23/TC24 | Sau Stop, người dùng tự bấm Hiện dạng sóng; tối đa 128 bins × 1024 samples, chỉ đọc sampleRanges đã commit, vẽ RMS; vùng gap không được tô biên độ. Kiểm đóng reader trước khi đổi cuộc họp/phát hoặc thu; đọc lỗi phải bỏ waveform, tuyệt đối không sửa WAV/manifest/timeSpan/note. Test đúng SHA trên Chromium dev và production; Windows 3h thật NOT_RUN. |\n| Pitch-preserving/VAD/RNNoise | TC16/TC23/TC25/TC27 | Chưa tích hợp; PoC CPU/RAM/latency và mapping sample↔thời gian, không nhảy qua gap hoặc gán lại audioOffsetMs; không merge nếu gây sai nguồn. |
 | Legacy restore sau tích hợp | TC30/TC35/TC38 | Sau mọi thay đổi player/editor kiểm restore v1/v2 và chuyển vào meeting mới (internal transition cho phép dù đang transfer), không overwrite meeting hiện có. |
 
 ## Nguyên tắc
