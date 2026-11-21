@@ -6,6 +6,44 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Kiểm toán chức năng sau lỗi Bỏ qua im lặng (21/11/2026)
+
+**Phát hiện từ ảnh thực tế:** Tùy chọn `Bỏ qua im lặng` có thể bật trong khi `Nghe tập trung` vẫn là `Liên tục` (`focus-duration=0`); `scanVerifiedSilence()` yêu cầu cửa sổ 15/30/60 giây nên khi bấm Phát sẽ báo lỗi. Trước đây E2E chỉ chọn sẵn 15s, đã bỏ sót tương tác thực. Lượt CI sửa giao diện nút ghi ngay trước đó: 91 unit PASS nhưng Chromium dev **FAIL 1** do bắt màu lúc CSS còn transition hover; báo cáo cũ chờ PASS đã được cập nhật chính xác tại đây.
+
+**Đã sửa:** 
+- Khi bật Bỏ qua im lặng trong chế độ Liên tục, UI chuyển **ngay** sang **Nghe tập trung 30 giây**, đặt ô chọn thật về 30000 và thông báo lý do bên cạnh tốc độ; khi chủ động quay lại Liên tục, ứng dụng tắt Bỏ qua im lặng. Không ngầm quét hàng giờ hoặc khiến người dùng tưởng vẫn ở Liên tục.
+- Giữ cao độ ở tốc độ khác 1× cũng yêu cầu focus; khi bật đồng thời Bỏ qua im lặng và Giữ cao độ ở tốc độ khác 1×, **lựa chọn mới nhất được giữ**, tùy chọn kia tự tắt và báo rõ. Tốc độ 1× không gọi bộ giữ cao độ nên có thể bật cả hai mà không xung đột.
+- Bộ phân tích RMS đọc mỗi cửa sổ ≤60 giây, hỗ trợ lặp A–B **0,4–120 giây** (thử 0,4 và 90 giây); không lưu dữ liệu sai, không vượt gap, không sửa mẫu PCM, ID phiên, `timeSpan` hoặc chú thích. **Bỏ qua im lặng nhiều giờ liên tục chưa được triển khai.**
+- Lựa chọn Nghe tập trung được đưa lên sát Tốc độ, tránh bị khuất khi cửa sổ hẹp; có trạng thái tùy chọn bằng chữ. Sửa bài E2E màu nút ghi chờ hết CSS transition; không thay logic capture.
+- PWA cache shell đổi phiên bản `bien-ban-hop-20261121-g00-silence-options-audit`.
+
+**CI xác nhận mã ứng dụng:** **Code SHA = Tested SHA: `d730b40d763acc0453056d5f27d711a0c35c41a5`** — [GitHub Actions #44908183703](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44908183703) **SUCCESS**. Node **100/100 PASS trên mỗi hệ Linux và Windows**, các bộ PoC liên quan PASS; Chromium dev **38 PASS + 1 PWA-only SKIP**, production/PWA **39/39 PASS**, **0 FAIL**. Ca chạy mô phỏng chính xác lỗi Liên tục+Bỏ qua im lặng, chuyển tập trung, xung đột Giữ cao độ, RNNoise kết hợp, WAV, waveform và các màu nút ghi đều PASS. Các commit sau SHA này chỉ thay cache PWA và tài liệu/checkpoint, CI cuối HEAD cần kiểm chứng riêng.
+
+### Đối chiếu 18 nhóm tính năng (tình trạng có bằng chứng, không tự đánh đồng nghiệm thu)
+
+| # | Nhóm | Bằng chứng kỹ thuật | Giới hạn chưa nghiệm thu |
+|---|---|---|---|
+| 01 | Soạn thảo Word cơ bản | Unit + Chromium lưu/reopen, font, in đậm/nghiêng, DOCX **PASS** | Word desktop thật **NOT_RUN** |
+| 02 | Giãn dòng, lề, thụt, danh sách, Heading | Unit OOXML + Chromium CSS/độ giãn dòng **PASS** | Danh sách dài/lồng sâu Word desktop **NOT_RUN** |
+| 03 | Tìm/thay | Chromium tìm/thay text, chặn sửa mark có mốc **PASS** | IME/đoạn dài cực lớn **NOT_RUN** |
+| 04 | Bảng, ô gộp | Chromium tạo bảng, xuất DOCX cơ bản **PASS** | Gộp ô phức tạp, bảng qua trang trên Word desktop **NOT_RUN** |
+| 05 | DOCX/A4/lề | Unit XML + Chromium xuất DOCX, in A4 **PASS** | Pagination chuẩn Word desktop/PDF hệ điều hành **NOT_RUN** |
+| 06 | Nghe tập trung/phím tắt | Chromium click-to-play/mốc ghi, option 15/30/60/continuous; unit mapping **PASS** | Độ chính xác âm thanh trên máy thật **NOT_RUN** |
+| 07 | Lặp A–B/tua/tốc độ | Unit vùng contiguous/gap, Playwright UI, CI **PASS** | Nhiều vòng A–B 3h/giật âm thực **NOT_RUN** |
+| 08 | Nhập âm thanh sẵn | Chromium nhập WAV PCM16, gõ và phát đúng mốc **PASS** | MP3/M4A dài, codec đặc biệt **NOT_RUN** |
+| 09 | Giữ cao độ | Chromium `preservesPitch` khi nghe tập trung và phối hợp RNNoise **PASS** | Chất lượng giọng người thật/máy thật **NOT_RUN** |
+| 10 | EQ làm rõ giọng | Unit filter + lựa chọn trên Chromium **PASS** | Đánh giá cảm nhận/CPU với giọng hội họp **NOT_RUN** |
+| 11 | Ảnh/link/ngắt trang/PDF | Chromium nhập ảnh, link an toàn, ngắt trang, DOCX export/in PDF **PASS** | Trang dài/cắt ảnh/Word desktop **NOT_RUN** |
+| 12 | Tìm toàn cuộc họp | Chromium tìm tiếng Việt không dấu, điều hướng tới kết quả **PASS** | Trọn bộ kết quả nhiều nghìn trang **NOT_RUN** |
+| 13 | Đánh dấu quan trọng | Unit mark + Chromium từ chối văn bản thiếu mốc **PASS** | Hành vi đánh dấu/chọn chéo nhiều mốc với UniKey thật **NOT_RUN** |
+| 14 | Quota/backup SHA | Unit checksum + Chromium lưu, xác minh ZIP/CRC/SHA và khôi phục qua profile khác **PASS** | File nhiều GiB, mất điện, quota và máy thật **NOT_RUN** |
+| 15 | Xuất WAV A–B | Unit kiểm WAV header/mẫu liên tiếp/gap **PASS** | Xác minh tải file WAV và phát nhiều giờ trên Windows thật **NOT_RUN** |
+| 16 | Waveform PCM | Unit RMS/gap + Chromium đo vị trí, chiều cao, màu sắc **PASS** | Waveform toàn bộ điểm PCM/âm lượng micro thật **NOT_RUN** |
+| 17 | RNNoise WASM | Chromium dev/prod nạp WASM và phát, cả khi kết hợp pitch/skip **PASS** | Chất lượng chống ồn nhiều người, CPU/RAM Windows thật **NOT_RUN** |
+| 18 | Bỏ qua im lặng RMS | Unit 0,4/90 giây + Chromium tái hiện & sửa lỗi focus 0; phối hợp RNNoise **PASS** | Không hỗ trợ skip trong Liên tục; không phải voice-VAD ML; âm phòng họp thật **NOT_RUN** |
+
+**Đánh giá:** Tất cả nhóm có mã và một mức chứng cứ tự động, nhưng **không có cơ sở khẳng định cả 18 tính năng đã hoàn thiện/được nghiệm thu trên máy thực**. Trạng thái sản phẩm tiếp tục **INTEGRATION_ALPHA / RELEASE HOLD**, PR #1 Draft, không merge, không deploy. Nếu kiểm tra trên Windows thật, tuyệt đối sử dụng cuộc họp giả lập và sao lưu dữ liệu OPFS/IndexedDB trước; không xóa kho dữ liệu cũ.
+
 ## G00 — Sửa waveform khó nhìn và hai nút ghi âm chưa nổi bật (21/11/2026)
 
 - **Nguồn phát hiện:** ảnh giao diện người dùng đang ghi âm 7 phiên (~1 giờ 22 phút): nhãn `Đã lấy mẫu 128 vị trí` nhưng gần như không thấy biểu đồ sóng; `Tạm dừng` và `Kết thúc` đều trắng giống nút thông thường.
