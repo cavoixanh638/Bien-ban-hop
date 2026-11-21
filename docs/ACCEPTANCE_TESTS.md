@@ -2,6 +2,21 @@
 
 **Trạng thái:** Bộ tiêu chí dự kiến, **chưa chạy test**, không có kết quả PASS được kế thừa. Nguồn phạm vi: [PLAN_V1_2.md](PLAN_V1_2.md); **trạng thái thực tế và dẫn chứng chỉ ghi tại [STATUS.md](STATUS.md)**. Tài liệu kiểm thử này không tự thể hiện một ca đã PASS chỉ vì tiêu chí đã được viết.
 
+## G00 — Nghiệm thu bổ sung cho xử lý liên tục theo luồng (22/11/2026)
+
+Bản sau 22/11 **không còn giới hạn giữ cao độ và RMS skip ở 15/30/60 giây** như checkpoint cũ bên dưới. Kiểm tra riêng theo các mức bằng chứng:
+
+| Subcase | Cổng | Điều kiện và bằng chứng cần có |
+|---|---|---|
+| Liên tục nhiều giờ/giới hạn bộ nhớ | TC16/TC23/TC24 | Bật skip + pitch ở 1,5–2× khi `focus-duration=0`; chỉ đọc cửa sổ PCM 8s và WAV media ≤6s/≤8 MiB, không phân tích toàn 3h trước khi bắt đầu. Unit kiểm nguồn giả 3h; browser phải phát qua ≥2 chunk, theo dõi RSS/CPU máy thật **NOT_RUN** |
+| Ba bộ lọc đồng thời | TC22/TC23/TC25 | RNNoise + giữ cao độ + bỏ qua im lặng cùng bật trong Liên tục, phát chính xác file có tiếng/silence, không thay `timeSpan` hoặc mẫu WAV; test browser dev/prod; cảm nhận giọng nói và thông số latencies Windows **NOT_RUN** |
+| Thay tùy chọn khi đang nghe | TC22/TC23 | Đổi liên tiếp tốc độ, pitch, skip, RNNoise; lệnh cuối cùng phải thắng, start lại đúng source offset (không quay về 0/đoạn đã bỏ). Dừng khi đang prefetch không tự phát lại; kiểm Chromium và test thật |
+| Session-to-session | TC16/TC24/TC25 | Khi Liên tục, hết một session đúng mẫu cuối và session kế bắt đầu từ sample 0 thì được sang; nếu trailing/leading gap, source khác, hay loop A–B thì không tự nhảy. Unit và E2E hai phiên với micro giả, phải giữ note nguyên bản |
+| Giao diện/cập nhật offline | TC32/TC34 | Checkbox giữ pitch bật mặc định; chọn Liên tục không tắt skip, các lựa chọn độc lập; UI hiển thị trạng thái; PWA cache version mới và dữ liệu OPFS/IDB cũ giữ nguyên khi cập nhật an toàn |
+| Độ liên tục âm thanh thực | TC23/TC25/TC35 | Nghe file dài, giọng thật ở tốc độ 0,5/1,5/2× và RNNoise trên loa/micro Windows, phát hiện seam/drop/click ở mỗi chunk, đo jitter, CPU/RAM, mẫu/gap và nguồn thời gian. **NOT_RUN**, không được tuyên bố gapless/perceptual PASS chỉ từ giả lập |
+
+Chỉ đánh dấu **CI PASS** khi Windows/Linux Node, Chromium dev + production/PWA đều SUCCESS ở **đúng Code SHA**. Bài giả 3 giờ không phải chạy thật 3 giờ; test micro giả không thay bằng chứng UniKey/EVKey, hiệu quả lọc nhiễu, nghe giọng thật hoặc độ bền trên thiết bị thật. Giữ RELEASE HOLD.
+
 ## G00 — Subcase hồi quy phát lại khi bật nhiều lựa chọn (21/11/2026)
 
 **Tái hiện lỗi thực tế đã sửa:** chế độ `Nghe tập trung = Liên tục` (`focus-duration = 0`), bật `Giữ cao độ` ở tốc độ 1× và `Bỏ qua im lặng` rồi bấm vào phiên/đoạn chữ. Trước sửa, bộ phân tích RMS ném lỗi phải chọn 15/30/60 giây. Sau sửa, dropdown phải **hiện 30 giây** ngay lúc bật skip, status văn bản giải thích, có thể nghe PCM; không được sửa source/notes, không được xuất hiện toast lỗi. Chuyển ngược về Liên tục phải bỏ chọn skip; ở tốc độ 0,75×, bật pitch rồi skip (hoặc thứ tự ngược) phải giữ lựa chọn mới nhất và thông báo rõ.
