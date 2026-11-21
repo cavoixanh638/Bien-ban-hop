@@ -78,6 +78,29 @@ export function meetingPositionFor(timeline,recordingId,localMs){
   if(!session)return null;
   return Math.max(session.startMs,Math.min(session.endMs,Math.round(session.startMs+localMs)));
 }
+/** Continue to the immediately following recording session only when:
+ * 1) the current session ended at its final verified sample with no trailing
+ *    gap, and 2) the next session begins with a verified sample at source zero.
+ * Never jump across an uncommitted gap or invent the wall-clock pause between
+ * independently recorded sessions.
+ */
+export function nextContiguousSession(timeline,recordingId,localEndMs){
+  if(!timeline||!Number.isFinite(localEndMs)||localEndMs<0)return null;
+  const index=timeline.sessions.findIndex(s=>s.recordingId===recordingId);
+  if(index<0||index+1>=timeline.sessions.length)return null;
+  const current=timeline.sessions[index],next=timeline.sessions[index+1];
+  const last=current.ranges.at(-1),first=next.ranges[0];
+  if(!last||!first||first.sampleStart!==0)return null;
+  const endMs=last.sampleEndExclusive*1000/current.sampleRate;
+  const tolerance=Math.max(.5,1000/current.sampleRate);
+  if(Math.abs(localEndMs-endMs)>tolerance ||
+    current.durationMs-endMs>tolerance ||
+    next.firstPlayableMs!==next.startMs)return null;
+  const at=locateMeetingPosition(timeline,next.startMs);
+  if(at.status!=='valid'||at.recordingId!==next.recordingId)return null;
+  return {recordingId:next.recordingId,absoluteMs:next.startMs,session:next.index};
+}
+
 export function firstPlayablePosition(timeline){
   if(!timeline)return null;
   for(const session of timeline.sessions){
