@@ -895,18 +895,40 @@ function syncPlaybackControls(changed='initial'){
   pitch.checked=settings.preservePitch;
   skip.checked=settings.skipSilence;
   const status=$('playback-mode-status');
-  const summary=skip.checked?'Bỏ qua im lặng theo cửa sổ '+(settings.focusMs/1000)+' giây, không thay đổi âm thanh gốc.':
-    pitch.checked&&settings.rate!==1?'Giữ cao độ khi nghe chậm trong cửa sổ đã chọn.':
-    'Nghe Liên tục dùng đường phát gốc; xử lý nâng cao có giới hạn thời lượng.';
-  if(status)status.textContent=(notice?notice+' ':'')+summary;
+  if(status)status.textContent=notice;
   return settings;
 }
 
+/** A playback setting takes effect immediately while listening, preserving
+ * SOURCE time rather than the shortened position after silence skipping.
+ */
+async function applyPlaybackOptionsLive(){
+  if(!player.playing||!player.recordingId||transferBusy||state.switching)return;
+  const run=state.run;
+  if(run?.capture&&['starting','capturing','paused','stopping'].includes(run.capture.state))return;
+  const id=player.recordingId,position=player.positionMs();
+  if(!Number.isFinite(position)||position<0)return;
+  let duration=Number($('focus-duration').value);
+  if(loopPoints.active&&loopPoints.range?.recordingId===id){
+    duration=Math.max(0,Math.floor(loopPoints.range.endMs-position));
+    if(duration<400)return;
+  }
+  const result=await player.start(id,Math.floor(position),{
+    preRollMs:0,rate:Number($('play-rate').value),
+    preservePitch:$('pitch-preserve').checked,skipSilence:$('silence-skip').checked,
+    rnnoise:$('rnnoise-toggle').checked,maxDurationMs:duration
+  });
+  if(result?.status!=='valid'&&result?.status!=='cancelled')
+    show('Không áp dụng được chế độ nghe: '+(result?.reason??result?.status),'error');
+}
 function wire(){
   wireWordTools();
   for(const [id,kind] of [['silence-skip','silence'],['pitch-preserve','pitch'],
-    ['focus-duration','focus'],['play-rate','rate']])
-    $(id).addEventListener('change',()=>syncPlaybackControls(kind));
+    ['focus-duration','focus'],['play-rate','rate'],['rnnoise-toggle','rnnoise']])
+    $(id).addEventListener('change',()=>{
+      syncPlaybackControls(kind);
+      applyPlaybackOptionsLive().catch(e=>show('Không thể đổi chế độ nghe: '+e.message,'error'));
+    });
   syncPlaybackControls();
   $('meeting-search').oninput=e=>{
     meetingSearchTerm=e.target.value.trim();
