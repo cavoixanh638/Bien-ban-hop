@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {buildMeetingTimeline} from '../src/meeting-timeline.mjs';
-import {planWaveformProbes,pcmEnergy,readWaveformEnvelope,
+import {planWaveformProbes,pcmEnergy,readWaveformEnvelope,waveformDisplayHeights,
   WAVEFORM_MAX_BINS,WAVEFORM_MAX_FRAMES} from '../src/waveform-envelope.mjs';
 
 const manifest=(id,ranges)=>({recordingId:id,sampleRate:8000,
@@ -49,4 +49,23 @@ test('G00 waveform fails closed on missing/unverified PCM and cancellation',asyn
   await assert.rejects(()=>readWaveformEnvelope(t,async({count})=>{
     controller.abort();return {status:'valid',pcm:new Float32Array(count)};
   },{signal:controller.signal}),{name:'AbortError'});
+});
+
+test('G00 waveform display keeps gaps empty and makes genuine quiet PCM visibly distinct from coverage',()=>{
+  const levels=[null,{rms:0},{rms:.00001},{rms:.002},{rms:.02},{rms:.2}];
+  const view=waveformDisplayHeights(levels);
+  assert.equal(view.heights[0],null); // Never synthesize amplitude in a GAP.
+  assert.equal(view.heights[1],15); // Recorded silence: short visible baseline.
+  assert.equal(view.heights[2],15); // Do not magnify microphone noise.
+  assert.ok(view.heights[3]>15&&view.heights[3]<view.heights[4]);
+  assert.ok(view.heights[4]<view.heights[5]);
+  assert.equal(view.heights[5],100);
+  assert.equal(view.observedMax,.2);
+  assert.throws(()=>waveformDisplayHeights([{rms:NaN}]),/không hợp lệ/);
+  assert.throws(()=>waveformDisplayHeights([{rms:-1}]),/không hợp lệ/);
+});
+test('G00 waveform display remains honest when every sampled location is silent',()=>{
+  const view=waveformDisplayHeights([{rms:0},null,{rms:0}]);
+  assert.deepEqual(view.heights,[15,null,15]);
+  assert.equal(view.observedMax,0);
 });
