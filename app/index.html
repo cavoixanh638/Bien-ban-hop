@@ -123,6 +123,9 @@
           <label for="silence-skip" title="Rà soát PCM thật trước khi phát, chỉ bỏ qua khoảng yên tĩnh dài trên đoạn nghe tập trung 15/30/60 giây. Không thay đổi WAV hoặc mốc thời gian.">
             <input id="silence-skip" type="checkbox"> Bỏ qua im lặng (đoạn ngắn)
           </label>
+          <label for="rnnoise-toggle" title="RNNoise xử lý giọng nói trong AudioWorklet/WASM cục bộ khi phát lại; không sửa WAV hoặc bản ghi gốc, tắt mặc định.">
+            <input id="rnnoise-toggle" type="checkbox"> Lọc nhiễu RNNoise (thử nghiệm)
+          </label>
           <div class="ab-controls" aria-label="Lặp đoạn A đến B">
             <button id="skip-back" type="button" title="Lùi 10 giây (Alt+Shift+Mũi tên trái)">−10s</button>
             <button id="skip-forward" type="button" title="Tiến 10 giây (Alt+Shift+Mũi tên phải)">+10s</button>
