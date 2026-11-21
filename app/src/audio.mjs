@@ -3,8 +3,8 @@ import {resolveMedia,choosePreRoll} from '../../poc/05-player/timeline.js';
 import {contextFor,resolvePending} from './clock-bridge.mjs';
 import {selectCommittedPlayback} from './playback-start.mjs';
 import {createVoiceEQ,setVoiceEQ,capPlaybackEnd} from './voice-eq.mjs';
-import {planPitchWindow,readPitchWav} from './pitch-playback.mjs';
-import {scanVerifiedSilenceSpan} from './silence-skip.mjs';
+import {readPitchWav} from './pitch-playback.mjs';
+import {ProgressiveSilenceIndex,planStreamChunk} from './streaming-playback.mjs';
 
 
 const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
@@ -205,7 +205,8 @@ export class AudioPlayer {
     // Serialize worker setup and playback starts. A cancelled/older seek
     // must never resume after Stop, switching meetings, or a newer seek.
     this.startChain=Promise.resolve();this.voiceMode='off';this.voiceChain=null;
-    this.silenceRanges=[];this.silenceSkippedMs=0;
+    this.silenceIndex=null;this.silenceRanges=[];this.silenceSkippedMs=0;
+    this.pitchChunks=new Set();this.pitchPrefetch=null;
     this.rnnoiseNode=null;this.playbackInput=null;
   }
   setVoiceMode(mode){
@@ -248,8 +249,6 @@ export class AudioPlayer {
         await this.ensure(recordingId);
         if(run!==this.currentRun)return cancelled();
         if(!Number.isFinite(rate)||rate<0.5||rate>2)throw Error('Tốc độ phát không hợp lệ');
-        if(skipSilence&&preservePitch&&rate!==1)
-          throw Error('Hãy chọn một trong hai chế độ Giữ cao độ hoặc Bỏ qua im lặng.');
         this.rate=rate;
         const check=selectCommittedPlayback(this.manifest,recordingId,offsetMs,preRollMs);
         if(check.status!=='valid'){this.onEvent('unavailable',check);return check;}
@@ -279,23 +278,26 @@ export class AudioPlayer {
           this.playbackInput=denoiser;
         }
         this.silenceRanges=[];this.silenceSkippedMs=0;
-        if(skipSilence){
-          this.onEvent('silence-scan',{recordingId});
-          const result=await scanVerifiedSilenceSpan(this.reader,check,this.manifest.sampleRate,maxDurationMs,
-            {cancelled:()=>run!==this.currentRun});
-          if(run!==this.currentRun||!result)return cancelled();
-          this.silenceRanges=result.ranges;this.silenceSkippedMs=result.skippedMs;
-          this.onEvent('silence-indexed',{recordingId,
-            skippedMs:result.skippedMs,ranges:result.ranges.length});
-        }
+        this.nextSample=check.startSample;
+        this.endSampleExclusive=capPlaybackEnd(check,this.manifest.sampleRate,maxDurationMs);
+        this.silenceIndex=skipSilence?new ProgressiveSilenceIndex(this.reader,
+          this.manifest.sampleRate,check.startSample,this.endSampleExclusive,{
+            cancelled:()=>run!==this.currentRun,
+            onScanned:status=>{
+              if(run!==this.currentRun)return;
+              this.silenceSkippedMs=status.skippedMs;
+              this.onEvent('silence-indexed',{recordingId,
+                skippedMs:status.skippedMs,scannedSamples:status.scannedSamples,progressive:true});
+            }
+          }):null;
+        if(skipSilence)this.onEvent('silence-scan',{recordingId,progressive:true});
         if(preservePitch&&rate!==1){
-          const success=await this.startPitchMedia(check,run,{rate,maxDurationMs,rnnoise});
+          const success=await this.startPitchMedia(check,run,{rate,maxDurationMs,rnnoise,
+            skipSilence});
           return success?{status:'valid'}:cancelled();
         }
         this.playing=true;
         this.schedulingComplete=false;
-        this.nextSample=check.startSample;
-        this.endSampleExclusive=capPlaybackEnd(check,this.manifest.sampleRate,maxDurationMs);
         this.scheduledUntil=this.context.currentTime+0.06;
         this.startOffsetMs=check.startMs;this.lastRenderedSample=check.startSample;this.underruns=0;
         // Preserve the request epoch across all asynchronous seek/fill steps.
@@ -414,18 +416,18 @@ export class AudioPlayer {
           if(!this.sources.size)this.finish();
           break;
         }
-        // Skip only conservative silence intervals calculated from durable PCM
-        // in this exact recording. Do not skip gaps, cross recordings, or
-        // rewrite timeSpan. Playback position jumps to the original source sample.
-        const silence=this.silenceRanges.find(x=>
-          this.nextSample>=x.startSample&&this.nextSample<x.endSample);
-        if(silence){
-          this.nextSample=silence.endSample;
+        // Scan only the next bounded window when needed. A multi-hour source
+        // never needs a full up-front PCM scan or an accumulating index.
+        const decision=this.silenceIndex?
+          await this.silenceIndex.next(this.nextSample):null;
+        if(!this.playing||run!==this.currentRun)return;
+        if(this.silenceIndex&&!decision)return;
+        if(decision?.skipTo!==null&&decision?.skipTo!==undefined){
+          this.nextSample=decision.skipTo;
           continue;
         }
-        const nextSilence=this.silenceRanges.find(x=>x.startSample>this.nextSample);
         const remaining=Math.min(this.endSampleExclusive,
-          nextSilence?.startSample??this.endSampleExclusive)-this.nextSample;
+          decision?.availableUntil??this.endSampleExclusive)-this.nextSample;
         if(remaining<=0)throw Error('Bộ lập lịch im lặng không tiến triển');
         const count=Math.min(Math.max(1,Math.floor(this.manifest.sampleRate*0.35)),remaining);
         const result=await this.reader.call('seek',{sample:this.nextSample,count},[],8000);
@@ -475,7 +477,7 @@ export class AudioPlayer {
   stop(){
     const wasPlaying=this.playing,recordingId=this.recordingId,offsetMs=this.positionMs();
     this.playing=false;this.schedulingComplete=false;this.currentRun=++this.serial;
-    this.silenceRanges=[];this.silenceSkippedMs=0;
+    this.silenceIndex=null;this.silenceRanges=[];this.silenceSkippedMs=0;
     clearInterval(this.timer);
     for(const source of this.sources)try{source.stop();source.disconnect();}catch{}
     this.sources.clear();this.scheduled.clear();
