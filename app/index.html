@@ -117,6 +117,12 @@
               <option value="2">2,0×</option>
             </select>
           </label>
+          <label for="focus-duration">Nghe tập trung
+            <select id="focus-duration" aria-label="Giới hạn đoạn nghe sau mốc">
+              <option value="0">Liên tục</option><option value="15000">15 giây</option>
+              <option value="30000">30 giây</option><option value="60000">60 giây</option>
+            </select>
+          </label>
           <label for="pitch-preserve" title="Giữ cao độ bằng HTMLAudioElement.preservesPitch. Chỉ dùng khi chọn Nghe tập trung 15/30/60 giây, không nạp bản ghi dài vào RAM.">
             <input id="pitch-preserve" type="checkbox"> Giữ cao độ giọng (đoạn ngắn)
           </label>
@@ -126,6 +132,7 @@
           <label for="rnnoise-toggle" title="RNNoise xử lý giọng nói trong AudioWorklet/WASM cục bộ khi phát lại; không sửa WAV hoặc bản ghi gốc, tắt mặc định.">
             <input id="rnnoise-toggle" type="checkbox"> Lọc nhiễu RNNoise (thử nghiệm)
           </label>
+          <span id="playback-mode-status" class="playback-mode-status" role="status" aria-live="polite">Chọn Nghe tập trung trước khi sử dụng xử lý âm thanh nâng cao.</span>
           <div class="ab-controls" aria-label="Lặp đoạn A đến B">
             <button id="skip-back" type="button" title="Lùi 10 giây (Alt+Shift+Mũi tên trái)">−10s</button>
             <button id="skip-forward" type="button" title="Tiến 10 giây (Alt+Shift+Mũi tên phải)">+10s</button>
@@ -138,12 +145,6 @@
           </div>
           <label for="preroll">Nghe lùi trước mốc
             <select id="preroll"><option value="0">Không</option><option value="3000">3 giây</option><option value="5000" selected>5 giây</option><option value="10000">10 giây</option></select>
-          </label>
-          <label for="focus-duration">Nghe tập trung
-            <select id="focus-duration" aria-label="Giới hạn đoạn nghe sau mốc">
-              <option value="0">Liên tục</option><option value="15000">15 giây</option>
-              <option value="30000">30 giây</option><option value="60000">60 giây</option>
-            </select>
           </label>
           <label for="voice-filter">Làm rõ giọng
             <select id="voice-filter" aria-label="Bộ lọc giọng nói khi nghe">
