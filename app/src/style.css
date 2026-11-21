@@ -214,14 +214,40 @@
 }
 
 
-/* Waveform is an optional, sampled PCM preview. Verified coverage bands remain
-   underneath and are the only authority for playable regions. */
-.timeline-waveform{position:absolute;inset:0;display:flex;align-items:center;pointer-events:none;overflow:hidden;z-index:1}
-.timeline-waveform-bar{position:absolute;bottom:0;background:#176450;opacity:.84;border-radius:2px 2px 0 0;min-height:1px}
-.timeline-scrub .timeline-bands{top:4px;height:18px}
-.timeline-scrub .timeline-boundary{z-index:2}
-.timeline-scrub #timeline-seek{z-index:3}
+/* Waveform is opt-in, read-only sampled PCM. Separate it from coverage!
+   Upper blue column lane = relative sampled RMS; lower green/gray stripe =
+   authoritative committed-vs-missing samples. Previously both occupied an
+   18px-high green bar and low-volume columns were effectively invisible. */
+.timeline-scrub{height:50px}
+.timeline-scrub .timeline-bands{top:3px;height:42px;background:#eef5f8;
+  border:1px solid #d3e4ea;border-radius:8px;overflow:hidden}
+.timeline-scrub .timeline-band{top:auto;bottom:0;height:9px}
+.timeline-waveform{position:absolute;top:2px;left:0;right:0;bottom:12px;
+  pointer-events:none;overflow:hidden;z-index:1}
+.timeline-waveform-bar{position:absolute;top:50%;transform:translateY(-50%);
+  background:#1465a3;opacity:1;border-radius:3px;min-height:4px}
+.timeline-scrub .timeline-boundary{z-index:2;top:0;bottom:0}
+.timeline-scrub #timeline-seek{position:absolute;left:0;bottom:0;
+  width:100%;height:22px;z-index:3}
 .waveform-options{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:7px}
-#waveform-load{padding:4px 9px;font-size:11px;border-color:#c6dcd4}
-#waveform-status{font-size:10px;color:#647e81}
+#waveform-load{padding:4px 9px;font-size:11px;border-color:#a7c8d8;
+  background:#edf6fb;color:#14597f;font-weight:700}
+#waveform-load:hover:not(:disabled){background:#d9edf8}
+#waveform-status{font-size:11px;line-height:1.35;color:#496f7b}
+
+/* Recording actions: pause/finish must be immediately distinguishable.
+   The default Start button stays disabled while recording. */
+.controls #rec-pause:not(:disabled),
+.controls #rec-stop:not(:disabled){min-height:44px;font-size:13px;
+  font-weight:800;border-width:1px;box-shadow:0 2px 7px #1a303323}
+.controls #rec-pause[data-mode="pause"]:not(:disabled){
+  background:#ffc65c;border-color:#b67714;color:#382304}
+.controls #rec-pause[data-mode="pause"]:hover:not(:disabled){background:#ffda8e}
+.controls #rec-pause[data-mode="resume"]:not(:disabled){
+  background:#167c60;border-color:#09634a;color:#fff}
+.controls #rec-pause[data-mode="resume"]:hover:not(:disabled){background:#10664e}
+.controls #rec-stop:not(:disabled){background:#c72f3a;border-color:#9d1c27;color:#fff}
+.controls #rec-stop:hover:not(:disabled){background:#a9202c}
+.controls #rec-pause:focus-visible,
+.controls #rec-stop:focus-visible{outline:3px solid #17577a;outline-offset:3px}
 @media print{.waveform-options{display:none!important}}
