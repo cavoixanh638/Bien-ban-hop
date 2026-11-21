@@ -1,5 +1,6 @@
 import {AudioRPC} from './audio.mjs';
 import {wavHeader} from '../../poc/03-opfs/core.mjs';
+import {committedContiguousEnd} from './playback-start.mjs';
 
 /** Clip export always selects one truly committed contiguous PCM range.
  * Output is float32 WAV, matching existing G03 recordings; source is read-only.
@@ -14,7 +15,7 @@ export function planVerifiedWavClip(manifest,startMs,endMs,{maxDurationMs=120000
   const count=endSample-startSample;
   if(count<Math.ceil(rate*.4)||count>Math.floor(rate*maxDurationMs/1000))
     throw Error('Chỉ xuất đoạn WAV dài 0,4–120 giây');
-  if(!manifest.sampleRanges?.some(x=>startSample>=x.sampleStart&&endSample<=x.sampleEndExclusive))
+  if((committedContiguousEnd(manifest.sampleRanges,startSample)??-1)<endSample)
     throw Error('Không được xuất qua vùng thiếu âm thanh hoặc khác phiên ghi');
   return {recordingId:manifest.recordingId,rate,startSample,endSample,count};
 }
