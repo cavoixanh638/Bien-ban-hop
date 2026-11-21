@@ -29,6 +29,18 @@ npm run dev
 4. Nhấn **Bắt đầu ghi**, gõ ghi chú ngay vào trang giấy; không phải nhập mã mốc. Sau khi dừng, nhấp đoạn chữ có gắn mốc để nghe. `Alt+Enter` nghe mốc tại con trỏ; `Esc` dừng phát. Ghi chú tự lưu với revision, báo "Đã lưu" chỉ sau IDB transaction hoàn tất.
 5. Có thể tạo/chuyển cuộc họp, đổi tên, sử dụng hai tab (chỉ một tab giữ writer lock), xuất DOCX/TXT/MD/CSV, **Sao lưu biên bản và ghi âm** và **Khôi phục biên bản từ tệp**. Khi nhập, chương trình kiểm tra checksum rồi tạo ID cuộc họp, ghi chú và phiên thu mới; không ghi đè cuộc họp đang có.
 
+## G00 — Bỏ qua im lặng: đã sửa lỗi chọn Liên tục (21/11/2026)
+
+**Lỗi ảnh người dùng:** trước đây bật **Bỏ qua im lặng** khi **Nghe tập trung = Liên tục** rồi nhấp chữ/phiên phát sẽ hiện `Không nghe lại được: Để bỏ qua im lặng, hãy chọn Nghe tập trung 15/30/60 giây`. Đây là lỗi phối hợp UI–bộ phát mà E2E cũ chưa bao phủ.
+
+**Cách dùng sau sửa:** Tại thanh phát nằm dưới trang ghi chú, mục **Nghe tập trung** đã được chuyển sát ô **Tốc độ**. Khi đang chọn **Liên tục** mà đánh dấu **Bỏ qua im lặng**, chương trình **tự chọn 30 giây**, hiện thông báo màu xanh bên dưới và giữ checkbox. Bấm vào chữ có mốc, một phiên trên thanh tua hoặc nút Phát để nghe đoạn đó. Nếu muốn trở lại **Liên tục**, chọn lại dropdown; checkbox Bỏ qua im lặng sẽ tự tắt và thông báo ngay. Tính năng này **chưa tự bỏ qua khoảng im lặng xuyên cả bản ghi nhiều giờ**. Chọn focus 15/30/60 giây là phạm vi được hỗ trợ, không quét cả cuộc họp trong một lần.
+
+**Kết hợp tùy chọn:** Giữ cao độ + Bỏ qua im lặng đều có thể được chọn ở tốc độ 1× (lúc này không cần biến đổi pitch). Ở 0,5–2× khác 1×, hai cơ chế không cùng chạy: **chế độ vừa chọn sẽ được giữ**, chế độ kia tự bỏ chọn kèm giải thích. **RNNoise** có thể kết hợp với từng chế độ; xử lý hoàn toàn cục bộ, không gửi PCM đi. Khi lặp A–B chọn sẵn, phạm vi 0,4–120 giây được quét tuần tự theo từng cửa sổ tối đa 60 giây và không đi qua khoảng thiếu nguồn.
+
+**Cách cập nhật:** Chọn nhánh `integration/20261115-g10-v1.2` trong GitHub Desktop, **Fetch origin → Pull origin**, kết thúc phiên ghi đang thu, dừng ứng dụng cũ và mở lại `app/START_WINDOWS.cmd`. Mở `http://127.0.0.1:5173/`, nhấn **Ctrl+Shift+R** nếu vẫn thấy giao diện cũ. Nếu đã cài PWA, dùng **Cập nhật phiên bản** lúc không thu âm, không xóa toàn bộ dữ liệu website/IndexedDB/OPFS. **Không cần Push origin.** Hãy thử với cuộc họp giả lập, không dùng bản chưa nghiệm thu cho biên bản quan trọng.
+
+**Bằng chứng:** mã ứng dụng `d730b40d763acc0453056d5f27d711a0c35c41a5` đã PASS [CI #44908183703](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44908183703): Windows/Linux Node 100/100; Chromium dev 38 PASS +1 SKIP; Chromium production/PWA 39/39 PASS. Phần cứng Windows thật, UniKey/EVKey, chất lượng giọng nhiều người, 3 giờ/mất điện và tập TC01–TC38 vẫn NOT_RUN; RELEASE HOLD. Xem bảng kiểm đủ 18 nhóm ở `docs/STATUS.md`.
+
 ## G00 — Sửa hiển thị sóng và nút thu trên giao diện (21/11/2026)
 
 - **Sóng âm:** khi dừng ghi/phát và bấm **Hiện dạng sóng**, sóng RMS lấy mẫu xuất hiện bằng **các vạch xanh lam phía trên**, dải xanh lá/xám **ở dưới** cho biết có âm thanh đã lưu/hay khoảng thiếu. Thanh tua nay cao 50px, không còn ép waveform trong sọc 18px; cột tối thiểu 4px, mức cao tương đối theo biên độ RMS nhưng không phóng đại nhiễu nền. Nếu thông báo **Đã lấy mẫu ... vị trí** mà biểu đồ chỉ là dãy vạch thấp, bản ghi có tín hiệu rất nhỏ hoặc im lặng — hãy dùng **Thử micro** để kiểm tra âm thanh. Dạng sóng là **128 điểm lấy mẫu**, không phải toàn bộ âm thanh được quét.
