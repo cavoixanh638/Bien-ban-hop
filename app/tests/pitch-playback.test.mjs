@@ -11,7 +11,7 @@ test('G00 pitch preservation requires a bounded focused verified WAV window',()=
   assert.equal(p.bytes,p.frames*4);
   assert.throws(()=>planPitchWindow(check,8000,0),/Nghe tập trung/);
   assert.throws(()=>planPitchWindow(check,8000,61000),/Nghe tập trung/);
-  assert.throws(()=>planPitchWindow(check,192000,60000),/quá lớn/);
+  assert.throws(()=>planPitchWindow({...check,startSample:0,anchorSample:0,endSampleExclusive:192000*65},192000,60000),/quá lớn/);
   assert.ok(PITCH_MAX_BYTES<64*1024*1024);
 });
 test('G00 pitch window builds a 32-bit float WAV from verified samples only',async()=>{
