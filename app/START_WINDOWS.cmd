@@ -20,9 +20,12 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-if not exist "node_modules\vite\package.json" (
-  echo Dang cai dependency tai thu muc app...
-  call npm install --no-audit --no-fund
+set "NEED_INSTALL=0"
+if not exist "node_modules\vite\package.json" set "NEED_INSTALL=1"
+if not exist "node_modules\@sapphi-red\web-noise-suppressor\package.json" set "NEED_INSTALL=1"
+if "%NEED_INSTALL%"=="1" (
+  echo Dang dong bo dependency theo package-lock.json tai thu muc app...
+  call npm ci --ignore-scripts --no-audit --no-fund
   if errorlevel 1 (
     echo Cai dependency that bai; kiem tra ket noi mang va proxy.
     pause
