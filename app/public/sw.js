@@ -1,5 +1,5 @@
 // G10 offline shell. No audio, personal note, OPFS or IndexedDB contents in CacheStorage.
-const VERSION='bien-ban-hop-20261121-g00-visible-waveform-controls';
+const VERSION='bien-ban-hop-20261121-g00-silence-options-audit';
 const CACHE='bien-ban-hop-shell-'+VERSION, SCOPE=self.registration.scope;
 const url=relative=>new URL(relative,SCOPE).href;
 // Keep the old lock key: older and newer PWA clients must share the same safety lock.
