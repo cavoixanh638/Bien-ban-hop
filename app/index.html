@@ -120,6 +120,9 @@
           <label for="pitch-preserve" title="Giữ cao độ bằng HTMLAudioElement.preservesPitch. Chỉ dùng khi chọn Nghe tập trung 15/30/60 giây, không nạp bản ghi dài vào RAM.">
             <input id="pitch-preserve" type="checkbox"> Giữ cao độ giọng (đoạn ngắn)
           </label>
+          <label for="silence-skip" title="Rà soát PCM thật trước khi phát, chỉ bỏ qua khoảng yên tĩnh dài trên đoạn nghe tập trung 15/30/60 giây. Không thay đổi WAV hoặc mốc thời gian.">
+            <input id="silence-skip" type="checkbox"> Bỏ qua im lặng (đoạn ngắn)
+          </label>
           <div class="ab-controls" aria-label="Lặp đoạn A đến B">
             <button id="skip-back" type="button" title="Lùi 10 giây (Alt+Shift+Mũi tên trái)">−10s</button>
             <button id="skip-forward" type="button" title="Tiến 10 giây (Alt+Shift+Mũi tên phải)">+10s</button>
