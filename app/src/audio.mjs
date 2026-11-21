@@ -3,6 +3,7 @@ import {resolveMedia,choosePreRoll} from '../../poc/05-player/timeline.js';
 import {contextFor,resolvePending} from './clock-bridge.mjs';
 import {selectCommittedPlayback} from './playback-start.mjs';
 import {createVoiceEQ,setVoiceEQ,capPlaybackEnd} from './voice-eq.mjs';
+import {planPitchWindow,readPitchWav} from './pitch-playback.mjs';
 
 const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
 const withTimeout=(p,ms,label)=>Promise.race([p,new Promise((_,reject)=>setTimeout(()=>reject(Error(label+' quá thời hạn')),ms))]);
@@ -226,7 +227,7 @@ export class AudioPlayer {
       throw e;
     }
   }
-  async start(recordingId,offsetMs,{preRollMs=0,rate=1,maxDurationMs=0}={}){
+  async start(recordingId,offsetMs,{preRollMs=0,rate=1,maxDurationMs=0,preservePitch=false}={}){
     // Stop synchronously, before any await, so the previous request cannot
     // schedule audio after a rapid seek or an explicit Stop.
     this.stop();
@@ -248,6 +249,10 @@ export class AudioPlayer {
         }
         await this.context.resume();
         if(run!==this.currentRun)return cancelled();
+        if(preservePitch&&rate!==1){
+          const success=await this.startPitchMedia(check,run,{rate,maxDurationMs});
+          return success?{status:'valid'}:cancelled();
+        }
         this.playing=true;
         this.schedulingComplete=false;
         this.nextSample=check.startSample;
@@ -281,8 +286,58 @@ export class AudioPlayer {
     this.startChain=operation.catch(()=>{});
     return operation;
   }
+  /** Native HTML audio applies preservesPitch to the browser decoder. It is
+   * used only for bounded verified focus windows, never silently for hours. */
+  async startPitchMedia(check,run,{rate,maxDurationMs}){
+    const plan=planPitchWindow(check,this.manifest.sampleRate,maxDurationMs);
+    const blob=await readPitchWav(this.reader,plan,{cancelled:()=>run!==this.currentRun});
+    if(run!==this.currentRun||!blob)return false;
+    const media=new Audio();
+    if(!('preservesPitch' in media))
+      throw Error('Trình duyệt không hỗ trợ giữ cao độ khi đổi tốc độ phát.');
+    media.preservesPitch=true;
+    if(media.preservesPitch!==true)
+      throw Error('Trình duyệt từ chối giữ cao độ giọng nói.');
+    media.playbackRate=rate;media.preload='auto';
+    const url=URL.createObjectURL(blob);
+    this.media=media;this.mediaUrl=url;this.mediaStartSample=plan.startSample;
+    media.src=url;
+    this.mediaNode=this.context.createMediaElementSource(media);
+    this.mediaNode.connect(this.voiceChain?.input??this.context.destination);
+    this.nextSample=plan.startSample;this.endSampleExclusive=plan.endSample;
+    this.lastRenderedSample=plan.startSample;this.startOffsetMs=plan.startSample*1000/plan.rate;
+    this.underruns=0;this.playing=true;
+    media.onended=()=>{if(run===this.currentRun)this.finish();};
+    await media.play();
+    if(run!==this.currentRun)return false;
+    this.timer=setInterval(()=>{
+      if(run===this.currentRun&&this.playing)
+        this.onEvent('position',{recordingId:this.recordingId,offsetMs:this.positionMs()});
+    },170);
+    this.onEvent('playing',{recordingId:this.recordingId,offsetMs:this.startOffsetMs,
+      rate,pitchPreserved:true,preRollLimited:check.preRollLimited,
+      actualPreRollMs:check.actualPreRollMs});
+    return true;
+  }
+  cleanupPitchMedia(){
+    const media=this.media,url=this.mediaUrl;
+    this.media=null;this.mediaUrl=null;this.mediaStartSample=null;
+    if(media){
+      media.onended=null;
+      try{media.pause();media.removeAttribute('src');media.load();}catch{}
+    }
+    try{this.mediaNode?.disconnect();}catch{}
+    this.mediaNode=null;
+    if(url)URL.revokeObjectURL(url);
+  }
   positionMs(){
     if(!this.manifest?.sampleRate)return null;
+    if(this.media&&Number.isSafeInteger(this.mediaStartSample)){
+      const sample=this.media.ended?this.endSampleExclusive:
+        Math.max(this.mediaStartSample,Math.min(this.endSampleExclusive,
+          this.mediaStartSample+Math.floor(this.media.currentTime*this.manifest.sampleRate)));
+      return sample*1000/this.manifest.sampleRate;
+    }
     const now=this.context?.currentTime??0;
     let sample=this.lastRenderedSample;
     const scheduled=[...this.scheduled.values()].sort((a,b)=>a.startAt-b.startAt);
@@ -304,6 +359,7 @@ export class AudioPlayer {
     const offsetMs=this.positionMs();
     this.onEvent('position',{recordingId:this.recordingId,offsetMs});
     this.onEvent('ended',{recordingId:this.recordingId,offsetMs});
+    this.cleanupPitchMedia();
   }
   async fill(){
     if(!this.playing||this.fillingRun===this.currentRun)return;
@@ -366,6 +422,9 @@ export class AudioPlayer {
     clearInterval(this.timer);
     for(const source of this.sources)try{source.stop();source.disconnect();}catch{}
     this.sources.clear();this.scheduled.clear();
+    if(Number.isFinite(offsetMs)&&this.manifest?.sampleRate)
+      this.lastRenderedSample=Math.floor(offsetMs*this.manifest.sampleRate/1000);
+    this.cleanupPitchMedia();
     if(wasPlaying)this.onEvent('stopped',{recordingId,offsetMs});
   }
   async closeReader(){
