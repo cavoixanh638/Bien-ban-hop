@@ -5,11 +5,16 @@ import {selectCommittedPlayback} from './playback-start.mjs';
 import {createVoiceEQ,setVoiceEQ,capPlaybackEnd} from './voice-eq.mjs';
 import {planPitchWindow,readPitchWav} from './pitch-playback.mjs';
 import {scanVerifiedSilence} from './silence-skip.mjs';
-import {createPlaybackRNNoise,destroyPlaybackRNNoise} from './rnnoise-playback.mjs';
+
 
 const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
 const withTimeout=(p,ms,label)=>Promise.race([p,new Promise((_,reject)=>setTimeout(()=>reject(Error(label+' quá thời hạn')),ms))]);
 const stopTracks=s=>{for(const t of s?.getTracks?.()??[])try{t.stop();}catch{}};
+const destroyPlaybackRNNoise=node=>{
+  if(!node)return;
+  try{node.disconnect();}catch{}
+  try{node.destroy?.();}catch{}
+};
 
 export class AudioRPC {
   constructor() {
@@ -263,6 +268,10 @@ export class AudioPlayer {
         this.playbackInput=this.voiceChain.input;
         if(rnnoise){
           this.onEvent('rnnoise-loading',{recordingId});
+          // Lazy import: native Node tests and users who leave RNNoise disabled
+          // never resolve Vite-only ?url WASM/AudioWorklet resources.
+          const {createPlaybackRNNoise}=await import('./rnnoise-playback.mjs');
+          if(run!==this.currentRun)return cancelled();
           const denoiser=await createPlaybackRNNoise(this.context);
           if(run!==this.currentRun){destroyPlaybackRNNoise(denoiser);return cancelled();}
           this.rnnoiseNode=denoiser;
