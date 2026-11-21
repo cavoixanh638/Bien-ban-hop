@@ -1111,7 +1111,8 @@ async function registerPwa(){
   }catch(e){show('PWA chưa sẵn sàng: '+e.message,'error');}
 }
 async function main(){
-  timelineUI=new MeetingTimelineUI({player,getRun:()=>state.run,onError:message=>show(message,'error')});
+  timelineUI=new MeetingTimelineUI({player,getRun:()=>state.run,
+    isLooping:()=>loopPoints.active,onError:message=>show(message,'error')});
   timelineUI.bind();
   noteFollower=new NoteAudioFollower({getRun:()=>state.run,player,root:$('editor'),
     scrollArea:document.querySelector('.paper-wrap'),status:$('note-follow-status'),toggle:$('note-follow-toggle')});
