@@ -4,6 +4,14 @@
 
 **Phạm vi tài liệu:** audio capture, lưu bền vững/checkpoint/khôi phục, nguồn micro và âm thanh máy tính, Virtual Timeline, phát/tua qua các file. So sánh bốn công nghệ và căn cứ lựa chọn tại [TECHNICAL_OPTIONS.md](TECHNICAL_OPTIONS.md); quyết định production vẫn phải dựa benchmark Gói 1.2. Quy tắc liên kết chữ với mốc thuộc [TIMELINE_RULES.md](TIMELINE_RULES.md); schema/manifest thuộc [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## G00 — Điều phối lựa chọn playback và giới hạn skip silence (21/11/2026)
+
+`reconcilePlaybackOptions()` là một bộ điều phối **UI thuần**, không được thay đổi PCM hay timestamp: bật RMS skip trong Liên tục phải chuyển dropdown nhìn thấy được sang focus 30s; chủ động chọn lại Liên tục phải bỏ chọn skip. Tốc độ ≠1× không kết hợp đồng thời skip silence và `preservesPitch`; lựa chọn thay đổi gần nhất được ưu tiên, có trạng thái thông báo. Bộ phát vẫn kiểm tra đầu vào và từ chối lời gọi không hợp lệ từ ngoài UI; không tự phát sai nguồn nếu UI bị bypass.
+
+`scanVerifiedSilenceSpan()` chỉ dành cho **đoạn hữu hạn**: focus đã chọn hoặc vòng lặp A–B 0,4–120s, quét tuần tự từng phần tối đa 60s dùng OPFS worker, kiểm tra từng PCM seek có thật và hủy khi Stop/switch. Không cấp phép quét toàn bộ recording vài giờ khi focus=0. Cửa sổ quét và các vùng im lặng vẫn đánh dấu bằng mẫu nguồn; không cộng dồn đồng hồ phát rút gọn thành `audioOffsetMs`, không vượt gap/session, không sửa `timeSpan` hoặc WAV. Đã có unit scan 0,4/90s và browser E2E tương tác focus/pitch/RNNoise.
+
+**Kiểm tra:** [CI #44908183703](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44908183703) SUCCESS (code/tested SHA `d730b40d763acc0453056d5f27d711a0c35c41a5`); Chrome dev 38 PASS +1 SKIP, production/PWA 39 PASS, Node 100 PASS mỗi OS. Chất lượng âm thanh/CPU/RAM và dữ liệu ghi nhiều giờ trên thiết bị thật vẫn **NOT_RUN**. **Không tuyên bố VAD ML hoặc engine phát production hoàn chỉnh**.
+
 ## G00 — Hợp đồng audio nâng cao đã tích hợp mức alpha (21/11/2026)
 
 Đây là **đường phát tùy chọn, tắt mặc định**, không thay bộ thu G02, định dạng PCM/OPFS G03, audio manifest, sample clock, `timeSpan`, hay sao lưu v1/v2. **Mọi lựa chọn mốc** vẫn phải có `recordingId` và mẫu PCM durable khớp; ở ranh giới nhiều WAV, chỉ được đi tiếp khi mẫu sau kề ngay mẫu trước, không chạy qua gap hay sang phiên khác. Phát/clip A–B giới hạn cùng một recordingId.
