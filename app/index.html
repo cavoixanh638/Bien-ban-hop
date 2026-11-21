@@ -109,7 +109,7 @@
         <div class="timeline-playback-options" aria-label="Tùy chọn nghe lại">
           <button id="play-stop" type="button" title="Dừng phát lại">■ Dừng</button>
           <label for="play-rate">Tốc độ
-            <select id="play-rate" title="Mặc định thay đổi cao độ; bật Giữ cao độ và chọn Nghe tập trung để nghe chậm mà không hạ giọng">
+            <select id="play-rate" title="Khi tăng/giảm tốc độ, trình duyệt tự giữ cao độ giọng nếu bật tùy chọn Giữ cao độ">
               <option value="0.5">0,5×</option><option value="0.75">0,75×</option>
               <option value="0.9">0,9×</option><option value="1" selected>1,0×</option>
               <option value="1.1">1,1×</option><option value="1.25">1,25×</option>
@@ -123,16 +123,16 @@
               <option value="30000">30 giây</option><option value="60000">60 giây</option>
             </select>
           </label>
-          <label for="pitch-preserve" title="Giữ cao độ bằng HTMLAudioElement.preservesPitch. Chỉ dùng khi chọn Nghe tập trung 15/30/60 giây, không nạp bản ghi dài vào RAM.">
-            <input id="pitch-preserve" type="checkbox"> Giữ cao độ giọng (đoạn ngắn)
+          <label for="pitch-preserve" title="Giữ cao độ tự nhiên khi thay đổi tốc độ bằng bộ giải mã trình duyệt; đọc WAV theo từng đoạn nhỏ kể cả khi nghe Liên tục.">
+            <input id="pitch-preserve" type="checkbox" checked> Giữ cao độ tự động
           </label>
-          <label for="silence-skip" title="Rà soát PCM thật trước khi phát, chỉ bỏ qua khoảng yên tĩnh dài trên đoạn nghe tập trung 15/30/60 giây. Không thay đổi WAV hoặc mốc thời gian.">
-            <input id="silence-skip" type="checkbox"> Bỏ qua im lặng (đoạn ngắn)
+          <label for="silence-skip" title="Bỏ qua khoảng yên tĩnh dài trong khi phát bằng cách phân tích các cửa sổ PCM nhỏ, áp dụng cả Liên tục; không thay đổi WAV hoặc mốc nguồn.">
+            <input id="silence-skip" type="checkbox"> Bỏ qua im lặng
           </label>
           <label for="rnnoise-toggle" title="RNNoise xử lý giọng nói trong AudioWorklet/WASM cục bộ khi phát lại; không sửa WAV hoặc bản ghi gốc, tắt mặc định.">
             <input id="rnnoise-toggle" type="checkbox"> Lọc nhiễu RNNoise (thử nghiệm)
           </label>
-          <span id="playback-mode-status" class="playback-mode-status" role="status" aria-live="polite">Chọn Nghe tập trung trước khi sử dụng xử lý âm thanh nâng cao.</span>
+          <span id="playback-mode-status" class="playback-mode-status" role="status" aria-live="polite">Chế độ Liên tục hỗ trợ giữ cao độ, lọc nhiễu và bỏ qua im lặng.</span>
           <div class="ab-controls" aria-label="Lặp đoạn A đến B">
             <button id="skip-back" type="button" title="Lùi 10 giây (Alt+Shift+Mũi tên trái)">−10s</button>
             <button id="skip-forward" type="button" title="Tiến 10 giây (Alt+Shift+Mũi tên phải)">+10s</button>
