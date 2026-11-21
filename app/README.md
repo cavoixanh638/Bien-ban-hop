@@ -29,6 +29,20 @@ npm run dev
 4. Nhấn **Bắt đầu ghi**, gõ ghi chú ngay vào trang giấy; không phải nhập mã mốc. Sau khi dừng, nhấp đoạn chữ có gắn mốc để nghe. `Alt+Enter` nghe mốc tại con trỏ; `Esc` dừng phát. Ghi chú tự lưu với revision, báo "Đã lưu" chỉ sau IDB transaction hoàn tất.
 5. Có thể tạo/chuyển cuộc họp, đổi tên, sử dụng hai tab (chỉ một tab giữ writer lock), xuất DOCX/TXT/MD/CSV, **Sao lưu biên bản và ghi âm** và **Khôi phục biên bản từ tệp**. Khi nhập, chương trình kiểm tra checksum rồi tạo ID cuộc họp, ghi chú và phiên thu mới; không ghi đè cuộc họp đang có.
 
+## G00 — Bản để tự kiểm tra phát lại nâng cao (21/11/2026)
+
+**Checkpoint tự động:** Code SHA = Tested SHA `8cf09646b4800037caadd9cd5e391da94f90af32`. [GitHub Actions #44890639015](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44890639015) **SUCCESS**: Linux và Windows mỗi hệ **89/89 unit PASS**, build/PoC PASS; Chromium dev **34 PASS + 1 PWA-only SKIP**, Chromium production/PWA **35/35 PASS**, không FAIL. Các commit sau checkpoint chỉ cập nhật script Windows và tài liệu, chưa được xác minh trên PC thật.
+
+**Chạy trên PC:** Trong GitHub Desktop checkout nhánh `integration/20261115-g10-v1.2` rồi Pull. Mở `app/START_WINDOWS.cmd` (cần Node.js và npm), sau đó vào **http://127.0.0.1:5173/** bằng Chrome/Edge. Script tự chạy `npm ci` theo lockfile nếu máy chưa có dependency mới RNNoise. **Không cần push origin**; không thay đổi các DB IndexedDB/OPFS hoặc ghi âm cũ.
+
+**Thử bằng cuộc họp giả lập:** ghi 5–15 giây và gõ nội dung, bấm **Kết thúc**; bấm chữ có mốc để nghe, hoặc tua bằng timeline. Chọn **Nghe tập trung 15/30/60 giây** trước khi bật các xử lý có giới hạn. Chọn tốc độ 0,75× và **Giữ cao độ giọng (đoạn ngắn)** để thử bộ phát `HTMLMediaElement.preservesPitch`; khi tắt tùy chọn, C2 tiếp tục hoạt động như cũ (tốc độ khác 1× có thể làm đổi pitch). Bộ phát giữ cao độ dùng WAV xác minh với giới hạn 60 giây/32 MiB; không hỗ trợ **Liên tục** hoặc trình duyệt thiếu `preservesPitch`, sẽ báo rõ thay vì âm thầm đổi cách phát.
+
+**Bỏ qua im lặng (đoạn ngắn)** là phân tích RMS năng lượng của PCM thực trong cửa sổ 15/30/60 giây, bỏ khoảng im lặng dài (tối thiểu 750ms, giữ mép 160ms). Không phải VAD nhận diện lời nói bằng AI; có thể xử lý không lý tưởng trong phòng ồn. Không dùng đồng thời với giữ cao độ ở tốc độ khác 1× trong bản alpha. **Lọc nhiễu RNNoise (thử nghiệm)** dùng mô hình WASM `@sapphi-red/web-noise-suppressor@0.4.1` và AudioWorklet 48kHz, chỉ trong đường nghe, **mặc định tắt**; WASM nạp cục bộ, không gửi audio lên dịch vụ ngoài. Chất lượng/CPU trên PC thật chưa đo. Sau lần truy cập tải thành công, PWA có thể lưu tài nguyên WASM cùng origin phục vụ dùng offline; bản localhost dev không đăng ký service worker.
+
+**Lặp A–B / Xuất WAV:** cho phép đi qua *ranh giới các đoạn WAV* trong cùng phiên khi mẫu PCM **liền mạch đã được xác minh**; vẫn từ chối gap/thiếu mẫu, phiên ghi khác hoặc giới hạn đoạn dài >120 giây. **Dạng sóng** chỉ lấy mẫu giới hạn để xem nhanh, không phải peak-envelope toàn bộ bản ghi dài.
+
+**An toàn dữ liệu:** các chế độ phát chỉ đọc OPFS đã lưu, không viết đè nguồn WAV, `timeSpan`, ghi chú hoặc gói backup. Bài fake-micro/browser PASS **không thay thế** kiểm thử Windows thật với UniKey/EVKey, micro, Word, ghi 3 giờ, quota/mất điện, gói nhiều GiB và khôi phục giữa hai máy; các ca này vẫn **NOT_RUN**. Bản thử vẫn **INTEGRATION_ALPHA / RELEASE HOLD**, không merge hoặc deploy.
+
 ## G00 — Xem dạng sóng PCM lấy mẫu (20/11/2026, chưa nghiệm thu)
 
 - Sau khi dừng thu, bấm **Hiện dạng sóng** ở thanh tua. Ứng dụng đọc có giới hạn tối đa **128 vị trí × 1024 mẫu PCM** qua OPFS, tính RMS và vẽ các cột mức tín hiệu gần đúng. Bấm **Ẩn dạng sóng** để bỏ lớp biểu diễn. Không tự tải toàn bộ file dài khi mở cuộc họp.
@@ -37,10 +51,10 @@ npm run dev
 
 ## G00 — Đợt bổ sung tính năng 01–18 (18/11/2026)
 
-- **Âm thanh:** Lặp A–B giới hạn **cùng vùng mẫu liền mạch đã xác minh** (không tự vượt gap hoặc khác phiên), tua ±10 giây, 0,5–2×. Lưu ý **pitch hiện thay đổi cùng tốc độ**, chưa dùng giữ cao độ. Nhập WAV PCM/F32 mono/stereo theo chunk (≤2GB và ≤3 giờ), file nén MP3/M4A/WebM/OGG dùng decodeAudioData khi trình duyệt hỗ trợ (≤32MB, ≤30 phút); OPFS commit trước khi liên kết meeting. Khi phát file nhập và gõ, mốc lấy từ vị trí phát xác minh; không suy đoán khi pause/gap.
+- **Âm thanh:** Lặp A–B giới hạn **cùng vùng mẫu liền mạch đã xác minh** (không tự vượt gap hoặc khác phiên), tua ±10 giây, 0,5–2×. Lưu ý thời điểm 18/11 C2 còn đổi cao độ; tính năng giữ cao độ opt-in đã bổ sung ngày 21/11, xem checkpoint mới ở trên. Nhập WAV PCM/F32 mono/stereo theo chunk (≤2GB và ≤3 giờ), file nén MP3/M4A/WebM/OGG dùng decodeAudioData khi trình duyệt hỗ trợ (≤32MB, ≤30 phút); OPFS commit trước khi liên kết meeting. Khi phát file nhập và gõ, mốc lấy từ vị trí phát xác minh; không suy đoán khi pause/gap.
 - **Ghi chú Word:** thụt dòng đầu (0–72pt), tăng/giảm cấp danh sách, ảnh PNG/JPEG tối đa 300KB/ảnh, liên kết chỉ http(s)/mailto, ngắt trang. Export DOCX bao gồm media/relationships và rowSpan cơ bản, cần kiểm Microsoft Word thật trước nghiệm thu.
 - **Tính năng khác:** bookmark `important` lưu cùng văn bản, hiển thị danh sách các mốc hợp lệ; cảnh báo quota là ước tính, không thay đổi ghi âm; xuất WAV đoạn A–B ≤120s từ committed PCM; kiểm chứng riêng tệp sao lưu v2 bằng SHA-256/CRC từng file.
-- **Chưa tích hợp/đang HOLD:** C1 preservesPitch vào C2 scheduler, waveform thật, RNNoise, tự bỏ qua im lặng, Word numbering/pagination phức tạp, nhập file nén dài, backup đa-GB Windows và TC01–TC38.
+- **Các giới hạn còn HOLD:** giữ cao độ mới chỉ cho cửa sổ tập trung, dạng sóng xấp xỉ; RNNoise và bỏ qua im lặng đã có mã/test nhưng chưa đo chất lượng thiết bị thật; Word pagination phức tạp, nhập file nén dài, backup đa-GB Windows và TC01–TC38 vẫn chưa nghiệm thu.
 - **Theo dõi:** [docs/G00_FEATURE_BACKLOG.md](../docs/G00_FEATURE_BACKLOG.md), [STATUS.md](../docs/STATUS.md), [ACCEPTANCE_TESTS.md](../docs/ACCEPTANCE_TESTS.md). Mỗi module cần **Code SHA, Tested SHA, PASS/FAIL/NOT_RUN** trước khi chuyển trạng thái.
 
 ## G00 — Kiểm chứng tự động file sao lưu sau khi ghi (18/11/2026)
