@@ -34,9 +34,9 @@ test('G00 conservative silence-only intervals keep edges and leave voice untouch
 });
 test('G00 silence analysis fails closed on corruption, truncated PCM and cancellation',async()=>{
   await assert.rejects(()=>scanVerifiedSilence({call:async()=>({status:'missing'})},check,8000,15000),
-    /không đọc được PCM/);
+    /[Kk]hông đọc được PCM/);
   await assert.rejects(()=>scanVerifiedSilence({call:async()=>({status:'valid',pcm:new ArrayBuffer(4)})},check,8000,15000),
-    /không đọc được PCM/);
+    /[Kk]hông đọc được PCM/);
   assert.equal(await scanVerifiedSilence({call:async()=>{throw Error('unexpected read');}},check,8000,15000,
     {cancelled:()=>true}),null);
   const p=planSilenceScan(check,8000,15000);
