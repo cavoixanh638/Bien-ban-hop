@@ -206,7 +206,7 @@ export class AudioPlayer {
     // must never resume after Stop, switching meetings, or a newer seek.
     this.startChain=Promise.resolve();this.voiceMode='off';this.voiceChain=null;
     this.silenceIndex=null;this.silenceRanges=[];this.silenceSkippedMs=0;
-    this.pitchChunks=new Set();this.pitchPrefetch=null;
+    this.pitchChunks=new Set();this.pitchPrefetch=null;this.pitchChunksPlayed=0;
     this.rnnoiseNode=null;this.playbackInput=null;
   }
   setVoiceMode(mode){
@@ -277,7 +277,7 @@ export class AudioPlayer {
           denoiser.connect(this.voiceChain.input);
           this.playbackInput=denoiser;
         }
-        this.silenceRanges=[];this.silenceSkippedMs=0;
+        this.silenceRanges=[];this.silenceSkippedMs=0;this.pitchChunksPlayed=0;
         this.nextSample=check.startSample;
         this.endSampleExclusive=capPlaybackEnd(check,this.manifest.sampleRate,maxDurationMs);
         this.silenceIndex=skipSilence?new ProgressiveSilenceIndex(this.reader,
@@ -287,7 +287,8 @@ export class AudioPlayer {
               if(run!==this.currentRun)return;
               this.silenceSkippedMs=status.skippedMs;
               this.onEvent('silence-indexed',{recordingId,
-                skippedMs:status.skippedMs,scannedSamples:status.scannedSamples,progressive:true});
+                skippedMs:status.skippedMs,scannedSamples:status.scannedSamples,
+                ranges:this.silenceIndex?.ranges.length??0,progressive:true});
             }
           }):null;
         if(skipSilence)this.onEvent('silence-scan',{recordingId,progressive:true});
@@ -397,6 +398,9 @@ export class AudioPlayer {
     };
     await media.play();
     if(run!==this.currentRun)return false;
+    this.pitchChunksPlayed++;
+    this.onEvent('stream-chunk',{recordingId:this.recordingId,
+      ordinal:this.pitchChunksPlayed,startSample:chunk.startSample,endSample:chunk.endSample});
     // Prefetch only one additional <=6s verified WAV. Never allocate a
     // session-length media Blob, never scan all silence upfront.
     this.pitchPrefetch=this.nextPitchChunk(run).catch(error=>{
