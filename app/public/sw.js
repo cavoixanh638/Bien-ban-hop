@@ -1,5 +1,5 @@
 // G10 offline shell. No audio, personal note, OPFS or IndexedDB contents in CacheStorage.
-const VERSION='bien-ban-hop-20261120-pcm-waveform';
+const VERSION='bien-ban-hop-20261121-g00-audio-options';
 const CACHE='bien-ban-hop-shell-'+VERSION, SCOPE=self.registration.scope;
 const url=relative=>new URL(relative,SCOPE).href;
 // Keep the old lock key: older and newer PWA clients must share the same safety lock.
@@ -44,7 +44,7 @@ self.addEventListener('fetch',event=>{
     })());return;
   }
   // Cache-first for same-version assets; never cache REST/data/audio or cross-origin responses.
-  if(!/\.(?:js|css|svg|webmanifest)(?:\?|$)/.test(target.href))return;
+  if(!/\.(?:js|css|svg|webmanifest|wasm)(?:\?|$)/.test(target.href))return;
   event.respondWith((async()=>{
     const cache=await caches.open(CACHE);
     const hit=await cache.match(req);if(hit)return hit;
