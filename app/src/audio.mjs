@@ -4,7 +4,7 @@ import {contextFor,resolvePending} from './clock-bridge.mjs';
 import {selectCommittedPlayback} from './playback-start.mjs';
 import {createVoiceEQ,setVoiceEQ,capPlaybackEnd} from './voice-eq.mjs';
 import {planPitchWindow,readPitchWav} from './pitch-playback.mjs';
-import {scanVerifiedSilence} from './silence-skip.mjs';
+import {scanVerifiedSilenceSpan} from './silence-skip.mjs';
 
 
 const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
@@ -281,7 +281,7 @@ export class AudioPlayer {
         this.silenceRanges=[];this.silenceSkippedMs=0;
         if(skipSilence){
           this.onEvent('silence-scan',{recordingId});
-          const result=await scanVerifiedSilence(this.reader,check,this.manifest.sampleRate,maxDurationMs,
+          const result=await scanVerifiedSilenceSpan(this.reader,check,this.manifest.sampleRate,maxDurationMs,
             {cancelled:()=>run!==this.currentRun});
           if(run!==this.currentRun||!result)return cancelled();
           this.silenceRanges=result.ranges;this.silenceSkippedMs=result.skippedMs;
