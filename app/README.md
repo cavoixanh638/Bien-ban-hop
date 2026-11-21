@@ -29,6 +29,13 @@ npm run dev
 4. Nhấn **Bắt đầu ghi**, gõ ghi chú ngay vào trang giấy; không phải nhập mã mốc. Sau khi dừng, nhấp đoạn chữ có gắn mốc để nghe. `Alt+Enter` nghe mốc tại con trỏ; `Esc` dừng phát. Ghi chú tự lưu với revision, báo "Đã lưu" chỉ sau IDB transaction hoàn tất.
 5. Có thể tạo/chuyển cuộc họp, đổi tên, sử dụng hai tab (chỉ một tab giữ writer lock), xuất DOCX/TXT/MD/CSV, **Sao lưu biên bản và ghi âm** và **Khôi phục biên bản từ tệp**. Khi nhập, chương trình kiểm tra checksum rồi tạo ID cuộc họp, ghi chú và phiên thu mới; không ghi đè cuộc họp đang có.
 
+## G00 — Sửa hiển thị sóng và nút thu trên giao diện (21/11/2026)
+
+- **Sóng âm:** khi dừng ghi/phát và bấm **Hiện dạng sóng**, sóng RMS lấy mẫu xuất hiện bằng **các vạch xanh lam phía trên**, dải xanh lá/xám **ở dưới** cho biết có âm thanh đã lưu/hay khoảng thiếu. Thanh tua nay cao 50px, không còn ép waveform trong sọc 18px; cột tối thiểu 4px, mức cao tương đối theo biên độ RMS nhưng không phóng đại nhiễu nền. Nếu thông báo **Đã lấy mẫu ... vị trí** mà biểu đồ chỉ là dãy vạch thấp, bản ghi có tín hiệu rất nhỏ hoặc im lặng — hãy dùng **Thử micro** để kiểm tra âm thanh. Dạng sóng là **128 điểm lấy mẫu**, không phải toàn bộ âm thanh được quét.
+- **Đang ghi:** **Tạm dừng màu vàng cam**, **Kết thúc màu đỏ**; khi dừng tạm, **Tiếp tục chuyển xanh lá** còn Kết thúc vẫn đỏ. Các nút to, đậm, hỗ trợ focus bàn phím; khi không thu hai nút disabled. Màu chỉ giúp nhận diện, không thay trạng thái ghi/lưu.
+- **Cập nhật máy:** Sau khi commit được kiểm thử, tại GitHub Desktop chọn nhánh `integration/20261115-g10-v1.2` rồi **Fetch origin → Pull origin** nếu có. Chạy `app/START_WINDOWS.cmd`, tải lại `http://127.0.0.1:5173/` (khuyến nghị Ctrl+Shift+R nếu còn giao diện cũ). Không cần Push origin. Test với dữ liệu thử, không dùng cuộc họp quan trọng.
+- **Đối chiếu:** mã tại `88be7d4531cb22d7918c771e8d5c815c8e5fa913`; bài unit/E2E mới đã viết, **Tested SHA = NOT_RUN** cho đến khi CI xác nhận. Thiết bị Windows/micro thật vẫn NOT_RUN, RELEASE HOLD. Bài test đã bổ sung kiểm vị trí vạch sóng, khác màu green/gray, và thao tác start→pause→resume→stop.
+
 ## G00 — Bản để tự kiểm tra phát lại nâng cao (21/11/2026)
 
 **Checkpoint tự động:** Code SHA = Tested SHA `8cf09646b4800037caadd9cd5e391da94f90af32`. [GitHub Actions #44890639015](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44890639015) **SUCCESS**: Linux và Windows mỗi hệ **89/89 unit PASS**, build/PoC PASS; Chromium dev **34 PASS + 1 PWA-only SKIP**, Chromium production/PWA **35/35 PASS**, không FAIL. Các commit sau checkpoint chỉ cập nhật script Windows và tài liệu, chưa được xác minh trên PC thật.
