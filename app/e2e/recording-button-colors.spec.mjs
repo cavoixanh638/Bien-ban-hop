@@ -12,6 +12,11 @@ test('G00 recording controls: pause is amber, stop red, resume green and states 
   await expect(page.locator('#rec-stop')).toBeEnabled();
   await expect(page.locator('#rec-pause')).toHaveAttribute('data-mode','pause');
   await expect(page.locator('#rec-start')).toBeDisabled();
+  // The generic button style animates background for 150 ms when enabled.
+  // Wait for the final computed colors rather than sampling the transition.
+  await page.mouse.move(0,0);
+  await expect(page.locator('#rec-pause')).toHaveCSS('background-color','rgb(255, 198, 92)');
+  await expect(page.locator('#rec-stop')).toHaveCSS('background-color','rgb(199, 47, 58)');
   const active=await page.evaluate(()=>{
     const pause=document.querySelector('#rec-pause'),stop=document.querySelector('#rec-stop');
     return {pause:getComputedStyle(pause).backgroundColor,
