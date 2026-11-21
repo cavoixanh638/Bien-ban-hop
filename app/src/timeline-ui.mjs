@@ -4,7 +4,7 @@
  * wall-clock between Stop and a later new recording.
  */
 import {AudioRPC} from './audio.mjs';
-import {readWaveformEnvelope} from './waveform-envelope.mjs';
+import {readWaveformEnvelope,waveformDisplayHeights} from './waveform-envelope.mjs';
 import {buildMeetingTimeline,locateMeetingPosition,meetingPositionFor,firstPlayablePosition}
   from './meeting-timeline.mjs';
 
@@ -160,12 +160,17 @@ export class MeetingTimelineUI {
     track.id='timeline-waveform';track.className='timeline-waveform';
     track.setAttribute('aria-hidden','true');
     const {levels}=this.waveformData;
+    const display=waveformDisplayHeights(levels);
     for(let index=0;index<levels.length;index++){
-      const value=levels[index];if(!value)continue; // Gaps remain unpainted.
-      const bar=document.createElement('span');bar.className='timeline-waveform-bar';
-      bar.style.left=(index*100/levels.length)+'%';
-      bar.style.width=(100/levels.length)+'%';
-      bar.style.height=(Math.max(5,Math.min(100,value.rms*190)))+'%';
+      const value=levels[index],height=display.heights[index];
+      if(value===null)continue; // A missing region NEVER gets a fake bar.
+      const bar=document.createElement('span');
+      bar.className='timeline-waveform-bar';
+      // A small gap between columns makes the waveform legible even at 128 bins.
+      bar.style.left=((index+.12)*100/levels.length)+'%';
+      bar.style.width=(.76*100/levels.length)+'%';
+      bar.style.height=height+'%';
+      bar.title='RMS lấy mẫu: '+value.rms.toFixed(4)+' (tỷ lệ hiển thị tương đối)';
       track.append(bar);
     }
     $('timeline-bands').append(track);
@@ -198,8 +203,11 @@ export class MeetingTimelineUI {
       if(controller.signal.aborted||epoch!==this.epoch||this.model!==model)return;
       this.waveformData=envelope;this.renderWaveform();
       $('waveform-load').textContent='Ẩn dạng sóng';
+      const measured=waveformDisplayHeights(envelope.levels);
       $('waveform-status').textContent='Đã lấy mẫu '+envelope.probesRead+' vị trí ('+
-        envelope.samplesRead.toLocaleString('vi-VN')+' mẫu PCM); dạng sóng xấp xỉ, vùng xám là thiếu dữ liệu.';
+        envelope.samplesRead.toLocaleString('vi-VN')+
+        ' mẫu PCM). Sóng xanh lam ở trên, vùng có/thiếu dữ liệu ở dưới; biên độ hiển thị tương đối.'+
+        (measured.observedMax<.002?' Tín hiệu rất nhỏ, nên kiểm tra micro nếu không thấy sóng cao.':'');
     }catch(error){
       if(!controller.signal.aborted&&epoch===this.epoch)
         $('waveform-status').textContent='Không đọc được dạng sóng: '+error.message;
