@@ -4,6 +4,18 @@
 
 **Phạm vi tài liệu:** audio capture, lưu bền vững/checkpoint/khôi phục, nguồn micro và âm thanh máy tính, Virtual Timeline, phát/tua qua các file. So sánh bốn công nghệ và căn cứ lựa chọn tại [TECHNICAL_OPTIONS.md](TECHNICAL_OPTIONS.md); quyết định production vẫn phải dựa benchmark Gói 1.2. Quy tắc liên kết chữ với mốc thuộc [TIMELINE_RULES.md](TIMELINE_RULES.md); schema/manifest thuộc [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## G00 — Thiết kế phát theo luồng G00 mới (22/11/2026)
+
+**Bản này thay thế cổng 15/30/60 giây của G00 ngày 21/11.** Điều kiện không đổi: mọi PCM phải được đọc từ sampleRanges đã được G03 commit; bản ghi âm gốc, OPFS, manifest, `timeSpan`, ID cuộc họp và dấu mốc không bị xử lý hay sửa. Chỉ thay đường phát.
+
+1. **Luồng C2 mặc định 1× / không yêu cầu pitch:** tiếp tục dùng AudioBufferSource scheduler, nhưng `ProgressiveSilenceIndex` chỉ đọc PCM kế tiếp từng cửa sổ **8 giây**, hủy khi Stop, giảm bộ nhớ và không quét toàn bộ 2–3 giờ trước khi phát. Nếu skip bị tắt, không phân tích thêm.
+2. **Luồng pitch-preserve khi rate ≠1×:** sử dụng HTMLMediaElement `preservesPitch=true`, `planStreamChunk` giới hạn **6 giây hoặc 8 MiB PCM f32** mỗi phần. Trình duyệt nối qua MediaElementSource → tùy chọn RNNoise (AudioWorklet 48k) → EQ/dry/wet. Một chunk đang phát và tối đa một chunk được nạp trước; `positionMs` tính từ **startSample nguồn + currentTime × sourceRate**, không từ elapsed thời gian nghe đã bỏ khoảng im lặng. URL Blob, node, media được đóng khi Stop/switch.
+3. **Kết hợp và thay đổi trong khi nghe:** không cưỡng bức chọn một trong hai `preservePitch`/`skipSilence`. RNNoise độc lập. Khi rate khác 1× giữ pitch bật mặc định. Thay đổi checkbox/rate khi đang nghe tạo yêu cầu mới từ sample nguồn hiện tại; serial cancellation/last-request-wins chống lệnh cũ phát lại.
+4. **Phát xuyên session:** `nextContiguousSession` cho phép chuyển phiên sau khi nguồn trước đã kết thúc tại mẫu cuối thực và phiên sau bắt đầu có PCM tại sample 0, không có gap/trailing unavailable, không có A–B. Timeline chỉ nối clocks các phiên, **không** cộng thời gian nghỉ hoặc tái gán mốc.
+5. **Chất lượng:** MediaElement từng chunk có thể gây mép nối nghe thấy trong điều kiện phần cứng thật. Không được tuyên bố nối âm gapless trước khi đo jitter, click, CPU/RAM, time-drift và lời nói nhỏ trên Windows micro thật. RMS silence cũng không phải speech-VAD ML.
+
+**Bằng chứng:** unit 3h giả/PCM corrupt/cancel/next-session, E2E file WAV 16s tốc độ 2× với khoảng im lặng và 3 bộ lọc, chuyển nhiều chunk và đổi chế độ khi đang nghe. Chỉ ghi Code SHA = Tested SHA khi CI mới SUCCESS. Các cổng Windows thật/3 giờ/mất điện/UniKey/Word giữ NOT_RUN và RELEASE HOLD.
+
 ## G00 — Điều phối lựa chọn playback và giới hạn skip silence (21/11/2026)
 
 `reconcilePlaybackOptions()` là một bộ điều phối **UI thuần**, không được thay đổi PCM hay timestamp: bật RMS skip trong Liên tục phải chuyển dropdown nhìn thấy được sang focus 30s; chủ động chọn lại Liên tục phải bỏ chọn skip. Tốc độ ≠1× không kết hợp đồng thời skip silence và `preservesPitch`; lựa chọn thay đổi gần nhất được ưu tiên, có trạng thái thông báo. Bộ phát vẫn kiểm tra đầu vào và từ chối lời gọi không hợp lệ từ ngoài UI; không tự phát sai nguồn nếu UI bị bypass.
