@@ -5,6 +5,7 @@ import {selectCommittedPlayback} from './playback-start.mjs';
 import {createVoiceEQ,setVoiceEQ,capPlaybackEnd} from './voice-eq.mjs';
 import {planPitchWindow,readPitchWav} from './pitch-playback.mjs';
 import {scanVerifiedSilence} from './silence-skip.mjs';
+import {createPlaybackRNNoise,destroyPlaybackRNNoise} from './rnnoise-playback.mjs';
 
 const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
 const withTimeout=(p,ms,label)=>Promise.race([p,new Promise((_,reject)=>setTimeout(()=>reject(Error(label+' quá thời hạn')),ms))]);
@@ -200,6 +201,7 @@ export class AudioPlayer {
     // must never resume after Stop, switching meetings, or a newer seek.
     this.startChain=Promise.resolve();this.voiceMode='off';this.voiceChain=null;
     this.silenceRanges=[];this.silenceSkippedMs=0;
+    this.rnnoiseNode=null;this.playbackInput=null;
   }
   setVoiceMode(mode){
     this.voiceMode=mode;
@@ -229,7 +231,7 @@ export class AudioPlayer {
       throw e;
     }
   }
-  async start(recordingId,offsetMs,{preRollMs=0,rate=1,maxDurationMs=0,preservePitch=false,skipSilence=false}={}){
+  async start(recordingId,offsetMs,{preRollMs=0,rate=1,maxDurationMs=0,preservePitch=false,skipSilence=false,rnnoise=false}={}){
     // Stop synchronously, before any await, so the previous request cannot
     // schedule audio after a rapid seek or an explicit Stop.
     this.stop();
@@ -246,13 +248,27 @@ export class AudioPlayer {
         this.rate=rate;
         const check=selectCommittedPlayback(this.manifest,recordingId,offsetMs,preRollMs);
         if(check.status!=='valid'){this.onEvent('unavailable',check);return check;}
+        // RNNoise requires 48k. When the user enables it after a normal
+        // playback context at another rate, recreate the playback context only.
+        if(this.context&&rnnoise&&this.context.sampleRate!==48000){
+          await this.context.close();this.context=null;this.voiceChain=null;
+        }
         if(!this.context){
-          this.context=new AudioContext();
+          this.context=new AudioContext(rnnoise?{sampleRate:48000}:undefined);
           this.voiceChain=createVoiceEQ(this.context);
           setVoiceEQ(this.voiceChain,this.voiceMode);
         }
         await this.context.resume();
         if(run!==this.currentRun)return cancelled();
+        this.playbackInput=this.voiceChain.input;
+        if(rnnoise){
+          this.onEvent('rnnoise-loading',{recordingId});
+          const denoiser=await createPlaybackRNNoise(this.context);
+          if(run!==this.currentRun){destroyPlaybackRNNoise(denoiser);return cancelled();}
+          this.rnnoiseNode=denoiser;
+          denoiser.connect(this.voiceChain.input);
+          this.playbackInput=denoiser;
+        }
         this.silenceRanges=[];this.silenceSkippedMs=0;
         if(skipSilence){
           this.onEvent('silence-scan',{recordingId});
@@ -264,7 +280,7 @@ export class AudioPlayer {
             skippedMs:result.skippedMs,ranges:result.ranges.length});
         }
         if(preservePitch&&rate!==1){
-          const success=await this.startPitchMedia(check,run,{rate,maxDurationMs});
+          const success=await this.startPitchMedia(check,run,{rate,maxDurationMs,rnnoise});
           return success?{status:'valid'}:cancelled();
         }
         this.playing=true;
@@ -286,7 +302,7 @@ export class AudioPlayer {
           },170);
           this.onEvent('playing',{recordingId,offsetMs:check.startMs,rate,
             preRollLimited:check.preRollLimited,actualPreRollMs:check.actualPreRollMs,
-            silenceSkipEnabled:skipSilence,skippedMs:this.silenceSkippedMs});
+            silenceSkipEnabled:skipSilence,skippedMs:this.silenceSkippedMs,rnnoiseEnabled:rnnoise});
           return {status:'valid'};
         }
         return run!==this.currentRun?cancelled():
@@ -303,7 +319,7 @@ export class AudioPlayer {
   }
   /** Native HTML audio applies preservesPitch to the browser decoder. It is
    * used only for bounded verified focus windows, never silently for hours. */
-  async startPitchMedia(check,run,{rate,maxDurationMs}){
+  async startPitchMedia(check,run,{rate,maxDurationMs,rnnoise=false}){
     const plan=planPitchWindow(check,this.manifest.sampleRate,maxDurationMs);
     const blob=await readPitchWav(this.reader,plan,{cancelled:()=>run!==this.currentRun});
     if(run!==this.currentRun||!blob)return false;
@@ -318,7 +334,7 @@ export class AudioPlayer {
     this.media=media;this.mediaUrl=url;this.mediaStartSample=plan.startSample;
     media.src=url;
     this.mediaNode=this.context.createMediaElementSource(media);
-    this.mediaNode.connect(this.voiceChain?.input??this.context.destination);
+    this.mediaNode.connect(this.playbackInput??this.voiceChain?.input??this.context.destination);
     this.nextSample=plan.startSample;this.endSampleExclusive=plan.endSample;
     this.lastRenderedSample=plan.startSample;this.startOffsetMs=plan.startSample*1000/plan.rate;
     this.underruns=0;this.playing=true;
@@ -330,7 +346,7 @@ export class AudioPlayer {
         this.onEvent('position',{recordingId:this.recordingId,offsetMs:this.positionMs()});
     },170);
     this.onEvent('playing',{recordingId:this.recordingId,offsetMs:this.startOffsetMs,
-      rate,pitchPreserved:true,preRollLimited:check.preRollLimited,
+      rate,pitchPreserved:true,rnnoiseEnabled:rnnoise,preRollLimited:check.preRollLimited,
       actualPreRollMs:check.actualPreRollMs});
     return true;
   }
@@ -374,7 +390,7 @@ export class AudioPlayer {
     const offsetMs=this.positionMs();
     this.onEvent('position',{recordingId:this.recordingId,offsetMs});
     this.onEvent('ended',{recordingId:this.recordingId,offsetMs});
-    this.cleanupPitchMedia();
+    this.cleanupPitchMedia();this.cleanupRNNoise();
   }
   async fill(){
     if(!this.playing||this.fillingRun===this.currentRun)return;
@@ -416,7 +432,7 @@ export class AudioPlayer {
         buffer.getChannelData(0).set(pcm);
         const node=this.context.createBufferSource();
         node.buffer=buffer;node.playbackRate.value=this.rate;
-        node.connect(this.voiceChain?.input??this.context.destination);this.sources.add(node);
+        node.connect(this.playbackInput??this.voiceChain?.input??this.context.destination);this.sources.add(node);
         const firstSample=this.nextSample;
         node.onended=()=>{
           this.sources.delete(node);
@@ -442,6 +458,10 @@ export class AudioPlayer {
       if(this.nextSample>=this.endSampleExclusive)this.schedulingComplete=true;
     }finally{if(this.fillingRun===run)this.fillingRun=null;}
   }
+  cleanupRNNoise(){
+    const node=this.rnnoiseNode;this.rnnoiseNode=null;this.playbackInput=null;
+    destroyPlaybackRNNoise(node);
+  }
   stopWithError(e){this.stop();this.onEvent('error',{message:String(e?.message??e)});}
   stop(){
     const wasPlaying=this.playing,recordingId=this.recordingId,offsetMs=this.positionMs();
@@ -452,7 +472,7 @@ export class AudioPlayer {
     this.sources.clear();this.scheduled.clear();
     if(Number.isFinite(offsetMs)&&this.manifest?.sampleRate)
       this.lastRenderedSample=Math.floor(offsetMs*this.manifest.sampleRate/1000);
-    this.cleanupPitchMedia();
+    this.cleanupPitchMedia();this.cleanupRNNoise();
     if(wasPlaying)this.onEvent('stopped',{recordingId,offsetMs});
   }
   async closeReader(){
