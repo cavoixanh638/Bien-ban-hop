@@ -164,6 +164,13 @@
 /* Focused listening and non-destructive voice EQ controls in the playback dock */
 .timeline-playback-options #focus-duration,
 .timeline-playback-options #voice-filter{max-width:116px}
+/* Playback choices explain automatic 30s focus and conflicts inline (no toast). */
+.playback-mode-status{flex:1 0 100%;font-size:11px;line-height:1.35;
+  color:#276579;background:#edf7fa;border-left:3px solid #7ab2c5;
+  padding:4px 9px;border-radius:4px}
+.timeline-playback-options #focus-duration{border:1px solid #659db3;
+  background:#f3faff;font-weight:700}
+
 
 
 /* Native Chromium print/PDF from the current note without forcing live editor pagination. */
