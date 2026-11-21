@@ -227,7 +227,7 @@ export class MeetingTimelineUI {
       return;
     }
     const result=await this.player.start(at.recordingId,at.localMs,{
-      preRollMs:0,rate:Number($('play-rate').value),preservePitch:$('pitch-preserve').checked,
+      preRollMs:0,rate:Number($('play-rate').value),preservePitch:$('pitch-preserve').checked,skipSilence:$('silence-skip').checked,
       maxDurationMs:Number($('focus-duration').value)
     });
     if(result.status==='valid'){
