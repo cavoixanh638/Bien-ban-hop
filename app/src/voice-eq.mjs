@@ -9,7 +9,7 @@ export const VOICE_PRESETS=Object.freeze({
 });
 export function capPlaybackEnd(check,rate,maxDurationMs=0){
   if(!maxDurationMs)return check.endSampleExclusive;
-  if(!Number.isSafeInteger(maxDurationMs)||maxDurationMs<1000||maxDurationMs>120000)
+  if(!Number.isSafeInteger(maxDurationMs)||maxDurationMs<400||maxDurationMs>120000)
     throw Error('Thời lượng nghe tập trung không hợp lệ');
   return Math.min(check.endSampleExclusive,check.anchorSample+
     Math.max(1,Math.round(maxDurationMs*rate/1000)));
