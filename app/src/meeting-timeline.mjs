@@ -92,7 +92,7 @@ export function nextContiguousSession(timeline,recordingId,localEndMs){
   const last=current.ranges.at(-1),first=next.ranges[0];
   if(!last||!first||first.sampleStart!==0)return null;
   const endMs=last.sampleEndExclusive*1000/current.sampleRate;
-  const tolerance=Math.max(.5,1000/current.sampleRate);
+  const tolerance=Math.max(1,1000/current.sampleRate); // ceil(ms) display rounding
   if(Math.abs(localEndMs-endMs)>tolerance ||
     current.durationMs-endMs>tolerance ||
     next.firstPlayableMs!==next.startMs)return null;
