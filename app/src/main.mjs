@@ -61,7 +61,7 @@ function endLoopReplay(type,detail={}){
   queueMicrotask(async()=>{
     if(version!==loopVersion||!loopPoints.active||state.run?.meetingId!==meetingId)return;
     try{await player.start(range.recordingId,range.startMs,{
-      preRollMs:0,rate:Number($('play-rate').value),preservePitch:$('pitch-preserve').checked,skipSilence:$('silence-skip').checked,maxDurationMs:range.durationMs});
+      preRollMs:0,rate:Number($('play-rate').value),preservePitch:$('pitch-preserve').checked,skipSilence:$('silence-skip').checked,rnnoise:$('rnnoise-toggle').checked,maxDurationMs:range.durationMs});
     }catch(e){loopPoints.active=false;refreshLoopUI();show('Không thể phát lặp: '+e.message,'error');}
   });
 }
@@ -71,8 +71,9 @@ const player=new AudioPlayer((type,detail)=>{
   if(type==='preroll-limited')$('anchor-status').textContent='Đã rút ngắn phần nghe lùi đến đầu vùng âm thanh có thật.';
   if(type==='underrun')$('technical-status').textContent='Bộ phát đang thiếu đệm; chưa chứng minh nối mẫu không ngắt.';
   if(type==='silence-scan')$('anchor-status').textContent='Đang phân tích khoảng im lặng trên PCM đã lưu…';
+  if(type==='rnnoise-loading')$('anchor-status').textContent='Đang tải mô hình RNNoise WASM cục bộ để nghe lại…';
   if(type==='silence-indexed')$('anchor-status').textContent='Đã xác minh '+detail.ranges+' khoảng im lặng; có thể bỏ qua khoảng '+(detail.skippedMs/1000).toFixed(1)+' giây.';
-  if(type==='playing')$('anchor-status').textContent='Đang phát từ '+(detail.offsetMs/1000).toFixed(2)+' giây · '+detail.recordingId+(detail.preRollLimited?' · nghe lùi đã rút ngắn':'')+(detail.pitchPreserved?' · giữ cao độ':'')+(detail.silenceSkipEnabled?' · bỏ qua im lặng':'');
+  if(type==='playing')$('anchor-status').textContent='Đang phát từ '+(detail.offsetMs/1000).toFixed(2)+' giây · '+detail.recordingId+(detail.preRollLimited?' · nghe lùi đã rút ngắn':'')+(detail.pitchPreserved?' · giữ cao độ':'')+(detail.silenceSkipEnabled?' · bỏ qua im lặng':'')+(detail.rnnoiseEnabled?' · RNNoise':'');
   if(type==='ended')$('anchor-status').textContent='Đã phát hết đoạn âm thanh có dữ liệu. Nhấp chữ để nghe lại.';
   timelineUI?.onPlayer(type,detail);
   noteFollower?.playback(type,detail);
@@ -475,7 +476,7 @@ async function listenAtCursor(clickedAnchor=null){
     await timelineUI?.settle();
     if(state.run!==run)return;
     const result=await player.start(anchor.recordingId,anchor.audioOffsetMs,
-      {preRollMs:Number($('preroll').value),rate:Number($('play-rate').value),preservePitch:$('pitch-preserve').checked,skipSilence:$('silence-skip').checked,
+      {preRollMs:Number($('preroll').value),rate:Number($('play-rate').value),preservePitch:$('pitch-preserve').checked,skipSilence:$('silence-skip').checked,rnnoise:$('rnnoise-toggle').checked,
         maxDurationMs:Number($('focus-duration').value)});
     // AudioPlayer already reports unavailable through the source-aware callback.
   }catch(e){show('Không nghe lại được: '+e.message,'error');}
@@ -941,7 +942,7 @@ function wire(){
       const range=makeSafeLoop(timelineUI?.model,loopPoints.a,loopPoints.b);
       loopVersion++;loopPoints.range=range;loopPoints.active=true;refreshLoopUI();
       const result=await player.start(range.recordingId,range.startMs,{
-        preRollMs:0,rate:Number($('play-rate').value),preservePitch:$('pitch-preserve').checked,skipSilence:$('silence-skip').checked,maxDurationMs:range.durationMs});
+        preRollMs:0,rate:Number($('play-rate').value),preservePitch:$('pitch-preserve').checked,skipSilence:$('silence-skip').checked,rnnoise:$('rnnoise-toggle').checked,maxDurationMs:range.durationMs});
       if(result.status!=='valid'){loopPoints.active=false;refreshLoopUI();}
     }catch(e){loopPoints.active=false;refreshLoopUI();show('Lặp A–B: '+e.message,'error');}
   };
