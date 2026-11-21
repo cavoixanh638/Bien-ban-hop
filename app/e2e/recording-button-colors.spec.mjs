@@ -30,10 +30,12 @@ test('G00 recording controls: pause is amber, stop red, resume green and states 
   await expect(page.locator('#rec-label')).toHaveText('Đã tạm dừng');
   await expect(page.locator('#rec-pause')).toHaveText('Tiếp tục');
   await expect(page.locator('#rec-pause')).toHaveAttribute('data-mode','resume');
+  await page.mouse.move(0,0); // Leave :hover before checking the resting color.
   await expect(page.locator('#rec-pause')).toHaveCSS('background-color','rgb(22, 124, 96)');
   await expect(page.locator('#rec-stop')).toBeEnabled();
   await page.locator('#rec-pause').click();
   await expect(page.locator('#rec-label')).toHaveText('Đang ghi âm');
+  await page.mouse.move(0,0);
   await expect(page.locator('#rec-pause')).toHaveCSS('background-color','rgb(255, 198, 92)');
   await page.locator('#rec-stop').click();
   await expect(page.locator('#rec-label')).toHaveText('Chưa ghi âm',{timeout:30000});
