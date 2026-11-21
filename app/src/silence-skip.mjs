@@ -9,7 +9,7 @@ export const SILENCE_MAX_FOCUS_MS=60000;
 const MAX_BYTES=48*1024*1024;
 export function planSilenceScan(check,rate,focusMs){
   if(!Number.isSafeInteger(rate)||rate<8000||rate>192000||
-     !Number.isSafeInteger(focusMs)||focusMs<1000||focusMs>SILENCE_MAX_FOCUS_MS)
+     !Number.isSafeInteger(focusMs)||focusMs<400||focusMs>SILENCE_MAX_FOCUS_MS)
     throw Error('Để bỏ qua im lặng, hãy chọn Nghe tập trung 15/30/60 giây.');
   if(check?.status!=='valid'||!Number.isSafeInteger(check.startSample)||
     !Number.isSafeInteger(check.anchorSample)||check.startSample<0)
@@ -84,4 +84,31 @@ export async function scanVerifiedSilence(reader,check,rate,focusMs,
   const ranges=buildSilenceRanges(plan,energies);
   return {ranges,scannedSamples:plan.frames,
     skippedMs:ranges.reduce((sum,x)=>sum+(x.endSample-x.startSample)*1000/rate,0)};
+}
+
+/** Longer *explicit* A-B loops are checked in bounded <=60s windows. This
+ * still does not scan an arbitrary multi-hour continuous meeting, and each
+ * worker read remains verified against durable PCM samples. */
+export async function scanVerifiedSilenceSpan(reader,check,rate,durationMs,options={}){
+  if(check?.status!=='valid'||!Number.isSafeInteger(rate)||rate<8000||rate>192000||
+    !Number.isSafeInteger(durationMs)||durationMs<400||durationMs>120000)
+    throw Error('Phạm vi phân tích im lặng phải là đoạn nghe từ 0,4 đến 120 giây.');
+  const end=capPlaybackEnd(check,rate,durationMs);
+  let cursor=check.startSample,skippedMs=0,scannedSamples=0;
+  const ranges=[];
+  while(cursor<end){
+    if(options.cancelled?.())return null;
+    const chunkEnd=Math.min(end,cursor+rate*60);
+    const localCheck={status:'valid',startSample:cursor,anchorSample:cursor,
+      endSampleExclusive:chunkEnd};
+    // A final window may be shorter than 400ms; 400ms is used only as
+    // validation input and the actual read is capped to chunkEnd.
+    const chunkMs=Math.max(400,Math.ceil((chunkEnd-cursor)*1000/rate));
+    const result=await scanVerifiedSilence(reader,localCheck,rate,chunkMs,options);
+    if(!result||options.cancelled?.())return null;
+    ranges.push(...result.ranges);
+    skippedMs+=result.skippedMs;scannedSamples+=result.scannedSamples;
+    cursor=chunkEnd;
+  }
+  return {ranges,skippedMs,scannedSamples};
 }
