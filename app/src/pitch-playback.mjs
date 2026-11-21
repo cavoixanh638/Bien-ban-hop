@@ -2,9 +2,11 @@ import {wavHeader} from '../../poc/03-opfs/core.mjs';
 import {capPlaybackEnd} from './voice-eq.mjs';
 
 /** Browser HTMLMediaElement uses preservesPitch when changing playbackRate.
- * To avoid loading multi-hour PCM into memory, this adapter is deliberately
- * limited to a focused window <=60s / <=32MiB. No implicit fallback to a
- * pitch-shifting Web Audio source when the user requested preservation.
+ * The legacy single-focus planner below stays for compatibility tests; the
+ * integrated G00 player now uses planStreamChunk() (<=6s/<=8MiB at once)
+ * and readPitchWav() repeatedly, without materializing multi-hour recordings.
+ * Never fall back silently to pitch-changing playback when the user asks
+ * for preservation.
  */
 export const PITCH_MAX_FOCUS_MS=60000;
 export const PITCH_MAX_BYTES=32*1024*1024;
