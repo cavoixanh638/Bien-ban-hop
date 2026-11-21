@@ -57,8 +57,8 @@ test('G00 waveform display keeps gaps empty and makes genuine quiet PCM visibly 
   assert.equal(view.heights[0],null); // Never synthesize amplitude in a GAP.
   assert.equal(view.heights[1],15); // Recorded silence: short visible baseline.
   assert.equal(view.heights[2],15); // Do not magnify microphone noise.
-  assert.ok(view.heights[3]>15&&view.heights[3]<view.heights[4]);
-  assert.ok(view.heights[4]<view.heights[5]);
+  assert.equal(view.heights[3],15); // Quiet sample stays near the floor.
+  assert.ok(view.heights[4]>15&&view.heights[4]<view.heights[5]);
   assert.equal(view.heights[5],100);
   assert.equal(view.observedMax,.2);
   assert.throws(()=>waveformDisplayHeights([{rms:NaN}]),/không hợp lệ/);
