@@ -3,51 +3,37 @@ import assert from 'node:assert/strict';
 import {reconcilePlaybackOptions} from '../src/playback-options.mjs';
 import {scanVerifiedSilenceSpan} from '../src/silence-skip.mjs';
 
-const options=(overrides={})=>({focusMs:0,rate:1,preservePitch:false,skipSilence:false,...overrides});
-test('G00 screenshot regression: enabling skip-silence while Continuous selects visible 30s focus',()=>{
-  const input=options({skipSilence:true});
+const options=(overrides={})=>({focusMs:0,rate:1,preservePitch:true,skipSilence:false,...overrides});
+test('G00 continuous mode stays Continuous when silence skipping is enabled',()=>{
+  const input=options({rate:1.5,skipSilence:true});
   const {settings,notice}=reconcilePlaybackOptions(input,'silence');
-  assert.equal(settings.focusMs,30000);
+  assert.equal(settings.focusMs,0);
   assert.equal(settings.skipSilence,true);
-  assert.match(notice,/tự chọn Nghe tập trung 30 giây/);
-  assert.equal(input.focusMs,0,'pure helper must not mutate stored defaults');
+  assert.equal(settings.preservePitch,true);
+  assert.match(notice,/Liên tục.*bỏ qua im lặng.*giữ cao độ/);
+  assert.equal(input.focusMs,0);
 });
-test('G00 explicitly returning to Continuous unchecks incompatible processing',()=>{
-  const result=reconcilePlaybackOptions(options({focusMs:0,skipSilence:true}),'focus');
-  assert.equal(result.settings.focusMs,0);
-  assert.equal(result.settings.skipSilence,false);
-  assert.match(result.notice,/Đã tắt Bỏ qua im lặng/);
+test('G00 switching focus and speed never unchecks streaming audio effects',()=>{
+  for(const changed of ['initial','silence','focus','pitch','rate']){
+    const input=options({focusMs:0,rate:.75,skipSilence:true,preservePitch:true});
+    const r=reconcilePlaybackOptions(input,changed);
+    assert.deepEqual(r.settings,input);
+    assert.match(r.notice,/mốc luôn theo bản ghi gốc/);
+  }
+  const focused=options({focusMs:15000,skipSilence:true,rate:2});
+  assert.deepEqual(reconcilePlaybackOptions(focused,'focus').settings,focused);
 });
-test('G00 slow-speed pitch preservation and silence skip are mutually exclusive, last choice wins',()=>{
-  let r=reconcilePlaybackOptions(options({rate:.75,preservePitch:true}),'pitch');
-  assert.equal(r.settings.focusMs,30000);
-  assert.equal(r.settings.preservePitch,true);
-  r=reconcilePlaybackOptions(options({rate:.75,preservePitch:true,skipSilence:true,focusMs:30000}),'silence');
-  assert.equal(r.settings.preservePitch,false);
-  assert.equal(r.settings.skipSilence,true);
-  r=reconcilePlaybackOptions(options({rate:.75,preservePitch:true,skipSilence:true,focusMs:30000}),'pitch');
-  assert.equal(r.settings.preservePitch,true);
-  assert.equal(r.settings.skipSilence,false);
-  r=reconcilePlaybackOptions(options({rate:.75,preservePitch:true,skipSilence:true,focusMs:30000}),'rate');
-  assert.equal(r.settings.preservePitch,false);
-  assert.equal(r.settings.skipSilence,true);
+test('G00 1x pitch preservation is harmless; all three effects can be combined',()=>{
+  const input=options({rate:1,focusMs:0,skipSilence:true});
+  const {settings,notice}=reconcilePlaybackOptions(input,'initial');
+  assert.equal(settings.preservePitch,true);
+  assert.equal(settings.skipSilence,true);
+  assert.match(notice,/giữ cao độ tự nhiên/);
 });
-test('G00 rate=1 allows both toggles (pitch preservation is not invoked by player)',()=>{
-  const r=reconcilePlaybackOptions(options({focusMs:30000,rate:1,preservePitch:true,skipSilence:true}),'pitch');
-  assert.equal(r.settings.preservePitch,true);
-  assert.equal(r.settings.skipSilence,true);
-  assert.equal(r.notice,'');
-});
-test('G00 continuous switch turns off slow-speed pitch but otherwise preserves focus choice',()=>{
-  const r=reconcilePlaybackOptions(options({rate:.5,preservePitch:true,focusMs:0}),'focus');
-  assert.equal(r.settings.preservePitch,false);
-  assert.equal(r.settings.focusMs,0);
-  const s=reconcilePlaybackOptions(options({focusMs:60000,skipSilence:true}),'silence');
-  assert.equal(s.settings.focusMs,60000);
-});
-test('G00 playback options reject invalid UI values, fail closed',()=>{
-  assert.throws(()=>reconcilePlaybackOptions(options({focusMs:9000}),'silence'),/không hợp lệ/);
-  assert.throws(()=>reconcilePlaybackOptions(options({rate:0}),'rate'),/không hợp lệ/);
+test('G00 playback option validator still rejects unsafe values',()=>{
+  assert.throws(()=>reconcilePlaybackOptions(options({focusMs:9000})),/không hợp lệ/);
+  assert.throws(()=>reconcilePlaybackOptions(options({rate:0})),/không hợp lệ/);
+  assert.throws(()=>reconcilePlaybackOptions(options({skipSilence:'yes'})),/không hợp lệ/);
 });
 const check={status:'valid',startSample:0,anchorSample:0,endSampleExclusive:8000*130};
 test('G00 explicit A-B 90s silence scans in two <=60s bounded windows',async()=>{
