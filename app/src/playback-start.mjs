@@ -16,6 +16,27 @@ export function resolvePlaybackStart(manifest, recordingId, offsetMs, preRollMs,
   return {...pre,originalMs:offsetMs};
 }
 
+/** Adjacent committed sample ranges may be separate WAV segments, but are
+ * contiguous in sample time. A positive gap MUST stop playback/export. */
+export function committedContiguousEnd(ranges,firstSample){
+  if(!Array.isArray(ranges)||!Number.isSafeInteger(firstSample)||firstSample<0)
+    throw Error('Dữ liệu PCM không hợp lệ');
+  const i=ranges.findIndex(r=>Number.isSafeInteger(r.sampleStart)&&
+    Number.isSafeInteger(r.sampleEndExclusive)&&r.sampleEndExclusive>r.sampleStart&&
+    firstSample>=r.sampleStart&&firstSample<r.sampleEndExclusive);
+  if(i<0)return null;
+  let end=ranges[i].sampleEndExclusive;
+  for(let j=i+1;j<ranges.length;j++){
+    const r=ranges[j];
+    if(!Number.isSafeInteger(r.sampleStart)||!Number.isSafeInteger(r.sampleEndExclusive)||
+       r.sampleEndExclusive<=r.sampleStart||r.sampleStart<end)
+      throw Error('Các khoảng PCM chồng lấn hoặc sai thứ tự');
+    if(r.sampleStart!==end)break;
+    end=r.sampleEndExclusive;
+  }
+  return end;
+}
+
 /** G10 playback selects actual committed samples, NOT millisecond-rounded G05
  * display intervals. In particular, reaching sampleEndExclusive is natural EOF.
  * Never skip a gap, substitute a nearby recording, or seek beyond committed PCM.
@@ -52,7 +73,7 @@ export function selectCommittedPlayback(manifest,recordingId,offsetMs,preRollMs=
   const startSample=Math.max(selected.sampleStart,anchorSample-before);
   const startMs=startSample*1000/rate;
   return {status:'valid',startSample,anchorSample,
-    endSampleExclusive:selected.sampleEndExclusive,startMs,
+    endSampleExclusive:committedContiguousEnd(ranges,startSample),startMs,
     preRollLimited:startSample>anchorSample-before,
     requestedPreRollMs:preRollMs,actualPreRollMs:(anchorSample-startSample)*1000/rate};
 }
