@@ -328,49 +328,117 @@ export class AudioPlayer {
     this.startChain=operation.catch(()=>{});
     return operation;
   }
-  /** Native HTML audio applies preservesPitch to the browser decoder. It is
-   * used only for bounded verified focus windows, never silently for hours. */
-  async startPitchMedia(check,run,{rate,maxDurationMs,rnnoise=false}){
-    const plan=planPitchWindow(check,this.manifest.sampleRate,maxDurationMs);
-    const blob=await readPitchWav(this.reader,plan,{cancelled:()=>run!==this.currentRun});
-    if(run!==this.currentRun||!blob)return false;
-    const media=new Audio();
-    if(!('preservesPitch' in media))
-      throw Error('Trình duyệt không hỗ trợ giữ cao độ khi đổi tốc độ phát.');
-    media.preservesPitch=true;
-    if(media.preservesPitch!==true)
-      throw Error('Trình duyệt từ chối giữ cao độ giọng nói.');
-    media.playbackRate=rate;media.preload='auto';
-    const url=URL.createObjectURL(blob);
-    this.media=media;this.mediaUrl=url;this.mediaStartSample=plan.startSample;
-    media.src=url;
-    this.mediaNode=this.context.createMediaElementSource(media);
-    this.mediaNode.connect(this.playbackInput??this.voiceChain?.input??this.context.destination);
-    this.nextSample=plan.startSample;this.endSampleExclusive=plan.endSample;
-    this.lastRenderedSample=plan.startSample;this.startOffsetMs=plan.startSample*1000/plan.rate;
-    this.underruns=0;this.playing=true;
-    media.onended=()=>{if(run===this.currentRun)this.finish();};
+  /** Build a *single* small WAV while the preceding clip is playing.
+   * Native media decoding preserves pitch; at most current+prefetch blobs are
+   * resident, even when the original WAV session lasts multiple hours.
+   */
+  async nextPitchChunk(run){
+    const rate=this.manifest.sampleRate;
+    while(run===this.currentRun&&this.nextSample<this.endSampleExclusive){
+      const decision=this.silenceIndex?
+        await this.silenceIndex.next(this.nextSample):null;
+      if(run!==this.currentRun)return null;
+      if(this.silenceIndex&&!decision)return null;
+      if(decision?.skipTo!==null&&decision?.skipTo!==undefined){
+        this.nextSample=decision.skipTo;
+        continue;
+      }
+      const plan=planStreamChunk(rate,this.nextSample,this.endSampleExclusive,
+        decision?.availableUntil??this.endSampleExclusive);
+      const blob=await readPitchWav(this.reader,plan,{
+        cancelled:()=>run!==this.currentRun});
+      if(run!==this.currentRun||!blob)return null;
+      const media=new Audio();
+      if(!('preservesPitch' in media))
+        throw Error('Trình duyệt không hỗ trợ giữ cao độ khi phát theo luồng.');
+      media.preservesPitch=true;
+      if(media.preservesPitch!==true)
+        throw Error('Trình duyệt không thể giữ cao độ giọng nói.');
+      media.playbackRate=this.rate;media.preload='auto';
+      const url=URL.createObjectURL(blob);
+      let node;
+      try{
+        media.src=url;
+        node=this.context.createMediaElementSource(media);
+        node.connect(this.playbackInput??this.voiceChain?.input??this.context.destination);
+      }catch(error){
+        try{media.removeAttribute('src');media.load();}catch{}
+        URL.revokeObjectURL(url);
+        throw error;
+      }
+      const chunk={media,url,node,startSample:plan.startSample,endSample:plan.endSample};
+      this.pitchChunks.add(chunk);
+      this.nextSample=plan.endSample;
+      return chunk;
+    }
+    return null;
+  }
+  releasePitchChunk(chunk){
+    if(!chunk||!this.pitchChunks.has(chunk))return;
+    this.pitchChunks.delete(chunk);
+    chunk.media.onended=null;
+    try{chunk.media.pause();chunk.media.removeAttribute('src');chunk.media.load();}catch{}
+    try{chunk.node.disconnect();}catch{}
+    URL.revokeObjectURL(chunk.url);
+    if(this.mediaChunk===chunk){
+      this.mediaChunk=null;this.media=null;this.mediaStartSample=null;
+    }
+  }
+  async activatePitchChunk(chunk,run){
+    if(run!==this.currentRun)return false;
+    this.mediaChunk=chunk;this.media=chunk.media;
+    this.mediaStartSample=chunk.startSample;
+    const media=chunk.media;
+    media.onended=()=>{
+      if(run!==this.currentRun||!this.playing)return;
+      this.advancePitchChunk(run,chunk).catch(error=>{
+        if(run===this.currentRun)this.stopWithError(error);
+      });
+    };
     await media.play();
     if(run!==this.currentRun)return false;
+    // Prefetch only one additional <=6s verified WAV. Never allocate a
+    // session-length media Blob, never scan all silence upfront.
+    this.pitchPrefetch=this.nextPitchChunk(run).catch(error=>{
+      if(run===this.currentRun)this.stopWithError(error);
+      return null;
+    });
+    return true;
+  }
+  async advancePitchChunk(run,finished){
+    if(run!==this.currentRun||!this.playing||this.mediaChunk!==finished)return;
+    this.lastRenderedSample=finished.endSample;
+    this.releasePitchChunk(finished);
+    const next=await this.pitchPrefetch;
+    if(run!==this.currentRun||!this.playing)return;
+    this.pitchPrefetch=null;
+    if(!next){this.finish();return;}
+    await this.activatePitchChunk(next,run);
+  }
+  async startPitchMedia(check,run,{rate,rnnoise=false,skipSilence=false}){
+    this.playing=true;
+    this.schedulingComplete=false;
+    this.lastRenderedSample=check.startSample;
+    this.startOffsetMs=check.startMs;
+    this.underruns=0;
+    const first=await this.nextPitchChunk(run);
+    if(run!==this.currentRun)return false;
+    if(!first){this.finish();return true;}
+    if(!await this.activatePitchChunk(first,run))return false;
     this.timer=setInterval(()=>{
       if(run===this.currentRun&&this.playing)
         this.onEvent('position',{recordingId:this.recordingId,offsetMs:this.positionMs()});
     },170);
-    this.onEvent('playing',{recordingId:this.recordingId,offsetMs:this.startOffsetMs,
-      rate,pitchPreserved:true,rnnoiseEnabled:rnnoise,preRollLimited:check.preRollLimited,
-      actualPreRollMs:check.actualPreRollMs});
+    this.onEvent('playing',{recordingId:this.recordingId,offsetMs:first.startSample*1000/this.manifest.sampleRate,
+      rate,pitchPreserved:true,skipSilence:skipSilence,
+      silenceSkipEnabled:skipSilence,rnnoiseEnabled:rnnoise,
+      preRollLimited:check.preRollLimited,actualPreRollMs:check.actualPreRollMs});
     return true;
   }
   cleanupPitchMedia(){
-    const media=this.media,url=this.mediaUrl;
-    this.media=null;this.mediaUrl=null;this.mediaStartSample=null;
-    if(media){
-      media.onended=null;
-      try{media.pause();media.removeAttribute('src');media.load();}catch{}
-    }
-    try{this.mediaNode?.disconnect();}catch{}
-    this.mediaNode=null;
-    if(url)URL.revokeObjectURL(url);
+    this.pitchPrefetch=null;
+    for(const chunk of [...this.pitchChunks])this.releasePitchChunk(chunk);
+    this.media=null;this.mediaChunk=null;this.mediaStartSample=null;
   }
   positionMs(){
     if(!this.manifest?.sampleRate)return null;
