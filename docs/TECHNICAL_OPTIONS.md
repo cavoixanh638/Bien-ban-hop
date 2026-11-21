@@ -7,6 +7,12 @@
 
 > **Quy tắc quan trọng:** “Đề xuất chọn” không có nghĩa “đã lập trình”, “đã kiểm chứng trên Windows” hay “đã PASS”. Các lựa chọn liên quan đến gõ tiếng Việt, audio dài, seek và recovery chỉ chính thức khi đạt thử nghiệm. Tài liệu này không mở rộng Giai đoạn 1 sang AI.
 
+## G00 — Kết quả triển khai alpha có bằng chứng CI (21/11/2026)
+
+Phần so sánh lựa chọn công nghệ dưới đây vẫn là dữ liệu nghiên cứu, không mặc nhiên bị thay thế. Với nhóm phát lại bổ sung, đã **triển khai thử nghiệm opt-in** trong ứng dụng tích hợp, chưa chọn engine production: `@sapphi-red/web-noise-suppressor@0.4.1` để xử lý RNNoise WASM bằng AudioWorklet cục bộ 48kHz, `HTMLMediaElement.preservesPitch` trên các cửa sổ WAV đã xác minh ≤60 giây/32 MiB và xử lý khoảng im lặng theo RMS/nguồn sample. Lựa chọn này giữ C2 mặc định, không đụng thu G02/lưu OPFS G03/backup, không tự đi qua gap, không gửi âm thanh lên cloud.
+
+**Bằng chứng hiện có:** Code/Tested SHA `8cf09646b4800037caadd9cd5e391da94f90af32`, [Actions #44890639015](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44890639015) SUCCESS: Windows/Linux 89/89 Node mỗi hệ, Chromium dev 34 PASS + 1 skip, production/PWA 35 PASS. Các phép đo chất lượng cao độ, CPU/latency/RAM của RNNoise và giọng nhiều người/micro Windows thật, xử lý 3 giờ và so sánh lựa chọn production vẫn **NOT_RUN**. Thuật toán RMS không đồng nghĩa speech VAD. Kết quả alpha không đủ căn cứ kết luận đã chốt lựa chọn sản xuất.
+
 ## 1. Bài toán cần giải quyết và thứ tự ưu tiên
 
 Biên bản họp là **trình soạn thảo ghi chú có liên kết âm thanh tự động**, không phải phần mềm ghi âm có thêm ô nhập. Người dùng chỉ tập trung gõ như Word; một đoạn không Enter vẫn có nhiều mốc. Nghe lại từ chữ/con trỏ không cản trở sửa. Ghi âm nhiều giờ phải có thể khôi phục phần đã lưu, phát xuyên nhiều file như một nguồn, hoạt động offline và sao lưu ra ngoài trình duyệt.
