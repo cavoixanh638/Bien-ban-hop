@@ -37,6 +37,7 @@ import {NoteAudioFollower} from './note-follow.mjs';
 const $=id=>document.getElementById(id),state={store:null,run:null,lease:new MeetingLease(),switching:false};
 let timelineUI=null,noteFollower=null;
 let meetingSearchTimer=null,meetingSearchGeneration=0,meetingSearchTerm='',meetingSearchIds=null,meetingSearchIndex=null;
+let liveReplayAnchor=null,liveReplayGeneration=0;
 let loopPoints={a:null,b:null,range:null,active:false},loopVersion=0;
 const loopLabel=ms=>Number.isFinite(ms)?(ms/1000).toFixed(1)+'s':'—';
 function refreshLoopUI(){
@@ -910,24 +911,40 @@ function syncPlaybackControls(changed='initial'){
 /** A playback setting takes effect immediately while listening, preserving
  * SOURCE time rather than the shortened position after silence skipping.
  */
+function discardLiveReplay(){
+  liveReplayGeneration++;liveReplayAnchor=null;
+}
 async function applyPlaybackOptionsLive(){
-  if(!player.playing||!player.recordingId||transferBusy||state.switching)return;
+  if(transferBusy||state.switching)return;
   const run=state.run;
   if(run?.capture&&['starting','capturing','paused','stopping'].includes(run.capture.state))return;
-  const id=player.recordingId,position=player.positionMs();
-  if(!Number.isFinite(position)||position<0)return;
+  // On the first change, capture the SOURCE position. If the user changes
+  // 2-3 switches rapidly while a new decoder/worklet is loading, subsequent
+  // changes still restart from this anchor; the LAST request always wins.
+  if(player.playing&&player.recordingId){
+    const position=player.positionMs();
+    if(Number.isFinite(position)&&position>=0)
+      liveReplayAnchor={id:player.recordingId,position,meetingId:run?.meetingId};
+  }
+  const anchor=liveReplayAnchor;
+  if(!anchor||anchor.meetingId!==run?.meetingId)return;
+  const generation=++liveReplayGeneration;
   let duration=Number($('focus-duration').value);
-  if(loopPoints.active&&loopPoints.range?.recordingId===id){
-    duration=Math.max(0,Math.floor(loopPoints.range.endMs-position));
+  if(loopPoints.active&&loopPoints.range?.recordingId===anchor.id){
+    duration=Math.max(0,Math.floor(loopPoints.range.endMs-anchor.position));
     if(duration<400)return;
   }
-  const result=await player.start(id,Math.floor(position),{
-    preRollMs:0,rate:Number($('play-rate').value),
-    preservePitch:$('pitch-preserve').checked,skipSilence:$('silence-skip').checked,
-    rnnoise:$('rnnoise-toggle').checked,maxDurationMs:duration
-  });
-  if(result?.status!=='valid'&&result?.status!=='cancelled')
-    show('Không áp dụng được chế độ nghe: '+(result?.reason??result?.status),'error');
+  try{
+    const result=await player.start(anchor.id,Math.floor(anchor.position),{
+      preRollMs:0,rate:Number($('play-rate').value),
+      preservePitch:$('pitch-preserve').checked,skipSilence:$('silence-skip').checked,
+      rnnoise:$('rnnoise-toggle').checked,maxDurationMs:duration
+    });
+    if(generation===liveReplayGeneration&&result?.status!=='valid'&&result?.status!=='cancelled')
+      show('Không áp dụng được chế độ nghe: '+(result?.reason??result?.status),'error');
+  }finally{
+    if(generation===liveReplayGeneration)liveReplayAnchor=null;
+  }
 }
 function wire(){
   wireWordTools();
@@ -960,10 +977,14 @@ function wire(){
     const r=state.run?.meeting?.recordingIds?.at(-1);
     if(r)saveWavInRecording(r);
   };
+  $('timeline-play').addEventListener('click',()=>{
+    if(player.playing)discardLiveReplay();
+  },{capture:true});
   $('rec-start').onclick=startRecording;
   $('rec-pause').onclick=pauseRecording;
   $('rec-stop').onclick=stopRecording;
   $('play-stop').onclick=()=>{
+    discardLiveReplay();
     loopPoints.active=false;loopVersion++;refreshLoopUI();
     player.stop();show('Đã dừng phát lại.');
   };
