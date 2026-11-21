@@ -29,6 +29,19 @@ npm run dev
 4. Nhấn **Bắt đầu ghi**, gõ ghi chú ngay vào trang giấy; không phải nhập mã mốc. Sau khi dừng, nhấp đoạn chữ có gắn mốc để nghe. `Alt+Enter` nghe mốc tại con trỏ; `Esc` dừng phát. Ghi chú tự lưu với revision, báo "Đã lưu" chỉ sau IDB transaction hoàn tất.
 5. Có thể tạo/chuyển cuộc họp, đổi tên, sử dụng hai tab (chỉ một tab giữ writer lock), xuất DOCX/TXT/MD/CSV, **Sao lưu biên bản và ghi âm** và **Khôi phục biên bản từ tệp**. Khi nhập, chương trình kiểm tra checksum rồi tạo ID cuộc họp, ghi chú và phiên thu mới; không ghi đè cuộc họp đang có.
 
+## G00 — Nghe Liên tục với lọc nhiễu, giữ cao độ và bỏ qua im lặng (22/11/2026)
+
+**Hướng dẫn này mới hơn checkpoint G00 ngày 21/11 ở dưới và thay thế giới hạn nghe đoạn ngắn trước đây.**
+
+- Sau khi dừng thu, ở thanh **TOÀN BỘ GHI ÂM**, để **Nghe tập trung = Liên tục** và chọn tốc độ 0,5–2×. **Giữ cao độ tự động** nay bật mặc định; muốn nghe kiểu cũ có giọng đổi cao độ thì bỏ chọn. Bộ phát giữ cao độ đọc từng WAV nhỏ ≤6 giây từ OPFS đã xác minh; không tải cả phiên 2–3 giờ vào RAM.
+- Tích **Bỏ qua im lặng** ngay trong chế độ **Liên tục**. Ứng dụng phân tích theo từng cửa sổ PCM khoảng 8 giây trước vùng đang nghe và bỏ khoảng yên tĩnh dài theo RMS; không tự chuyển sang 30 giây nữa. Âm thanh nguồn, sample index, các ghi chú và `timeSpan` không đổi. Đây chưa phải AI VAD nhận dạng giọng người; nên so sánh với âm thanh Gốc nếu có người nói nhỏ hoặc ngồi xa.
+- **Lọc nhiễu RNNoise (thử nghiệm)** có thể bật **cùng lúc** với Giữ cao độ và Bỏ qua im lặng (trước đây chỉ được chọn một). Mô hình WASM chạy trên trình duyệt khi phát, không gửi âm thanh lên server, không ghi đè WAV. **Làm rõ giọng** bằng EQ cũng chỉ thay luồng nghe.
+- Có thể bật/tắt ba công tắc, đổi tốc độ khi đang nghe; bộ phát sẽ đọc lại từ **mốc nguồn đang phát**, ưu tiên cấu hình cuối cùng khi người dùng đổi liên tiếp. Nút **Dừng** hủy các thao tác đọc/cất trước; việc kết thúc hoặc đổi cuộc họp không tự phát nhầm mốc.
+- Khi **Liên tục** và có nhiều phiên ghi trong cùng cuộc họp, ứng dụng có thể chuyển sang phiên tiếp theo nếu cuối phiên trước và đầu phiên sau là mẫu hợp lệ, không có gap. Khi có khoảng thiếu ghi âm, bộ phát dừng và yêu cầu bạn chọn vị trí có dữ liệu, **không tự đoán nguồn**. Thời gian nghỉ giữa các phiên không được cộng vào timeline.
+- **Giới hạn bản alpha:** phát giữ cao độ bằng các đoạn MediaElement ≤6 giây có thể có tiếng nối/chậm ở ranh giới; chưa được kiểm chứng *gapless* trên loa Windows thật. Không nên dùng lọc mạnh hoặc bỏ im lặng để xác định chính xác lời nói nhỏ trong biên bản. Muốn đối chiếu nguyên bản: bỏ chọn RNNoise, Bỏ qua im lặng, để tốc độ 1× và EQ Gốc.
+- **Cập nhật về máy:** Kết thúc thu và đóng server cũ. Trong GitHub Desktop chọn `integration/20261115-g10-v1.2`, bấm **Fetch origin → Pull origin**, chạy `app/START_WINDOWS.cmd`, mở `http://127.0.0.1:5173/`, nhấn **Ctrl+Shift+R**. Không xóa Storage/OPFS/IndexedDB vì đây là kho ghi âm cục bộ.
+- **Kiểm thử:** `app/tests/streaming-playback.test.mjs`, `app/tests/continuous-session.test.mjs`, `app/e2e/continuous-audio.spec.mjs`, `app/e2e/continuous-sessions.spec.mjs` và hồi quy gõ/lưu/backup/timeline. Code/Tested SHA, PASS/FAIL ghi chính thức trong `docs/STATUS.md` khi CI kết thúc; máy thật 3h/micro/IME/RNNoise chất lượng vẫn NOT_RUN. **INTEGRATION_ALPHA / RELEASE HOLD**.
+
 ## G00 — Bỏ qua im lặng: đã sửa lỗi chọn Liên tục (21/11/2026)
 
 **Lỗi ảnh người dùng:** trước đây bật **Bỏ qua im lặng** khi **Nghe tập trung = Liên tục** rồi nhấp chữ/phiên phát sẽ hiện `Không nghe lại được: Để bỏ qua im lặng, hãy chọn Nghe tập trung 15/30/60 giây`. Đây là lỗi phối hợp UI–bộ phát mà E2E cũ chưa bao phủ.
