@@ -5,8 +5,8 @@
  */
 import {AudioRPC} from './audio.mjs';
 import {readWaveformEnvelope,waveformDisplayHeights} from './waveform-envelope.mjs';
-import {buildMeetingTimeline,locateMeetingPosition,meetingPositionFor,firstPlayablePosition}
-  from './meeting-timeline.mjs';
+import {buildMeetingTimeline,locateMeetingPosition,meetingPositionFor,firstPlayablePosition,
+  nextContiguousSession} from './meeting-timeline.mjs';
 
 const $=id=>document.getElementById(id);
 const fmt=ms=>{
@@ -14,8 +14,8 @@ const fmt=ms=>{
   return [Math.floor(n/3600),Math.floor(n%3600/60),n%60].map(x=>String(x).padStart(2,'0')).join(':');
 };
 export class MeetingTimelineUI {
-  constructor({player,getRun,onError=()=>{}}){
-    this.player=player;this.getRun=getRun;this.onError=onError;
+  constructor({player,getRun,onError=()=>{},isLooping=()=>false}){
+    this.player=player;this.getRun=getRun;this.onError=onError;this.isLooping=isLooping;
     this.epoch=0;this.model=null;this.selectedMs=0;this.scrubbing=false;this.busy=false;
     this.waveformBusy=false;this.waveformAbort=null;this.waveformData=null;this.waveformTask=null;
   }
@@ -265,8 +265,24 @@ export class MeetingTimelineUI {
       if(target!==null)this.setPosition(target);
       this.updatePlayButton();
     }
-    if(type==='ended')$('timeline-notice').textContent=
-      'Đã phát hết vùng âm thanh liền mạch. Chọn vị trí khác để nghe tiếp; không tự bỏ qua vùng thiếu.';
+    if(type==='ended'){
+      const next=Number($('focus-duration').value)===0&&!this.isLooping()?
+        nextContiguousSession(model,detail.recordingId,detail.offsetMs):null;
+      if(!next){
+        $('timeline-notice').textContent='Đã phát hết vùng âm thanh liền mạch. '+
+          'Không tự vượt qua khoảng thiếu dữ liệu.';
+      }else{
+        const epoch=this.epoch,run=this.getRun(),generation=this.player.currentRun;
+        $('timeline-notice').textContent='Đang chuyển sang phiên '+next.session+
+          ' liền mạch; không tính thời gian nghỉ giữa các phiên.';
+        queueMicrotask(async()=>{
+          if(epoch!==this.epoch||this.busy||this.getRun()!==run||
+            this.isLooping()||generation!==this.player.currentRun)return;
+          try{await this.seek(next.absoluteMs);}
+          catch(error){this.onError('Không thể tiếp tục sang phiên sau: '+error.message);}
+        });
+      }
+    }
     if(type==='unavailable'||type==='error')$('timeline-notice').textContent=
       'Không thể phát vùng âm thanh đã chọn. Dữ liệu không bị tự động chuyển sang đoạn khác.';
   }
