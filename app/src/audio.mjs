@@ -199,7 +199,7 @@ export class AudioPlayer {
     // Serialize worker setup and playback starts. A cancelled/older seek
     // must never resume after Stop, switching meetings, or a newer seek.
     this.startChain=Promise.resolve();this.voiceMode='off';this.voiceChain=null;
-    this.silenceRanges=[];
+    this.silenceRanges=[];this.silenceSkippedMs=0;
   }
   setVoiceMode(mode){
     this.voiceMode=mode;
@@ -253,13 +253,13 @@ export class AudioPlayer {
         }
         await this.context.resume();
         if(run!==this.currentRun)return cancelled();
-        this.silenceRanges=[];
+        this.silenceRanges=[];this.silenceSkippedMs=0;
         if(skipSilence){
           this.onEvent('silence-scan',{recordingId});
           const result=await scanVerifiedSilence(this.reader,check,this.manifest.sampleRate,maxDurationMs,
             {cancelled:()=>run!==this.currentRun});
           if(run!==this.currentRun||!result)return cancelled();
-          this.silenceRanges=result.ranges;
+          this.silenceRanges=result.ranges;this.silenceSkippedMs=result.skippedMs;
           this.onEvent('silence-indexed',{recordingId,
             skippedMs:result.skippedMs,ranges:result.ranges.length});
         }
@@ -285,7 +285,8 @@ export class AudioPlayer {
               this.onEvent('position',{recordingId:this.recordingId,offsetMs:position});
           },170);
           this.onEvent('playing',{recordingId,offsetMs:check.startMs,rate,
-            preRollLimited:check.preRollLimited,actualPreRollMs:check.actualPreRollMs});
+            preRollLimited:check.preRollLimited,actualPreRollMs:check.actualPreRollMs,
+            silenceSkipEnabled:skipSilence,skippedMs:this.silenceSkippedMs});
           return {status:'valid'};
         }
         return run!==this.currentRun?cancelled():
@@ -445,7 +446,7 @@ export class AudioPlayer {
   stop(){
     const wasPlaying=this.playing,recordingId=this.recordingId,offsetMs=this.positionMs();
     this.playing=false;this.schedulingComplete=false;this.currentRun=++this.serial;
-    this.silenceRanges=[];
+    this.silenceRanges=[];this.silenceSkippedMs=0;
     clearInterval(this.timer);
     for(const source of this.sources)try{source.stop();source.disconnect();}catch{}
     this.sources.clear();this.scheduled.clear();
