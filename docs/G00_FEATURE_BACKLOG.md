@@ -12,7 +12,7 @@
 | 04 | Bảng/ô gộp | **Một phần** | Thao tác TableKit, DOCX `colspan`/`rowspan`; ô hợp nhất và bảng dài qua trang chưa nghiệm thu Word desktop |
 | 05 | DOCX định dạng/A4/lề | **Một phần** | DOCX A4, font/cỡ/giãn dòng, ảnh/link/ngắt trang; có 3 mức lề Word/PDF, chưa đủ pagination Word desktop |
 | 06 | Nghe tập trung/phím tắt | **Có chức năng cơ bản** | Nghe 15/30/60s hoặc liên tục; Alt+Enter tại mốc |
-| 07 | Lặp A–B, tua, tốc độ | **Đã có, CI PASS; thiết bị thật NOT_RUN** | A–B có thể đi qua **ranh giới WAV liền mẫu** trong cùng phiên; tuyệt đối từ chối gap/phiên khác; tua ±10s, 0,5–2×, C2 thông thường đổi cao độ; chọn riêng chế độ giữ cao độ đoạn ngắn ở #09 |
+| 07 | Lặp A–B, tua, tốc độ | **Đã có, CI PASS bổ sung A–B; thiết bị thật NOT_RUN** | A–B có thể đi qua **ranh giới WAV liền mẫu** trong cùng phiên; tuyệt đối từ chối gap/phiên khác; tua ±10s, 0,5–2×, A–B từ 0,4–120s; skip-silence trong A–B quét ≤60s mỗi cửa sổ, C2 thông thường đổi cao độ; chọn riêng chế độ giữ cao độ đoạn ngắn ở #09 |
 | 08 | Nhập âm thanh sẵn | **Một phần** | WAV PCM/float mono, stereo → mono theo chunk ≤2GB/3h; MP3/M4A/WebM/OGG nếu `decodeAudioData` hỗ trợ ≤32MB/30 phút. Lưu OPFS commit, liên kết khi đang phát; chưa streaming giải mã file nén dài, pause-to-type chưa nghiệm thu |
 | 09 | Giữ cao độ giọng khi nghe chậm | **Opt-in đã tích hợp, CI PASS; nghe thật NOT_RUN** | Dùng HTMLMediaElement `preservesPitch` với WAV đã kiểm chứng; cửa sổ nghe tập trung 15/30/60 giây, ≤32 MiB, không dùng Liên tục. C2 mặc định vẫn đổi pitch ở rate ≠1; chưa đo chất lượng trên Windows thực |
 | 10 | EQ làm rõ giọng | **Có chức năng cơ bản** | Gốc/Nhẹ/Rõ hơn chỉ trên luồng nghe, không sửa WAV; không phải AI denoise |
@@ -21,9 +21,16 @@
 | 13 | Đánh dấu đoạn quan trọng | **Một phần** | Mark `important` lưu trong note JSON, danh sách lọc `timeSpan` hợp lệ, bấm nghe; cần thử tương tác dài với IME |
 | 14 | Cảnh báo quota/kiểm chứng sao lưu | **Một phần** | `navigator.storage.estimate()` chỉ ước tính + tự cảnh báo, chọn file v2 để verify SHA256/CRC từng entry; đã có chế độ tự kiểm chứng SHA256/CRC ngay sau SaveFilePicker (mặc định bật) hoặc kiểm thủ công; chưa xác minh v1 và trường hợp file đa GB trên Windows thật |
 | 15 | Xuất clip WAV A–B | **Đã có clip qua ranh giới WAV liền mẫu, CI PASS; Windows thật NOT_RUN** | Xuất Float32 WAV từ PCM đúng sample qua các đoạn adjacent đã xác minh; không qua gap/khác phiên, giới hạn 0,4–120s; chưa kiểm file dài/thiết bị thực |
-| 16 | Waveform | **Đã sửa lỗi khó nhìn; chờ CI mới / máy thật NOT_RUN** | 128 vị trí × 1024 PCM vẫn là lấy mẫu xấp xỉ; từ 21/11 waveform tách thành **sóng xanh lam ở phía trên** và dải recorded/gap phía dưới, 50px, cột tối thiểu 4px, chuẩn hóa RMS nhưng không khuếch đại nhiễu nền cực nhỏ. Bằng chứng chức năng cũ PASS SHA c9f4860; bản sửa UX đang chờ CI đúng SHA 88be7d4. Chưa full waveform/thiết bị thật |
+| 16 | Waveform | **Có mã, Chromium CI PASS; máy thật NOT_RUN** | 128×1024 mẫu PCM xấp xỉ, vùng sóng lam ở trên dải coverage xanh/xám, cột ≥4px, chuẩn hóa RMS trung thực; test unit+Chromium dev/prod tại SHA d730b40 PASS; **chưa phải full-resolution waveform** |
 | 17 | RNNoise WASM | **Đã tích hợp tùy chọn, CI PASS; nghe thật NOT_RUN** | Thư viện `@sapphi-red/web-noise-suppressor@0.4.1`, WASM AudioWorklet 48k, nạp động, xử lý chỉ trên đường phát; nguồn WAV/OPFS không đổi; chưa benchmark CPU/RAM/âm nhiều người trên máy thật |
-| 18 | Tự bỏ qua im lặng | **Opt-in RMS đã tích hợp, CI PASS; VAD giọng thật NOT_RUN** | Chỉ xét PCM đã lưu của cửa sổ nghe ≤60s, bỏ vùng im lặng dài theo năng lượng (không phải speech VAD AI); giữ `timeSpan` và mapping sample gốc, OFF mặc định, chặn vùng thiếu/gap |
+| 18 | Bỏ qua im lặng | **Đã sửa lỗi Liên tục; Chromium CI PASS, máy thật NOT_RUN** | Khi bật skip từ Liên tục, tự chọn focus **30s** và hiện giải thích; chọn lại Liên tục sẽ tắt skip. Mốc PCM giữ nguyên, RMS cửa sổ ≤60s; A–B tường minh 0,4–120s quét nhiều cửa sổ. Bài unit/browser tái hiện lỗi và các tổ hợp đã PASS SHA d730b40; **không phải skip-silence nhiều giờ liên tục hoặc speech VAD ML** |
+
+## Checkpoint G00 — Khắc phục lỗi Bỏ qua im lặng và rà toàn bộ tính năng (21/11/2026)
+
+- Lỗi ảnh người dùng: checkbox skip-silence + focus `Liên tục` gây lỗi runtime; UI đã tự đổi focus sang 30 giây khi bật skip, khi chọn lại Liên tục sẽ tắt skip rõ ràng. Đồng bộ giữ cao độ/rate/skip, tránh chọn xung đột; chuyển `Nghe tập trung` lên cạnh tốc độ. Không giả vờ hỗ trợ xử lý im lặng cho toàn bản thu nhiều giờ.
+- Sửa giới hạn lặp A–B khi skip: clip 0,4–120s, phân tích PCM tách cửa sổ ≤60s, giữ nguyên recordingId/timeSpan. Bổ sung unit cho 0,4s, 90s, cancellation/gap, UI options, và Chromium E2E tái hiện nguyên lỗi, RNNoise kết hợp, kiểm màu nút, waveform.
+- **Code SHA = Tested SHA `d730b40d763acc0453056d5f27d711a0c35c41a5`**; [Actions #44908183703](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44908183703) **SUCCESS**: Node 100/100 mỗi hệ Linux/Windows, Chromium dev 38 PASS + 1 PWA-only SKIP, production 39/39 PASS, 0 FAIL. Cache PWA và tài liệu sau SHA này là các commit hậu kiểm, xem PR #1 để kiểm tra HEAD.
+- **Đã đối chiếu đủ 18 nhóm** (bảng bằng chứng/mức chưa nghiệm thu trong `docs/STATUS.md`). Phần đầy đủ trên Windows thật, micro/UniKey/EVKey, 3h, Word desktop, gói nhiều GB, CPU/RAM và chất lượng khử nhiễu vẫn NOT_RUN. Giữ **RELEASE HOLD**, PR Draft, không merge/deploy.
 
 ## Checkpoint G00 — Waveform và nút ghi âm dễ nhìn (21/11/2026)
 
