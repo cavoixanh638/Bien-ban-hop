@@ -6,6 +6,15 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Sửa waveform khó nhìn và hai nút ghi âm chưa nổi bật (21/11/2026)
+
+- **Nguồn phát hiện:** ảnh giao diện người dùng đang ghi âm 7 phiên (~1 giờ 22 phút): nhãn `Đã lấy mẫu 128 vị trí` nhưng gần như không thấy biểu đồ sóng; `Tạm dừng` và `Kết thúc` đều trắng giống nút thông thường.
+- **Sửa hiển thị:** waveform RMS lấy mẫu **không còn nằm trong sọc recorded 18px**; tách thành dải sóng xanh lam phía trên, dải green/gray có/thiếu PCM phía dưới. Khung tua cao 50px; cột có khe, tối thiểu 4px và tỷ lệ tương đối theo RMS đã đo. Có sàn RMS 0,002 để không khuếch đại tiếng nền cực nhỏ thành sóng cao. Khoảng gap giữ `null`, tuyệt đối không vẽ giả hoặc đổi PCM/timeSpan.
+- **Sửa nút ghi:** trong trạng thái `capturing`, **Tạm dừng màu vàng cam**, **Kết thúc màu đỏ**, cỡ nút ≥44px/đậm; trong trạng thái `paused`, **Tiếp tục màu xanh lá**, **Kết thúc giữ đỏ**. Nút vô hiệu hóa vẫn thể hiện disabled; thêm focus-visible và dữ liệu `data-mode` từ state ghi âm, không thay hành vi thu/lưu.
+- **Bài test mới:** unit `waveformDisplayHeights` kiểm RMS=0, tín hiệu nhỏ, tín hiệu có thật, gap/null và giá trị sai; Chromium E2E đo vị trí/chiều cao/thứ tự lớp và màu sóng khác coverage; bài `app/e2e/recording-button-colors.spec.mjs` thử start→pause→resume→stop, kiểm RGB và trạng thái enabled.
+- **Code SHA:** `88be7d4531cb22d7918c771e8d5c815c8e5fa913`; **Tested SHA: NOT_RUN** lúc ghi checkpoint (GitHub Actions đang chờ, xem lần chạy mới nhất trên PR #1). **Windows/thiết bị thật: NOT_RUN**, **RELEASE HOLD**, không merge hoặc deploy. Chỉ ghi PASS sau khi có CI SUCCESS ở đúng mã test.
+- **PWA:** xoay shell cache `bien-ban-hop-20261121-g00-visible-waveform-controls`. Người dùng cần Pull origin để nhận mã mới; chạy `app/START_WINDOWS.cmd`, truy cập `http://127.0.0.1:5173/`.
+
 ## G00 — Hoàn thiện nhóm phát lại nâng cao để người dùng kiểm tra (21/11/2026)
 
 - **Code SHA = Tested SHA:** `8cf09646b4800037caadd9cd5e391da94f90af32`, nhánh `integration/20261115-g10-v1.2`. [GitHub Actions #44890639015](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44890639015) **COMPLETED/SUCCESS**: G10 unit **89/89 PASS** trên **mỗi** hệ Windows và Linux, Vite build/PoC PASS; Chromium dev **34 PASS + 1 intentional PWA SKIP**; Chromium production/PWA **35/35 PASS**, **0 FAIL**. E2E thực sự bật giữ cao độ 0,5×, RNNoise WASM và bỏ im lặng ở cả hai môi trường; không suy luận chất lượng âm người từ test micro giả.
