@@ -895,11 +895,10 @@ function syncPlaybackControls(changed='initial'){
   pitch.checked=settings.preservePitch;
   skip.checked=settings.skipSilence;
   const status=$('playback-mode-status');
-  if(status)status.textContent=notice||(
-    skip.checked?'Bỏ qua im lặng theo cửa sổ '+(settings.focusMs/1000)+' giây, không thay đổi âm thanh gốc.':
+  const summary=skip.checked?'Bỏ qua im lặng theo cửa sổ '+(settings.focusMs/1000)+' giây, không thay đổi âm thanh gốc.':
     pitch.checked&&settings.rate!==1?'Giữ cao độ khi nghe chậm trong cửa sổ đã chọn.':
-    'Bật xử lý tùy chọn để nghe tập trung; nghe Liên tục phát âm thanh gốc.'
-  );
+    'Nghe Liên tục dùng đường phát gốc; xử lý nâng cao có giới hạn thời lượng.';
+  if(status)status.textContent=(notice?notice+' ':'')+summary;
   return settings;
 }
 
