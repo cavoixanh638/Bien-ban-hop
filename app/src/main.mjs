@@ -31,6 +31,7 @@ import {exportMeetingArchiveV2,importMeetingArchiveV2,probeMeetingArchiveVersion
 import {importLegacyMeetingArchive} from './portable-legacy.mjs';
 import {loadPortableSource,createBrowserImportRepo} from './portable-storage.mjs';
 import {MeetingTimelineUI} from './timeline-ui.mjs';
+import {reconcilePlaybackOptions} from './playback-options.mjs';
 import {NoteAudioFollower} from './note-follow.mjs';
 
 const $=id=>document.getElementById(id),state={store:null,run:null,lease:new MeetingLease(),switching:false};
@@ -883,8 +884,31 @@ async function importWordFile(file){
   finally{$('word-file').value='';}
 }
 
+function syncPlaybackControls(changed='initial'){
+  const focus=$('focus-duration'),rate=$('play-rate');
+  const pitch=$('pitch-preserve'),skip=$('silence-skip');
+  const {settings,notice}=reconcilePlaybackOptions({
+    focusMs:Number(focus.value),rate:Number(rate.value),
+    preservePitch:pitch.checked,skipSilence:skip.checked
+  },changed);
+  focus.value=String(settings.focusMs);
+  pitch.checked=settings.preservePitch;
+  skip.checked=settings.skipSilence;
+  const status=$('playback-mode-status');
+  if(status)status.textContent=notice||(
+    skip.checked?'Bỏ qua im lặng theo cửa sổ '+(settings.focusMs/1000)+' giây, không thay đổi âm thanh gốc.':
+    pitch.checked&&settings.rate!==1?'Giữ cao độ khi nghe chậm trong cửa sổ đã chọn.':
+    'Bật xử lý tùy chọn để nghe tập trung; nghe Liên tục phát âm thanh gốc.'
+  );
+  return settings;
+}
+
 function wire(){
   wireWordTools();
+  for(const [id,kind] of [['silence-skip','silence'],['pitch-preserve','pitch'],
+    ['focus-duration','focus'],['play-rate','rate']])
+    $(id).addEventListener('change',()=>syncPlaybackControls(kind));
+  syncPlaybackControls();
   $('meeting-search').oninput=e=>{
     meetingSearchTerm=e.target.value.trim();
     meetingSearchIds=null;
