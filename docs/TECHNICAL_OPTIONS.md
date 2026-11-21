@@ -7,6 +7,14 @@
 
 > **Quy tắc quan trọng:** “Đề xuất chọn” không có nghĩa “đã lập trình”, “đã kiểm chứng trên Windows” hay “đã PASS”. Các lựa chọn liên quan đến gõ tiếng Việt, audio dài, seek và recovery chỉ chính thức khi đạt thử nghiệm. Tài liệu này không mở rộng Giai đoạn 1 sang AI.
 
+## G00 — Đối chiếu thiết kế luồng thay cho cửa sổ nghe cố định (22/11/2026)
+
+Quyết định mức alpha: **bản gốc lưu PCM không xử lý**, trong khi phát có `ProgressiveSilenceIndex` (RMS 8s lookahead) và `HTMLMediaElement.preservesPitch` qua WAV ngắn ≤6s/8MiB được chuẩn bị từng đoạn; RNNoise 0.4.1 WASM/AudioWorklet độc lập có thể nối vào cả đường phát pitch và không pitch. Đây là thiết kế bảo toàn provenance/sample source và giới hạn bộ nhớ, **không phải chứng minh chất lượng audio production**.
+
+Đánh đổi: native browser pitch trên từng chunk tránh tự viết thuật toán WSOLA mới, nhưng có thể có seam/click khi đổi MediaElement và cần benchmark jitter/gap; vì vậy chưa tuyên bố phát gapless. Nếu gặp giật đáng kể trên Windows thật, xem xét engine time-stretch liên tục chuyên dụng và đo tải CPU/RAM trước khi thay C2. Tương tự, skip RMS chỉ phân biệt năng lượng thấp, không phải VAD lời nói; cần thử giọng xa/giọng thấp, ngưỡng ồn phòng họp và chỉ nâng cấp sang speech-VAD sau khi chứng minh không bỏ sót lời phát biểu.
+
+Bằng chứng tự động dự kiến: unit đầu vào 3 giờ chỉ đọc 8 giây đầu, chunk WAV ≤6s/8MiB, nguồn PCM bị thiếu -> từ chối; Chromium file 16s gồm tiếng + im lặng, tốc độ 2×, RNNoise và skip đồng thời, kiểm mốc nguồn và phiên kế tiếp. **Windows thật, UniKey/EVKey, âm thực 3h, MS Word desktop, tài nguyên đa GiB vẫn NOT_RUN**, RELEASE HOLD; xem `docs/STATUS.md` và PR #1 để đối chiếu Tested SHA.
+
 ## G00 — Kết quả triển khai alpha có bằng chứng CI (21/11/2026)
 
 Phần so sánh lựa chọn công nghệ dưới đây vẫn là dữ liệu nghiên cứu, không mặc nhiên bị thay thế. Với nhóm phát lại bổ sung, đã **triển khai thử nghiệm opt-in** trong ứng dụng tích hợp, chưa chọn engine production: `@sapphi-red/web-noise-suppressor@0.4.1` để xử lý RNNoise WASM bằng AudioWorklet cục bộ 48kHz, `HTMLMediaElement.preservesPitch` trên các cửa sổ WAV đã xác minh ≤60 giây/32 MiB và xử lý khoảng im lặng theo RMS/nguồn sample. Lựa chọn này giữ C2 mặc định, không đụng thu G02/lưu OPFS G03/backup, không tự đi qua gap, không gửi âm thanh lên cloud.
