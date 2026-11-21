@@ -4,6 +4,17 @@
 
 **Phạm vi tài liệu:** audio capture, lưu bền vững/checkpoint/khôi phục, nguồn micro và âm thanh máy tính, Virtual Timeline, phát/tua qua các file. So sánh bốn công nghệ và căn cứ lựa chọn tại [TECHNICAL_OPTIONS.md](TECHNICAL_OPTIONS.md); quyết định production vẫn phải dựa benchmark Gói 1.2. Quy tắc liên kết chữ với mốc thuộc [TIMELINE_RULES.md](TIMELINE_RULES.md); schema/manifest thuộc [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## G00 — Hợp đồng audio nâng cao đã tích hợp mức alpha (21/11/2026)
+
+Đây là **đường phát tùy chọn, tắt mặc định**, không thay bộ thu G02, định dạng PCM/OPFS G03, audio manifest, sample clock, `timeSpan`, hay sao lưu v1/v2. **Mọi lựa chọn mốc** vẫn phải có `recordingId` và mẫu PCM durable khớp; ở ranh giới nhiều WAV, chỉ được đi tiếp khi mẫu sau kề ngay mẫu trước, không chạy qua gap hay sang phiên khác. Phát/clip A–B giới hạn cùng một recordingId.
+
+- **Giữ cao độ:** Khi người dùng chọn nghe tập trung 15/30/60 giây và tốc độ ≠1, có thể dựng WAV Float32 từ cửa sổ PCM đã xác minh (≤32 MiB) cho HTMLAudioElement với `preservesPitch=true` rồi đưa vào Web Audio chỉ trong luồng phát. Giữ đường C2 mặc định cho phát liên tục/lâu; nếu API thiếu hoặc chọn Liên tục với giữ cao độ, báo lỗi thay vì ngầm chuyển nguồn.
+- **RNNoise:** `@sapphi-red/web-noise-suppressor@0.4.1` được nạp động dưới dạng WASM/AudioWorklet 48kHz và đặt trước EQ trong đường phát, tắt mặc định. Không sửa/ghi lại WAV, không gửi PCM ra network/CDN. Thất bại khởi tạo phải hiển thị rõ; đóng/disconnect processor sau Stop hoặc đổi phiên. PWA chỉ cache tệp asset thuộc cùng origin sau khi tải.
+- **Bỏ qua im lặng:** Quét theo luồng một cửa sổ PCM durable ≤60 giây, tính RMS trong những cửa sổ khoảng 25ms; các khoảng quá ngưỡng im lặng được đưa vào tập sample-range để scheduler bỏ qua trong lúc phát. `positionMs` vẫn báo mẫu **nguồn**, không phải vị trí rút gọn của thời gian nghe; `audioOffsetMs` và Mark không được cập nhật. Đây không phải VAD/người nói dựa mô hình; không phối hợp với giữ pitch ở tốc độ khác 1× trong alpha.
+- **Waveform:** các cột RMS lấy mẫu tối đa 128 điểm ×1024 frame, chỉ ở sample-range durable, không suy diễn khoảng thiếu. Thao tác có cancel/close OPFS worker riêng khi đổi phiên, không đọc toàn bộ WAV nhiều giờ.
+
+**Code SHA = Tested SHA:** `8cf09646b4800037caadd9cd5e391da94f90af32`, [CI #44890639015](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44890639015) SUCCESS (Node Windows/Linux 89/89, Chromium dev 34 PASS + 1 skip, production 35 PASS). Đây là bằng chứng tương tác giả lập/bundle, **không** phải benchmark phần cứng, pitch perceptual, RNNoise speech separation, đọc >2GB hoặc phê duyệt phát hành. Các trường hợp thiết bị Windows/IME/micro thật, 3 giờ, mất điện/quota, TCs đầy đủ vẫn NOT_RUN / RELEASE HOLD.
+
 ## I. Thu, lưu và lựa chọn bộ ghi âm
 
 ### 1. Mục tiêu
