@@ -21,9 +21,15 @@
 | 13 | Đánh dấu đoạn quan trọng | **Một phần** | Mark `important` lưu trong note JSON, danh sách lọc `timeSpan` hợp lệ, bấm nghe; cần thử tương tác dài với IME |
 | 14 | Cảnh báo quota/kiểm chứng sao lưu | **Một phần** | `navigator.storage.estimate()` chỉ ước tính + tự cảnh báo, chọn file v2 để verify SHA256/CRC từng entry; đã có chế độ tự kiểm chứng SHA256/CRC ngay sau SaveFilePicker (mặc định bật) hoặc kiểm thủ công; chưa xác minh v1 và trường hợp file đa GB trên Windows thật |
 | 15 | Xuất clip WAV A–B | **Đã có clip qua ranh giới WAV liền mẫu, CI PASS; Windows thật NOT_RUN** | Xuất Float32 WAV từ PCM đúng sample qua các đoạn adjacent đã xác minh; không qua gap/khác phiên, giới hạn 0,4–120s; chưa kiểm file dài/thiết bị thực |
-| 16 | Waveform | **Có chức năng lấy mẫu, CI PASS; nghiệm thu thực tế chưa đạt** | Bấm **Hiện dạng sóng** để đọc tối đa 128 vị trí × 1024 PCM, vẽ RMS xấp xỉ lên thanh tua; chỉ lấy mẫu trong vùng đã ghi thật, giữ dải recorded/gap nguyên trạng. Đã PASS unit và Chromium dev/production ở SHA c9f4860; chưa quét đầy đủ peak/dữ liệu nhiều giờ; máy Windows thực chưa nghiệm thu |
+| 16 | Waveform | **Đã sửa lỗi khó nhìn; chờ CI mới / máy thật NOT_RUN** | 128 vị trí × 1024 PCM vẫn là lấy mẫu xấp xỉ; từ 21/11 waveform tách thành **sóng xanh lam ở phía trên** và dải recorded/gap phía dưới, 50px, cột tối thiểu 4px, chuẩn hóa RMS nhưng không khuếch đại nhiễu nền cực nhỏ. Bằng chứng chức năng cũ PASS SHA c9f4860; bản sửa UX đang chờ CI đúng SHA 88be7d4. Chưa full waveform/thiết bị thật |
 | 17 | RNNoise WASM | **Đã tích hợp tùy chọn, CI PASS; nghe thật NOT_RUN** | Thư viện `@sapphi-red/web-noise-suppressor@0.4.1`, WASM AudioWorklet 48k, nạp động, xử lý chỉ trên đường phát; nguồn WAV/OPFS không đổi; chưa benchmark CPU/RAM/âm nhiều người trên máy thật |
 | 18 | Tự bỏ qua im lặng | **Opt-in RMS đã tích hợp, CI PASS; VAD giọng thật NOT_RUN** | Chỉ xét PCM đã lưu của cửa sổ nghe ≤60s, bỏ vùng im lặng dài theo năng lượng (không phải speech VAD AI); giữ `timeSpan` và mapping sample gốc, OFF mặc định, chặn vùng thiếu/gap |
+
+## Checkpoint G00 — Waveform và nút ghi âm dễ nhìn (21/11/2026)
+
+- Phát hiện từ ảnh giao diện thật: nút Hiện dạng sóng báo đọc 128/128 vị trí nhưng cột nằm trong nền xanh chỉ cao 18px nên hầu như không quan sát được; hai nút Tạm dừng / Kết thúc trắng giống nhau.
+- Mã sửa: `waveformDisplayHeights` scale RMS trung thực, làn sóng xanh lam ở **trên**, coverage xanh/xám ở **dưới** và vẫn là nguồn sự thật; màu trạng thái ghi **vàng cam/tạm dừng**, **đỏ/kết thúc**, **xanh lá/tiếp tục**, không sửa capture state/mốc nguồn.
+- Bài unit + E2E kiểm màu/chiều cao/vị trí; **Code SHA `88be7d4531cb22d7918c771e8d5c815c8e5fa913`; Tested SHA NOT_RUN** đến khi CI SUCCESS. Windows micro/Chrome/Edge thật NOT_RUN; PR Draft, RELEASE HOLD.
 
 ## Checkpoint G00 — Âm thanh nâng cao để người dùng tự kiểm tra (21/11/2026)
 
