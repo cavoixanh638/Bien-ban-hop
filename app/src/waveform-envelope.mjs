@@ -44,6 +44,25 @@ export function pcmEnergy(pcm,expectedLength){
   return {peak:Math.min(1,peak),rms:Math.min(1,Math.sqrt(sum/pcm.length))};
 }
 
+/** Pure presentation scale: gaps remain null, silence remains a short
+ * baseline, quieter real voices gain visibility relative to the sampled RMS.
+ * A 0.002 RMS floor prevents near-zero microphone noise being drawn as speech.
+ * NEVER change recorded sample values or timing.
+ */
+export function waveformDisplayHeights(levels){
+  if(!Array.isArray(levels))throw TypeError('Thiếu các mức PCM của dạng sóng');
+  const valid=levels.filter(v=>v!==null);
+  if(valid.some(v=>!Number.isFinite(v?.rms)||v.rms<0||v.rms>1))
+    throw Error('Biên độ PCM để hiển thị không hợp lệ');
+  const observedMax=valid.reduce((max,v)=>Math.max(max,v.rms),0);
+  const ceiling=Math.max(.002,observedMax);
+  return {
+    observedMax,
+    heights:levels.map(v=>v===null?null:Math.min(100,Math.max(15,
+      Math.round(100*Math.sqrt(v.rms/ceiling)))))
+  };
+}
+
 export async function readWaveformEnvelope(timeline,read,{bins=192,frames=1024,signal}={}){
   if(typeof read!=='function')throw TypeError('Thiếu bộ đọc PCM');
   const plan=planWaveformProbes(timeline,{bins,frames});
