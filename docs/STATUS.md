@@ -6,6 +6,18 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Phát liên tục theo luồng: giữ cao độ + RNNoise + bỏ qua im lặng (22/11/2026)
+
+**Phạm vi hiện hành (thay thế giới hạn nghe tập trung trong checkpoint 21/11 bên dưới):**
+
+- **WAV gốc:** G02/G03 ghi và lưu PCM/OPFS nguyên bản, không lọc khi thu; các hiệu ứng nằm trên nhánh nghe lại, không sửa WAV/manifest, `recordingId`, `timeSpan` hoặc ghi chú.
+- **Giữ cao độ mặc định:** `HTMLMediaElement.preservesPitch` trong luồng nghe nhanh/chậm (0,5–2×), dùng chunk WAV riêng **≤6 giây và ≤8 MiB** từ các mẫu OPFS đã xác minh; chỉ giữ đoạn đang phát và một đoạn chuẩn bị, không tạo một Blob cho bản ghi 2–3 giờ. Đổi tốc độ/bộ lọc khi đang phát khởi động lại từ **mốc nguồn hiện tại**, lệnh cuối cùng ưu tiên; các tài nguyên URL/node được giải phóng khi Stop/seek/switch.
+- **Bỏ qua im lặng Liên tục:** `ProgressiveSilenceIndex` kiểm RMS theo từng cửa sổ nhìn trước **8 giây**, có kiểm tra PCM từng `seek`, hủy khi Stop, loại bỏ các khoảng index đã phát để tránh tăng RAM theo giờ. Không cần chọn focus 15/30/60 giây. Giữ mép vùng im lặng, không coi gap/lỗi dữ liệu là silence, không bỏ qua phiên khác; đây **không phải AI speech-VAD**, cần test giọng nói nhỏ/thấp.
+- **RNNoise:** WASM/AudioWorklet cục bộ 48 kHz, OFF mặc định, có thể hoạt động đồng thời với pitch-preserve và skip-silence qua đường phát lại. EQ vẫn tùy chọn, không đổi file gốc.
+- **Nhiều phiên thu:** khi mode Liên tục, tự chuyển sang phiên kế ngay sau nếu phiên trước kết thúc đúng **mẫu bền vững cuối**, phiên sau bắt đầu từ mẫu 0, không có gap/trailing unavailable; vẫn giữ mapping trên timeline ghép phiên. A–B không tự vượt recordingId.
+- **Phần chưa chốt:** MediaElement per-chunk chưa chứng minh nối âm **gapless** trên phần cứng thật, có thể có seam/độ trễ nhỏ ở ranh giới chunk; chưa đo CPU/RAM 3h, giọng nhiều người, tiếng xa, RNNoise, Windows/UniKey/EVKey; thao tác phát nhiều giờ thực tế và TC01–TC38 vẫn **NOT_RUN**. Trạng thái sản phẩm **INTEGRATION_ALPHA / RELEASE HOLD**, PR [#1](https://github.com/cavoixanh638/Bien-ban-hop/pull/1) Draft, không merge/deploy.
+- **Bằng chứng mới dự kiến:** Node unit kiểm 3h/giới hạn lookahead/sai PCM/cancellation; Chromium E2E WAV 16s có khoảng im lặng, đi qua ≥2 chunk, tốc độ 2×+giữ pitch+RNNoise+skip, đổi cấu hình khi nghe và chuyển phiên ghi; theo dõi CI đúng HEAD trước khi báo PASS. **Code SHA:** theo HEAD nhánh G00 mới nhất. **Tested SHA: đang xác minh**, không kế thừa PASS của SHA cũ cho phần mới.
+
 ## G00 — Kiểm toán chức năng sau lỗi Bỏ qua im lặng (21/11/2026)
 
 **Phát hiện từ ảnh thực tế:** Tùy chọn `Bỏ qua im lặng` có thể bật trong khi `Nghe tập trung` vẫn là `Liên tục` (`focus-duration=0`); `scanVerifiedSilence()` yêu cầu cửa sổ 15/30/60 giây nên khi bấm Phát sẽ báo lỗi. Trước đây E2E chỉ chọn sẵn 15s, đã bỏ sót tương tác thực. Lượt CI sửa giao diện nút ghi ngay trước đó: 91 unit PASS nhưng Chromium dev **FAIL 1** do bắt màu lúc CSS còn transition hover; báo cáo cũ chờ PASS đã được cập nhật chính xác tại đây.
