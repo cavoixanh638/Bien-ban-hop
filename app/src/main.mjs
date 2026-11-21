@@ -161,7 +161,11 @@ function setRecordingUI(){
   $('rec-start').disabled=!run?.releaseLease||!!active||finalizing||state.switching;
   $('rec-pause').disabled=!recording&&!paused;
   $('rec-pause').textContent=paused?'Tiếp tục':'Tạm dừng';
+  $('rec-pause').dataset.mode=paused?'resume':recording?'pause':'idle';
+  $('rec-pause').title=paused?'Tiếp tục ghi âm':'Tạm dừng ghi âm';
   $('rec-stop').disabled=!active||rec?.state==='stopping';
+  $('rec-stop').dataset.mode=active?'stop':'idle';
+  $('rec-stop').title='Kết thúc và lưu ghi âm';
   $('backup').disabled=!!active||finalizing||!run?.releaseLease||state.switching||transferBusy;
   $('verify-backup').disabled=!!active||finalizing||state.switching||transferBusy;
   $('import-audio').disabled=!!active||finalizing||!run?.releaseLease||state.switching||transferBusy;
