@@ -2,6 +2,14 @@
 
 **Trạng thái:** Bộ tiêu chí dự kiến, **chưa chạy test**, không có kết quả PASS được kế thừa. Nguồn phạm vi: [PLAN_V1_2.md](PLAN_V1_2.md); **trạng thái thực tế và dẫn chứng chỉ ghi tại [STATUS.md](STATUS.md)**. Tài liệu kiểm thử này không tự thể hiện một ca đã PASS chỉ vì tiêu chí đã được viết.
 
+## G00 — Subcase hồi quy phát lại khi bật nhiều lựa chọn (21/11/2026)
+
+**Tái hiện lỗi thực tế đã sửa:** chế độ `Nghe tập trung = Liên tục` (`focus-duration = 0`), bật `Giữ cao độ` ở tốc độ 1× và `Bỏ qua im lặng` rồi bấm vào phiên/đoạn chữ. Trước sửa, bộ phân tích RMS ném lỗi phải chọn 15/30/60 giây. Sau sửa, dropdown phải **hiện 30 giây** ngay lúc bật skip, status văn bản giải thích, có thể nghe PCM; không được sửa source/notes, không được xuất hiện toast lỗi. Chuyển ngược về Liên tục phải bỏ chọn skip; ở tốc độ 0,75×, bật pitch rồi skip (hoặc thứ tự ngược) phải giữ lựa chọn mới nhất và thông báo rõ.
+
+**Các ca thêm:** A–B 0,4 giây (không bỏ nhầm im lặng ngắn hơn ngưỡng 750ms), A–B 90 giây chia cửa sổ quét ≤60 giây, sai PCM/gap/cancel phải từ chối; PCM vẫn đọc từ đúng `recordingId`. Chromium E2E kiểm đường nghe pitch + RNNoise, skip + RNNoise, màu nút thu theo state và waveform tách lớp. CI [#44908183703](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44908183703) đúng SHA `d730b40d763acc0453056d5f27d711a0c35c41a5` **PASS** (Node 100/100 mỗi OS, Chromium dev 38 PASS + 1 SKIP, production/PWA 39/39 PASS). **Không** tuyên bố tính năng bỏ qua im lặng Liên tục hàng giờ: chỉ hỗ trợ focus 15/30/60 hoặc A–B tường minh 0,4–120 giây. Windows micro thật/IME/Word/3h/backup lớn vẫn **NOT_RUN**.
+
+Đã rà soát tình trạng kiểm thử của 18 nhóm tính năng trong `STATUS.md`; một số nhóm chỉ có bằng chứng E2E/Unit đường cơ bản, các tiêu chí nghiệm thu đầy đủ TC01–TC38 chưa được thực thi trên thiết bị thật. Giữ **INTEGRATION_ALPHA / RELEASE HOLD**.
+
 ## G00 — Subcase kiểm thử 18 tính năng bổ sung (18/11/2026)
 
 **Giữ nguyên mã TC01–TC38.** Các subcase sau gắn với mã TC gốc, không tự tạo trạng thái PASS. Các bài unit/e2e chỉ có chứng cứ khi GitHub Actions kết thúc SUCCESS tại đúng Code SHA. Mọi trường hợp cần thiết bị thật vẫn `NOT_RUN` cho tới khi có số liệu và log.
