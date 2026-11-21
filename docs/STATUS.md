@@ -6,6 +6,17 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Hoàn thiện nhóm phát lại nâng cao để người dùng kiểm tra (21/11/2026)
+
+- **Code SHA = Tested SHA:** `8cf09646b4800037caadd9cd5e391da94f90af32`, nhánh `integration/20261115-g10-v1.2`. [GitHub Actions #44890639015](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44890639015) **COMPLETED/SUCCESS**: G10 unit **89/89 PASS** trên **mỗi** hệ Windows và Linux, Vite build/PoC PASS; Chromium dev **34 PASS + 1 intentional PWA SKIP**; Chromium production/PWA **35/35 PASS**, **0 FAIL**. E2E thực sự bật giữ cao độ 0,5×, RNNoise WASM và bỏ im lặng ở cả hai môi trường; không suy luận chất lượng âm người từ test micro giả.
+- **A–B và WAV đa đoạn (#07/#15):** chấp nhận các WAV có sampleRanges **kề nhau không thiếu mẫu** trong cùng recordingId, phát/lặp/xuất clip trong cửa sổ giới hạn; gặp gap, PCM không đọc được hoặc khác phiên vẫn **fail-closed**. Hợp đồng không bao giờ thêm thời gian tường hoặc chuyển sang audio gần nhất.
+- **Giữ cao độ (#09):** opt-in `HTMLAudioElement.preservesPitch` trên một cửa sổ nghe tập trung 15/30/60 giây từ WAV gốc xác minh, ≤32 MiB; thiếu hỗ trợ trình duyệt / chọn Liên tục thì báo lỗi rõ. C2 mặc định không đổi, vẫn có thể thay pitch khi tốc độ ≠1.
+- **Lọc RNNoise (#17):** opt-in, pin `@sapphi-red/web-noise-suppressor@0.4.1` trong `package.json` + `package-lock.json`, WASM + AudioWorklet 48kHz, chỉ nối vào đường phát; nạp động để không ảnh hưởng Node test, ghi/OPFS/WAV gốc. Cache cùng-origin cho tài nguyên wasm sau lần nạp khi chạy PWA, không dùng CDN.
+- **Bỏ qua im lặng (#18):** opt-in, đọc PCM durable theo luồng của cửa sổ nghe tập trung ≤60s, kiểm RMS năng lượng theo cửa sổ ~25ms, chỉ bỏ đoạn yên tĩnh dài, giữ mép; vẫn giữ timestamp nguồn gốc theo mẫu. Đây là **ngưỡng RMS, không phải speech-VAD**; không dùng đồng thời với pitch-preserve ở tốc độ khác 1×.
+- **Các file và hồi quy:** `app/src/pitch-playback.mjs`, `silence-skip.mjs`, `rnnoise-playback.mjs`, `playback-start.mjs`, `replay-tools.mjs`, `audio-clip.mjs`, `audio.mjs`, `main.mjs`, `timeline-ui.mjs`, giao diện, test Node/E2E và PWA cache; đều không thay model `timeSpan`, không đổi kho dữ liệu hoặc định dạng archive v1/v2.
+- **Sau Tested SHA:** hướng dẫn/checkpoint được cập nhật và `app/START_WINDOWS.cmd` có bước `npm ci` theo lockfile nếu thiếu package RNNoise (chưa được chạy trên Windows người dùng). Tham khảo `app/README.md` để tự kiểm tra.
+- **NOT_RUN / RELEASE HOLD:** Windows micro và UniKey/EVKey thực, chất lượng nghe giọng nhiều người/RNNoise CPU/RAM, ghi 3 giờ, crash/quota/mất điện, Word desktop, các thử nghiệm gói lớn/đổi máy và toàn bộ TC01–TC38 vẫn **NOT_RUN**; PR #1 DRAFT, không merge/deploy. Mã có CI PASS **chưa** đồng nghĩa nghiệm thu ứng dụng.
+
 ## G00 — Waveform PCM xấp xỉ, giới hạn dữ liệu (20/11/2026)
 
 - **Mã đã push lên nhánh tích hợp và CI đúng SHA đã SUCCESS.** Bổ sung bộ lập kế hoạch mẫu `app/src/waveform-envelope.mjs`, đọc PCM theo yêu cầu bằng OPFS reader với giới hạn tối đa 128 bins × 1024 frames, tính RMS, hiển thị waveform trên thanh tua, giữ dải recorded/gap làm thẩm quyền dữ liệu; nút **Hiện/Ẩn dạng sóng**.
