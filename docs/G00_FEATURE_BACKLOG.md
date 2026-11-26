@@ -25,6 +25,11 @@
 | 17 | RNNoise WASM | **CI PASS kết hợp; máy thật NOT_RUN** | `@sapphi-red/web-noise-suppressor@0.4.1`, AudioWorklet 48k cục bộ, OFF mặc định; có thể bật chung giữ cao độ và bỏ qua im lặng, áp dụng đổi khi đang phát; không sửa WAV/OPFS/mốc; CPU/RAM/giọng thật NOT_RUN |
 | 18 | Bỏ qua im lặng | **CI PASS Liên tục; máy thật NOT_RUN** | ProgressiveSilenceIndex đọc trước **8s PCM durable**, bỏ qua im lặng dài theo RMS, giải phóng index đã qua, hỗ trợ focus và Liên tục nhiều giờ, kết hợp pitch/RNNoise; không vượt gap và không sửa `timeSpan`. Đây là RMS, **không phải speech VAD ML** |
 
+## Bổ sung UX — Ẩn/hiện toàn bộ thanh nghe lại (26/11/2026)
+
+- Có nút Ẩn/Hiện thanh nghe lại luôn nằm ngoài dock ở toolbar, mặc định hiện, nhớ lựa chọn trên trình duyệt; ẩn toàn bộ dock để tăng diện tích soạn thảo khi ghi. Không đổi trạng thái thu/phát hay lưu dữ liệu, không reset cấu hình khi mở lại. Đây là cải tiến giao diện bổ sung cho nhóm #06/#07, không thay phạm vi 18 nhóm ban đầu.
+- Test mới `app/e2e/playback-dock-visibility.spec.mjs` kiểm layout, persistence, giữ ghi âm/timeSpan khi ẩn và phát lại sau khi hiện. Code SHA `eade5d7496ad590a73d7689fe1b047217da5cdae`; kết quả CI ghi tại STATUS.md, chưa tự báo PASS, thiết bị thật NOT_RUN.
+
 ## Checkpoint G00 — Đọc âm thanh theo luồng trong chế độ Liên tục (22/11/2026)
 
 - **Kiến trúc mới thay giới hạn cũ #09/#18:** giữ cao độ mặc định khi tốc độ ≠1 bằng trình duyệt, đọc WAV theo từng chunk ≤6s/≤8 MiB thay vì dựng 60s một lần. Skip silence đọc PCM bền vững theo cửa sổ nhìn trước 8s, không quét cả file nhiều giờ trước khi phát. Cả RNNoise, giữ cao độ, skip có thể cùng bật; đổi tùy chọn khi đang nghe vẫn lấy mốc nguồn.
