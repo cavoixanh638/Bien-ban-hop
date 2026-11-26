@@ -29,6 +29,13 @@ npm run dev
 4. Nhấn **Bắt đầu ghi**, gõ ghi chú ngay vào trang giấy; không phải nhập mã mốc. Sau khi dừng, nhấp đoạn chữ có gắn mốc để nghe. `Alt+Enter` nghe mốc tại con trỏ; `Esc` dừng phát. Ghi chú tự lưu với revision, báo "Đã lưu" chỉ sau IDB transaction hoàn tất.
 5. Có thể tạo/chuyển cuộc họp, đổi tên, sử dụng hai tab (chỉ một tab giữ writer lock), xuất DOCX/TXT/MD/CSV, **Sao lưu biên bản và ghi âm** và **Khôi phục biên bản từ tệp**. Khi nhập, chương trình kiểm tra checksum rồi tạo ID cuộc họp, ghi chú và phiên thu mới; không ghi đè cuộc họp đang có.
 
+## G00 — Ẩn thanh nghe lại khi soạn biên bản (26/11/2026)
+
+- Trên thanh công cụ soạn thảo, bấm **Ẩn thanh nghe lại** để ẩn toàn bộ vùng phát lại (thanh tua, dạng sóng, hiệu ứng, A–B, các phiên và mốc quan trọng), mở rộng diện tích gõ. Bấm **Hiện thanh nghe lại** ở cùng vị trí để mở lại.
+- Nút ghi âm/Tạm dừng/Kết thúc và gắn mốc ghi chú vẫn hoạt động; ẩn chỉ là thay đổi giao diện, không dừng hoặc xóa âm thanh. Mặc định hiện lần đầu, nhớ trạng thái trên trình duyệt này; không tự ẩn khi bắt đầu ghi. Các lựa chọn phát hiện tại vẫn giữ khi đóng/mở dock.
+- Pull origin đúng nhánh G00, khởi động lại START_WINDOWS.cmd và tải lại trang. Không xóa dữ liệu website.
+- Code SHA `eade5d7496ad590a73d7689fe1b047217da5cdae`; đối chiếu CI tại STATUS.md. Máy Windows thật chưa nghiệm thu (NOT_RUN), RELEASE HOLD.
+
 ## G00 — Nghe Liên tục với lọc nhiễu, giữ cao độ và bỏ qua im lặng (22/11/2026)
 
 **Hướng dẫn này mới hơn checkpoint G00 ngày 21/11 ở dưới và thay thế giới hạn nghe đoạn ngắn trước đây.**
