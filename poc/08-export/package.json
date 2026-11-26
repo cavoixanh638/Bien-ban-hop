@@ -1,0 +1,14 @@
+{
+  "name": "bien-ban-hop-poc-08-export",
+  "private": true,
+  "version": "0.1.1",
+  "type": "module",
+  "scripts": {
+    "test": "node test.mjs && node edge.test.mjs && node security.test.mjs",
+    "generate": "node generate.mjs",
+    "test:formats": "python verify-formats.py",
+    "test:consumers": "python consumer-safety.py",
+    "test:stress": "node stress.mjs",
+    "test:browser": "python browser-smoke.py"
+  }
+}

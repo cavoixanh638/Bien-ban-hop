@@ -1,4 +1,4 @@
-# ĐÁNH GIÁ VÀ LỰA CHỌN PHƯƠNG ÁN KỸ THUẬT — MỐC HỌP V1.2
+# ĐÁNH GIÁ VÀ LỰA CHỌN PHƯƠNG ÁN KỸ THUẬT — BIÊN BẢN HỌP V1.2
 
 **Ngày nghiên cứu:** 15/11/2026  
 **Phạm vi:** Giai đoạn 1 — WebApp ghi chú tự liên kết âm thanh, Windows Chrome/Edge.  
@@ -7,9 +7,23 @@
 
 > **Quy tắc quan trọng:** “Đề xuất chọn” không có nghĩa “đã lập trình”, “đã kiểm chứng trên Windows” hay “đã PASS”. Các lựa chọn liên quan đến gõ tiếng Việt, audio dài, seek và recovery chỉ chính thức khi đạt thử nghiệm. Tài liệu này không mở rộng Giai đoạn 1 sang AI.
 
+## G00 — Đối chiếu thiết kế luồng thay cho cửa sổ nghe cố định (22/11/2026)
+
+Quyết định mức alpha: **bản gốc lưu PCM không xử lý**, trong khi phát có `ProgressiveSilenceIndex` (RMS 8s lookahead) và `HTMLMediaElement.preservesPitch` qua WAV ngắn ≤6s/8MiB được chuẩn bị từng đoạn; RNNoise 0.4.1 WASM/AudioWorklet độc lập có thể nối vào cả đường phát pitch và không pitch. Đây là thiết kế bảo toàn provenance/sample source và giới hạn bộ nhớ, **không phải chứng minh chất lượng audio production**.
+
+Đánh đổi: native browser pitch trên từng chunk tránh tự viết thuật toán WSOLA mới, nhưng có thể có seam/click khi đổi MediaElement và cần benchmark jitter/gap; vì vậy chưa tuyên bố phát gapless. Nếu gặp giật đáng kể trên Windows thật, xem xét engine time-stretch liên tục chuyên dụng và đo tải CPU/RAM trước khi thay C2. Tương tự, skip RMS chỉ phân biệt năng lượng thấp, không phải VAD lời nói; cần thử giọng xa/giọng thấp, ngưỡng ồn phòng họp và chỉ nâng cấp sang speech-VAD sau khi chứng minh không bỏ sót lời phát biểu.
+
+Bằng chứng tự động dự kiến: unit đầu vào 3 giờ chỉ đọc 8 giây đầu, chunk WAV ≤6s/8MiB, nguồn PCM bị thiếu -> từ chối; Chromium file 16s gồm tiếng + im lặng, tốc độ 2×, RNNoise và skip đồng thời, kiểm mốc nguồn và phiên kế tiếp. **Windows thật, UniKey/EVKey, âm thực 3h, MS Word desktop, tài nguyên đa GiB vẫn NOT_RUN**, RELEASE HOLD; xem `docs/STATUS.md` và PR #1 để đối chiếu Tested SHA.
+
+## G00 — Kết quả triển khai alpha có bằng chứng CI (21/11/2026)
+
+Phần so sánh lựa chọn công nghệ dưới đây vẫn là dữ liệu nghiên cứu, không mặc nhiên bị thay thế. Với nhóm phát lại bổ sung, đã **triển khai thử nghiệm opt-in** trong ứng dụng tích hợp, chưa chọn engine production: `@sapphi-red/web-noise-suppressor@0.4.1` để xử lý RNNoise WASM bằng AudioWorklet cục bộ 48kHz, `HTMLMediaElement.preservesPitch` trên các cửa sổ WAV đã xác minh ≤60 giây/32 MiB và xử lý khoảng im lặng theo RMS/nguồn sample. Lựa chọn này giữ C2 mặc định, không đụng thu G02/lưu OPFS G03/backup, không tự đi qua gap, không gửi âm thanh lên cloud.
+
+**Bằng chứng hiện có:** Code/Tested SHA `8cf09646b4800037caadd9cd5e391da94f90af32`, [Actions #44890639015](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44890639015) SUCCESS: Windows/Linux 89/89 Node mỗi hệ, Chromium dev 34 PASS + 1 skip, production/PWA 35 PASS. Các phép đo chất lượng cao độ, CPU/latency/RAM của RNNoise và giọng nhiều người/micro Windows thật, xử lý 3 giờ và so sánh lựa chọn production vẫn **NOT_RUN**. Thuật toán RMS không đồng nghĩa speech VAD. Kết quả alpha không đủ căn cứ kết luận đã chốt lựa chọn sản xuất.
+
 ## 1. Bài toán cần giải quyết và thứ tự ưu tiên
 
-Mốc Họp là **trình soạn thảo ghi chú có liên kết âm thanh tự động**, không phải phần mềm ghi âm có thêm ô nhập. Người dùng chỉ tập trung gõ như Word; một đoạn không Enter vẫn có nhiều mốc. Nghe lại từ chữ/con trỏ không cản trở sửa. Ghi âm nhiều giờ phải có thể khôi phục phần đã lưu, phát xuyên nhiều file như một nguồn, hoạt động offline và sao lưu ra ngoài trình duyệt.
+Biên bản họp là **trình soạn thảo ghi chú có liên kết âm thanh tự động**, không phải phần mềm ghi âm có thêm ô nhập. Người dùng chỉ tập trung gõ như Word; một đoạn không Enter vẫn có nhiều mốc. Nghe lại từ chữ/con trỏ không cản trở sửa. Ghi âm nhiều giờ phải có thể khôi phục phần đã lưu, phát xuyên nhiều file như một nguồn, hoạt động offline và sao lưu ra ngoài trình duyệt.
 
 **Thứ tự ưu tiên khi hai phương án xung đột:**
 1. Không làm mất/sai **chữ hoặc mốc** và không phát nhầm nguồn audio.
@@ -76,14 +90,14 @@ Nguồn: [Tiptap React](https://tiptap.dev/docs/editor/getting-started/install/r
 
 ## 5. Editor — so sánh 4 phương án
 
-| Phương án | Lợi thế cho Mốc Họp | Bất lợi | Kết luận |
+| Phương án | Lợi thế cho Biên bản họp | Bất lợi | Kết luận |
 |---|---|---|---|
 | **A. Tiptap / ProseMirror** | Inline Mark có thuộc tính, schema, transaction/history, phù hợp từng vùng chữ gắn thời gian | Phải tự làm logic Mark khi thay/sửa/cut/paste/IME | **POC_REQUIRED, ưu tiên A** |
 | B. Lexical | Custom TextNode/NodeState và React integration mạnh | Cần xây quy tắc clone/split/merge vùng chữ có metadata | Phương án thay thế số 1 |
 | C. Slate | Model operations/transforms linh hoạt | Nhiều quy tắc editor phải kiểm soát hơn | Không ưu tiên |
 | D. CodeMirror 6 | State transactions và decorations tốt, hiệu năng cao | Tối ưu mã/văn bản thuần, kém tự nhiên hơn khi soạn rich text như Word | Chỉ dùng nếu đổi sang plain text |
 
-**Vì sao ưu tiên A:** Mốc Họp cần nội dung văn bản mang metadata thời gian **ngay bên trong câu**, độc lập với vị trí đoạn/DOM. ProseMirror Custom Mark phù hợp trực tiếp hơn việc tạo mô hình block note hoặc bảng offset độc lập.
+**Vì sao ưu tiên A:** Biên bản họp cần nội dung văn bản mang metadata thời gian **ngay bên trong câu**, độc lập với vị trí đoạn/DOM. ProseMirror Custom Mark phù hợp trực tiếp hơn việc tạo mô hình block note hoặc bảng offset độc lập.
 
 **Nhưng:** Mark của ProseMirror **không tự bảo toàn 100%** khi mọi loại chỉnh sửa/IME. Tiptap phải vượt qua PoC nhập Việt thật và các transaction với Mark. Nếu số lỗi/chi phí sửa lớn, đối chứng bằng Lexical trước khi viết toàn bộ UI.
 
@@ -206,7 +220,7 @@ Nguồn: [MDN preservesPitch](https://developer.mozilla.org/en-US/docs/Web/API/H
 
 **Đề xuất D:** Ghi dấu thời gian đơn điệu gần lúc nhận thao tác nhập; Capture Module tạo các điểm hiệu chuẩn liên kết đồng hồ đơn điệu với **vị trí mẫu/khối âm thanh thực tế**; Audio Manifest xác nhận vùng đã lưu thành công. Timeline tính vị trí media từ các điểm đồng bộ, có khoảng recorded/paused/gap rõ ràng. Wall time chỉ dùng cho ngày giờ cuộc họp và lịch sử.
 
-**Tại sao cần cho Mốc Họp:** Người dùng gõ sau khi nghe, tạm dừng rồi gõ tiếp hoặc có thể bị mất micro giữa cuộc họp. Một đồng hồ hệ thống đơn thuần không đủ bảo đảm nhấp chữ sẽ về **đúng file và đúng khoảng âm thanh**. Phải phân biệt vị trí mốc gốc với điểm bắt đầu phát có pre-roll.
+**Tại sao cần cho Biên bản họp:** Người dùng gõ sau khi nghe, tạm dừng rồi gõ tiếp hoặc có thể bị mất micro giữa cuộc họp. Một đồng hồ hệ thống đơn thuần không đủ bảo đảm nhấp chữ sẽ về **đúng file và đúng khoảng âm thanh**. Phải phân biệt vị trí mốc gốc với điểm bắt đầu phát có pre-roll.
 
 **Kiểm thử:** ghi tín hiệu beep/tick theo mốc tham chiếu, gõ ở đầu/giữa/cuối bản ghi 3 giờ, pause/resume, mô phỏng chỉnh giờ Windows và mất mẫu. Mục tiêu sai lệch trong test chuẩn ≤1 giây, không đồng nhất với độ chính xác xác định thời điểm phát biểu.
 

@@ -1,0 +1,80 @@
+MOC HOP 08-EXPORT VERIFIED BLOB RUN
+UTC 2026-11-15T11:32:40Z
+v22.16.0
+Chromium 144.0.7559.96 built on Debian GNU/Linux 13 (trixie)
+LibreOffice 25.2.3.2 520(Build:2)
+
+pandoc 3.1.11.1
+Git object hashes (Git blob SHA-1):
+4923feff40cda9b6a157c696cf41e3ccb8386acf exporter.mjs
+0775824d969f7cae2e4c9f7ad673519fcdfbd8db test.mjs
+3cfb03a374674ed1568b5a5100c6757fac4945df edge.test.mjs
+2f5d8c14068de896298e7de9f696842b83ec6902 fixture.json
+b314b8416ecaff041342ed92df120f9757c9aa71 generate.mjs
+094dce511d1957fb56ce512d1feed2af24c2899d index.html
+e755a23de87aa1e66cd5067c8511551033555e3a README.md
+effd6aa5851dd6dd3fa21c190585e83f8516bf11 browser-smoke.py
+af41e484816563b8399f5829cb8b16d497a802f8 verify-formats.py
+bb915a3645615f4841013e3a185f37921a4bac4f .gitignore
+=== Node regression ===
+PASS Unicode TXT
+PASS literal hardbreak TXT
+PASS blank paragraph TXT
+PASS clean TXT no marks
+PASS marked TXT time
+PASS unlinked TXT
+PASS Markdown heading
+PASS Markdown bold
+PASS Markdown italic
+PASS Markdown marked vs clean
+PASS CSV BOM
+PASS CSV CRLF
+PASS CSV quoting
+PASS CSV clean no mark columns
+PASS CSV marked columns
+PASS CSV unlinked
+PASS DOCX ZIP signature
+PASS DOCX OOXML parts
+PASS DOCX modes
+PASS deterministic output
+TOTAL 20 PASS
+=== Node edge cases ===
+PASS combined bold and italic retained in Markdown
+PASS Markdown escapes pasted metacharacters
+PASS Markdown bullet list uses valid syntax
+PASS nested list retains indentation and parent ordinal
+PASS separate ordered lists restart at 1
+PASS two paragraphs in one list item have one bullet
+PASS zero media offset stays a real mark
+PASS different typedAt produces separate mark boundaries
+PASS mark label is separated from previous word
+PASS hardBreak inside a marked phrase does not introduce an unlinked label
+PASS missing audio and null recording are reported as unlinked
+PASS DOCX XML escapes tags, ampersands and quotes
+PASS DOCX replaces prohibited XML control characters
+PASS DOCX keeps supplementary Unicode characters
+PASS CSV quotes commas, double quotes and CRLF inside a field
+PASS marked CSV keeps raw audioOffsetMs/typedAt without pre-roll
+PASS clean exports omit metadata timestamps
+PASS invalid ProseMirror input is rejected early
+PASS export does not mutate the caller document
+PASS DOCX ZIP output is repeatable and has a signature
+TOTAL 20 PASS
+=== External format readers ===
+PASS formats: clean
+PASS formats: with-marks
+TOTAL 2 modes PASS (DOCX ZIP/XML; strict CSV; TXT; Pandoc when available)
+=== Chromium Blob/download smoke (in-memory module/fetch shim) ===
+PASS Chromium Blob download: moc-hop-ban-sach.docx
+PASS Chromium Blob download: moc-hop-ban-sach.txt
+PASS Chromium Blob download: moc-hop-ban-sach.md
+PASS Chromium Blob download: moc-hop-ban-sach.csv
+PASS Chromium Blob download: moc-hop-kem-moc.docx
+PASS Chromium Blob download: moc-hop-kem-moc.txt
+PASS Chromium Blob download: moc-hop-kem-moc.md
+PASS Chromium Blob download: moc-hop-kem-moc.csv
+PASS Chromium malformed JSON displays an error
+TOTAL 9 PASS; Chromium 144.0.7559.96; IN-MEMORY_SHIM (NOT HTTP-ORIGIN E2E)
+=== Document parsers ===
+PASS python-docx open clean paragraphs 8
+PASS python-docx open with-marks paragraphs 8

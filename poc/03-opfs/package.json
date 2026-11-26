@@ -1,0 +1,13 @@
+{
+  "name": "bien-ban-hop-poc-03-opfs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test.mjs test-extended.mjs test-worker.mjs",
+    "bench": "node bench.mjs --sample-rate=48000 --duration=10800",
+    "bench:quick": "node bench.mjs --sample-rate=1000 --duration=10800"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

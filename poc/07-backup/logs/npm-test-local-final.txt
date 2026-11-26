@@ -1,0 +1,192 @@
+
+> mochop-07-backup-poc@0.1.0 test
+> node --test test-web.mjs && python3 -m unittest -v test_mochop.py && python3 interop-check.py
+
+TAP version 13
+# Subtest: sha256 streaming matches Node crypto even across 64-byte boundaries
+ok 1 - sha256 streaming matches Node crypto even across 64-byte boundaries
+  ---
+  duration_ms: 19.342875
+  type: 'test'
+  ...
+# Subtest: CRC32 known test vector
+ok 2 - CRC32 known test vector
+  ---
+  duration_ms: 0.297297
+  type: 'test'
+  ...
+# Subtest: ZIP64 native round-trip exact JSON, audio, timeSpan and CRC
+ok 3 - ZIP64 native round-trip exact JSON, audio, timeSpan and CRC
+  ---
+  duration_ms: 107.011942
+  type: 'test'
+  ...
+# Subtest: missing audio strict failure; TC38 optional missing retains text and marks
+ok 4 - missing audio strict failure; TC38 optional missing retains text and marks
+  ---
+  duration_ms: 31.924541
+  type: 'test'
+  ...
+# Subtest: damaged content/CRC rejects, staging discarded
+ok 5 - damaged content/CRC rejects, staging discarded
+  ---
+  duration_ms: 14.367066
+  type: 'test'
+  ...
+# Subtest: manifest SHA mismatch with valid ZIP CRC rejects
+ok 6 - manifest SHA mismatch with valid ZIP CRC rejects
+  ---
+  duration_ms: 12.606684
+  type: 'test'
+  ...
+# Subtest: unsupported schema fails before creating staging
+ok 7 - unsupported schema fails before creating staging
+  ---
+  duration_ms: 57.75905
+  type: 'test'
+  ...
+# Subtest: path traversal forged in local+central headers rejected
+ok 8 - path traversal forged in local+central headers rejected
+  ---
+  duration_ms: 4.667655
+  type: 'test'
+  ...
+# Subtest: ZIP bomb metadata is rejected before staging
+ok 9 - ZIP bomb metadata is rejected before staging
+  ---
+  duration_ms: 3.395778
+  type: 'test'
+  ...
+# Subtest: casefold collision, duplicate IDs and orphan files rejected
+ok 10 - casefold collision, duplicate IDs and orphan files rejected
+  ---
+  duration_ms: 17.501901
+  type: 'test'
+  ...
+# Subtest: concurrent publish cannot overwrite winner (hard-link commit)
+ok 11 - concurrent publish cannot overwrite winner (hard-link commit)
+  ---
+  duration_ms: 12.974546
+  type: 'test'
+  ...
+# Subtest: interrupted streaming discard; original meeting preserved
+ok 12 - interrupted streaming discard; original meeting preserved
+  ---
+  duration_ms: 59.499943
+  type: 'test'
+  ...
+# Subtest: file bounds and truncated archive error do not publish
+ok 13 - file bounds and truncated archive error do not publish
+  ---
+  duration_ms: 28.971528
+  type: 'test'
+  ...
+# Subtest: synchronous ZIP64 pipeline honors slow WritableStream backpressure
+ok 14 - synchronous ZIP64 pipeline honors slow WritableStream backpressure
+  ---
+  duration_ms: 133.007854
+  type: 'test'
+  ...
+# Subtest: export sink failure is not reported as saved
+ok 15 - export sink failure is not reported as saved
+  ---
+  duration_ms: 1.807904
+  type: 'test'
+  ...
+# Subtest: import abortSignal mid-audio discards staging
+ok 16 - import abortSignal mid-audio discards staging
+  ---
+  duration_ms: 163.165673
+  type: 'test'
+  ...
+# Subtest: meeting list tampering after valid CRC/ZIP triggers rollback
+ok 17 - meeting list tampering after valid CRC/ZIP triggers rollback
+  ---
+  duration_ms: 11.560263
+  type: 'test'
+  ...
+# Subtest: unsupported entry method and symlink rejected before staging
+ok 18 - unsupported entry method and symlink rejected before staging
+  ---
+  duration_ms: 5.126896
+  type: 'test'
+  ...
+# Subtest: file that is present but unlisted cannot be published
+ok 19 - file that is present but unlisted cannot be published
+  ---
+  duration_ms: 3.388316
+  type: 'test'
+  ...
+# Subtest: huge declared metadata rejected before reading JSON into heap
+ok 20 - huge declared metadata rejected before reading JSON into heap
+  ---
+  duration_ms: 3.866844
+  type: 'test'
+  ...
+# Subtest: missing required note.json cannot be excused by allowMissingAudio
+ok 21 - missing required note.json cannot be excused by allowMissingAudio
+  ---
+  duration_ms: 5.424923
+  type: 'test'
+  ...
+# Subtest: staging write failure rolls back without publish
+ok 22 - staging write failure rolls back without publish
+  ---
+  duration_ms: 63.689592
+  type: 'test'
+  ...
+# Subtest: exporting interrupted source cannot return a backup success
+ok 23 - exporting interrupted source cannot return a backup success
+  ---
+  duration_ms: 2.201695
+  type: 'test'
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 23
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 823.889367
+test_casefold_collision (test_mochop.MochopTests.test_casefold_collision) ... ok
+test_checksum_mismatch_rolls_back (test_mochop.MochopTests.test_checksum_mismatch_rolls_back) ... ok
+test_collision_never_overwrites (test_mochop.MochopTests.test_collision_never_overwrites) ... ok
+test_invalid_audio_manifest_reference (test_mochop.MochopTests.test_invalid_audio_manifest_reference) ... ok
+test_manifest_casefold_alias_rejected (test_mochop.MochopTests.test_manifest_casefold_alias_rejected) ... ok
+test_missing_audio_text_survives (test_mochop.MochopTests.test_missing_audio_text_survives) ... ok
+test_missing_note_disallowed_even_with_missing_audio_opt_in (test_mochop.MochopTests.test_missing_note_disallowed_even_with_missing_audio_opt_in) ... ok
+test_roundtrip_marks_and_audio (test_mochop.MochopTests.test_roundtrip_marks_and_audio) ... ok
+test_schema_rejected (test_mochop.MochopTests.test_schema_rejected) ... ok
+test_traversal (test_mochop.MochopTests.test_traversal) ... ok
+test_truncated_zip (test_mochop.MochopTests.test_truncated_zip) ... ok
+test_two_concurrent_restore_calls_never_overwrite (test_mochop.MochopTests.test_two_concurrent_restore_calls_never_overwrite) ... ok
+test_zip_bomb_ratio (test_mochop.MochopTests.test_zip_bomb_ratio) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.133s
+
+OK
+{
+  "status": "PASS",
+  "cases": 2,
+  "python_to_node": {
+    "status": "PASS",
+    "operation": "import",
+    "meetingId": "meeting-demo",
+    "missingAudio": [],
+    "files": 4
+  },
+  "node_to_python": {
+    "status": "PASS",
+    "operation": "export",
+    "size": 1051030,
+    "restore": {
+      "meetingId": "meeting-demo",
+      "missingAudio": [],
+      "seconds": 0.002784740000151942,
+      "files": 4
+    }
+  }
+}

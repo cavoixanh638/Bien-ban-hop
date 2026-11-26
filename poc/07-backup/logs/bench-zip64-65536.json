@@ -1,0 +1,14 @@
+{
+  "kind": "zip64-count",
+  "count": 65536,
+  "readBack": 65536,
+  "zipBytes": 12451938,
+  "seconds": 6.323242341,
+  "peakRSSbytes": 99028992,
+  "peakHeapBytes": 39144344,
+  "node": "v22.16.0",
+  "platform": "linux",
+  "arch": "x64",
+  "date": "2026-11-15T11:32:37.606Z",
+  "status": "PASS"
+}

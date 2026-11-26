@@ -1,4 +1,4 @@
-# KẾ HOẠCH PHÁT TRIỂN MỐC HỌP V1.2
+# KẾ HOẠCH PHÁT TRIỂN BIÊN BẢN HỌP V1.2
 
 **Hệ thống ghi chú văn bản đồng bộ tự động với âm thanh cuộc họp**
 
@@ -12,9 +12,31 @@
 
 > **Cấu trúc tài liệu tinh gọn:** đây là nguồn chính thức cho *sản phẩm, yêu cầu chức năng, phạm vi và lộ trình*. Schema/module thuộc [ARCHITECTURE.md](ARCHITECTURE.md); quy tắc gõ và thời gian thuộc [TIMELINE_RULES.md](TIMELINE_RULES.md); thu/phát âm thanh thuộc [AUDIO_DESIGN.md](AUDIO_DESIGN.md). Căn cứ so sánh công nghệ (17 nhóm, mỗi nhóm 4 phương án) tại [TECHNICAL_OPTIONS.md](TECHNICAL_OPTIONS.md); chỉ các quyết định có bằng chứng mới chuyển sang trạng thái đã kiểm chứng trong [STATUS.md](STATUS.md). **Tất cả mới là kế hoạch, chưa có PoC hay nghiệm thu.**
 
+## G00 — Bước kiểm chứng tệp sao lưu ngay sau ghi (18/11/2026)
+
+- Phần tính năng #14 hiện có checkbox kiểm chứng ngay sau SaveFilePicker (mặc định bật): đọc file ZIP vừa lưu, đối chiếu SHA-256 và CRC của tất cả entry. Khi lỗi/hủy/không có API `getFile`, thông báo chỉ xác nhận **đã ghi** chứ không xác nhận **an toàn**.
+- Code/Tested SHA `fad90119530817404d2e57e7bb73b197dde65021`, CI [#44317666582](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44317666582) Windows/Linux và Chromium success; việc áp dụng thực tế file đa GB và trên thiết bị Windows thật vẫn NOT_RUN.
+- Không thay `timeSpan`, OPFS/IndexedDB, format legacy; giữ cổng #09/#16/#17/#18 và full TC01–TC38 là HOLD. Chi tiết tại [STATUS.md](STATUS.md).
+
+## G00 — Checkpoint mở rộng P0/P1 sau tích hợp (18/11/2026)
+
+- Theo `STATUS.md`, Code/Tested SHA `8478a1c45f37bca537cdcdf367578fa44809a20c` đã PASS CI Windows/Linux và Chromium dev/production. Các bổ sung: điều hướng kết quả tìm kiếm tới đoạn, lựa chọn lề A4 chung Word/PDF, numbering OOXML Word, sửa bảo toàn chữ/link khi chèn ngắt trang hoặc ảnh.
+- **Không cập nhật mục 09/16/17/18 thành DONE:** giữ cao độ, waveform đầy đủ, RNNoise và bỏ im lặng là nhóm P2 có rủi ro định vị âm thanh. Cần PoC và nghiệm thu mốc sample chính xác, chất lượng giọng thật, hiệu năng trên Windows/Chrome/Edge trước khi tích hợp. Đọc bảng [G00_FEATURE_BACKLOG.md](G00_FEATURE_BACKLOG.md) và các cổng [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md).
+- Ưu tiên phát hành không đổi: bản ghi chữ do người dùng gõ là trung tâm, `timeSpan` trong ProseMirror, không đổi dữ liệu/OPFS/legacy `format:"mochop"` bừa bãi. Mọi thử nghiệm chưa chạy để `NOT_RUN`.
+
+## Phụ lục triển khai G00 — Bổ sung chức năng 01–18 (18/11/2026)
+
+**Phạm vi vẫn là V1.2 / không thay đổi nguyên tắc nguồn âm thanh.** Bảng trạng thái tính năng và các giới hạn thực tế được theo dõi tại [G00_FEATURE_BACKLOG.md](G00_FEATURE_BACKLOG.md), bằng chứng Code SHA/Tested SHA tại [STATUS.md](STATUS.md). Đây là kế hoạch cập nhật sau khi có bản tích hợp alpha; nội dung nguyên bản V1.2 bên dưới không bị thay thế.
+
+- **Ưu tiên P0 còn thiếu:** A–B chỉ phát trong vùng xác minh, thao tác tua + tốc độ, gõ có mốc khi nghe file nhập sẵn; Word thụt đầu dòng/list, bảng/gộp ô và DOCX. Không được tự nối qua khoảng mất audio.
+- **P1:** bookmark nằm trong tài liệu, quota browser (ước tính không phải cam kết), kiểm chứng tệp ZIP v2 riêng bằng checksum, xuất WAV clip có giới hạn; ảnh nhỏ/link/ngắt trang/PDF có kiểm tra đầu vào và xuất file.
+- **P2 giữ cổng:** waveform bounded, giữ cao độ bằng playback pipeline mới, RNNoise/WASM, skip silence/VAD. Chỉ triển khai sau benchmark, xác nhận mốc thời gian và kiểm thử nguồn audio thực; không biến PoC thành PASS.
+- **Điểm tích hợp bắt buộc:** OPFS commit trước khi gắn recording mới vào meeting; IDB rollback chỉ xóa ID nhập mới; timeSpan nhập file dùng actual verified `recordingId` + vị trí phát hiện tại; sao lưu v1/v2 vẫn nhập được.
+- **Release gate không đổi:** TC01–TC38, UniKey/EVKey và mic Windows thật, 3 giờ, khôi phục/quota/crash, ZIP lớn/2 máy thật. Mọi bài chưa chạy ghi `NOT_RUN`.
+
 ## I. Mục tiêu
 
-**Nội dung người dùng tự gõ là trung tâm.** Mốc Họp là trình soạn thảo giống Word có khả năng tự liên kết phần chữ với thời điểm trong bản ghi âm, không phải phần mềm ghi âm có thêm ô nhập. Người dùng tự chọn ý quan trọng để ghi; ứng dụng không cố ghi lại mọi lời nói.
+**Nội dung người dùng tự gõ là trung tâm.** Biên bản họp là trình soạn thảo giống Word có khả năng tự liên kết phần chữ với thời điểm trong bản ghi âm, không phải phần mềm ghi âm có thêm ô nhập. Người dùng tự chọn ý quan trọng để ghi; ứng dụng không cố ghi lại mọi lời nói.
 
 Mỗi phần văn bản được gõ khi có nguồn âm thanh phù hợp tự ghi lại mốc thời gian, kể cả trong một đoạn dài không xuống dòng; không phải tạo thẻ, chọn nhãn, chọn người nói hay bấm Lưu. Mốc là lúc người dùng **gõ**, không phải thời điểm lời nói chính xác bắt đầu. Khi nghe lại áp dụng độ lùi có thể tùy chỉnh, không sửa mốc gốc.
 

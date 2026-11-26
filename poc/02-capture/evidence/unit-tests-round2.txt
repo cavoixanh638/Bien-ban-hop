@@ -1,0 +1,230 @@
+
+> moc-hop-capture-poc@0.1.0 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: START ACK + periodic + stop map sample points independent of 3-second message delivery delay
+ok 1 - START ACK + periodic + stop map sample points independent of 3-second message delivery delay
+  ---
+  duration_ms: 2.243685
+  type: 'test'
+  ...
+# Subtest: paused ten seconds yields a paused interval without adding ten seconds of media samples
+ok 2 - paused ten seconds yields a paused interval without adding ten seconds of media samples
+  ---
+  duration_ms: 1.689161
+  type: 'test'
+  ...
+# Subtest: explicit pool gap and sink queue loss must NOT be interpolated as valid audio
+ok 3 - explicit pool gap and sink queue loss must NOT be interpolated as valid audio
+  ---
+  duration_ms: 0.358039
+  type: 'test'
+  ...
+# Subtest: unavailable source remains unavailable and never maps notes to old sampleIndex
+ok 4 - unavailable source remains unavailable and never maps notes to old sampleIndex
+  ---
+  duration_ms: 0.18568
+  type: 'test'
+  ...
+# Subtest: zero output timestamp is uncalibrated; later valid context/output pair retrospectively anchors exact Worklet events
+ok 5 - zero output timestamp is uncalibrated; later valid context/output pair retrospectively anchors exact Worklet events
+  ---
+  duration_ms: 0.311178
+  type: 'test'
+  ...
+# Subtest: deferred mic grant: Stop before permission cancels future Start and closes late track
+ok 6 - deferred mic grant: Stop before permission cancels future Start and closes late track
+  ---
+  duration_ms: 9.572321
+  type: 'test'
+  ...
+# Subtest: double-click Start during prompt is rejected, only one recorder/context can start
+ok 7 - double-click Start during prompt is rejected, only one recorder/context can start
+  ---
+  duration_ms: 2.342293
+  type: 'test'
+  ...
+# Subtest: permission denied/setup failure leaves no live capture resources, and no auto-retry
+ok 8 - permission denied/setup failure leaves no live capture resources, and no auto-retry
+  ---
+  duration_ms: 0.739713
+  type: 'test'
+  ...
+# Subtest: MediaRecorder.stop throwing still releases live tracks/context exactly once; stop idempotent
+ok 9 - MediaRecorder.stop throwing still releases live tracks/context exactly once; stop idempotent
+  ---
+  duration_ms: 0.872262
+  type: 'test'
+  ...
+# Subtest: MediaRecorder never acknowledging stop times out without leaving live microphone/context
+ok 10 - MediaRecorder never acknowledging stop times out without leaving live microphone/context
+  ---
+  duration_ms: 38.288454
+  type: 'test'
+  ...
+# Subtest: track-ended concurrent with Stop cannot double-stop, and no recording remains
+ok 11 - track-ended concurrent with Stop cannot double-stop, and no recording remains
+  ---
+  duration_ms: 5.029908
+  type: 'test'
+  ...
+# Subtest: Stop at idle is idempotent, and public invalid config is rejected before creation
+ok 12 - Stop at idle is idempotent, and public invalid config is rejected before creation
+  ---
+  duration_ms: 0.455345
+  type: 'test'
+  ...
+# Subtest: Worker final reject/timeout after stop always terminates worker and closes context
+ok 13 - Worker final reject/timeout after stop always terminates worker and closes context
+  ---
+  duration_ms: 1.255219
+  type: 'test'
+  ...
+# Subtest: Stop during await AudioContext.resume closes the context even after slow setup resolves
+ok 14 - Stop during await AudioContext.resume closes the context even after slow setup resolves
+  ---
+  duration_ms: 2.108402
+  type: 'test'
+  ...
+# Subtest: a pending worker final never resolves: Stop reports timeout and still terminates worker
+ok 15 - a pending worker final never resolves: Stop reports timeout and still terminates worker
+  ---
+  duration_ms: 36.010907
+  type: 'test'
+  ...
+# Subtest: display share with video but no audio track closes granted screen track and never claims TC21 PASS
+ok 16 - display share with video but no audio track closes granted screen track and never claims TC21 PASS
+  ---
+  duration_ms: 0.607034
+  type: 'test'
+  ...
+# Subtest: controller waits for real START ACK, uses worklet timestamp, preserves worker until diagnostic export, then disposes
+ok 17 - controller waits for real START ACK, uses worklet timestamp, preserves worker until diagnostic export, then disposes
+  ---
+  duration_ms: 13.451007
+  type: 'test'
+  ...
+# Subtest: synthetic Worklet processor START error prevents MediaRecorder/oscillator from starting
+ok 18 - synthetic Worklet processor START error prevents MediaRecorder/oscillator from starting
+  ---
+  duration_ms: 2.306139
+  type: 'test'
+  ...
+# Subtest: bounded streaming sink caps queued bytes, records gaps, never advertises incomplete full recording
+ok 19 - bounded streaming sink caps queued bytes, records gaps, never advertises incomplete full recording
+  ---
+  duration_ms: 1.940089
+  type: 'test'
+  ...
+# Subtest: streaming stores exact ordered WebM pieces without retaining them all in JS RAM
+ok 20 - streaming stores exact ordered WebM pieces without retaining them all in JS RAM
+  ---
+  duration_ms: 7.930491
+  type: 'test'
+  ...
+# Subtest: writer failure is FAIL, cannot return a falsely complete file
+ok 21 - writer failure is FAIL, cannot return a falsely complete file
+  ---
+  duration_ms: 1.573097
+  type: 'test'
+  ...
+# Subtest: MediaRecorderProbe streams > retention cap, assembles full diagnostic file and never calls it durable
+ok 22 - MediaRecorderProbe streams > retention cap, assembles full diagnostic file and never calls it durable
+  ---
+  duration_ms: 5.692634
+  type: 'test'
+  ...
+# Subtest: real MessagePort transfer detach + recycle, 2048 chunk
+ok 23 - real MessagePort transfer detach + recycle, 2048 chunk
+  ---
+  duration_ms: 164.413529
+  type: 'test'
+  ...
+# Subtest: 4096 batch + pause/resume: no spurious samples while paused
+ok 24 - 4096 batch + pause/resume: no spurious samples while paused
+  ---
+  duration_ms: 56.084367
+  type: 'test'
+  ...
+# Subtest: queue overflow and bounded 2-buffer pool report real lost frames; no false commit
+ok 25 - queue overflow and bounded 2-buffer pool report real lost frames; no false commit
+  ---
+  duration_ms: 169.887123
+  type: 'test'
+  ...
+# Subtest: unavailable (track lost) is explicit and never yields synthesized silence as audio
+ok 26 - unavailable (track lost) is explicit and never yields synthesized silence as audio
+  ---
+  duration_ms: 70.321061
+  type: 'test'
+  ...
+# Subtest: Worker returns decodable contiguous WAV prefix with consistent header and signal at first/middle/end
+ok 27 - Worker returns decodable contiguous WAV prefix with consistent header and signal at first/middle/end
+  ---
+  duration_ms: 91.960155
+  type: 'test'
+  ...
+# Subtest: frozen f32le capture contract validates frames vs bytes and integer indices
+ok 28 - frozen f32le capture contract validates frames vs bytes and integer indices
+  ---
+  duration_ms: 2.363877
+  type: 'test'
+  ...
+# Subtest: ledger identifies gap, duplicates, bad sequence and refuses different recording
+ok 29 - ledger identifies gap, duplicates, bad sequence and refuses different recording
+  ---
+  duration_ms: 0.944431
+  type: 'test'
+  ...
+# Subtest: WAV diagnostic prefix is byte-correct and signed PCM16
+ok 30 - WAV diagnostic prefix is byte-correct and signed PCM16
+  ---
+  duration_ms: 0.277026
+  type: 'test'
+  ...
+# Subtest: worklet uses actual non-128 quanta and batches exactly; pause does not advance frameCursor
+ok 31 - worklet uses actual non-128 quanta and batches exactly; pause does not advance frameCursor
+  ---
+  duration_ms: 2.440262
+  type: 'test'
+  ...
+# Subtest: worklet bounded pool causes explicit loss; later sampleIndex reveals hole
+ok 32 - worklet bounded pool causes explicit loss; later sampleIndex reveals hole
+  ---
+  duration_ms: 2.627483
+  type: 'test'
+  ...
+# Subtest: no input and unavailable state do not claim silence as recorded
+ok 33 - no input and unavailable state do not claim silence as recorded
+  ---
+  duration_ms: 0.943229
+  type: 'test'
+  ...
+# Subtest: G02-ADD-04 rejects invalid public worklet configurations with zero allocations
+ok 34 - G02-ADD-04 rejects invalid public worklet configurations with zero allocations
+  ---
+  duration_ms: 1.679246
+  type: 'test'
+  ...
+# Subtest: G02-ADD-04 allocation failure is fail-closed, no partial transport
+ok 35 - G02-ADD-04 allocation failure is fail-closed, no partial transport
+  ---
+  duration_ms: 0.766684
+  type: 'test'
+  ...
+# Subtest: delayed STOP does not move an earlier pool-exhausted gap timestamp forward
+ok 36 - delayed STOP does not move an earlier pool-exhausted gap timestamp forward
+  ---
+  duration_ms: 1.436912
+  type: 'test'
+  ...
+1..36
+# tests 36
+# suites 0
+# pass 36
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 724.740976

@@ -1,0 +1,84 @@
+G08 ROUND2 — EXACT GITHUB GIT-BLOB SOURCE
+Run UTC: 2026-11-15T11:44:18Z
+Code/Verified content SHA: 82d93899e953f78baf0a41914866115c89ebdc7e
+OS: Debian Linux 13, Node v22.16.0, npm 10.9.2, Python 3.13.5
+Chromium 144.0.7559.96; LibreOffice 25.2.3.2; Pandoc 3.1.11.1
+
+Git blob SHA-1 checked, all matched files at HEAD:
+exporter.mjs          7178ad15cc6bd9f58b08abeafae061514dcedc80
+test.mjs              0775824d969f7cae2e4c9f7ad673519fcdfbd8db
+edge.test.mjs         3cfb03a374674ed1568b5a5100c6757fac4945df
+security.test.mjs     b51dd220d685a39857e78b1c0d90f04ca4850b4d
+fixture.json          2f5d8c14068de896298e7de9f696842b83ec6902
+generate.mjs          b314b8416ecaff041342ed92df120f9757c9aa71
+index.html            094dce511d1957fb56ce512d1feed2af24c2899d
+README.md             8e017f004e69908dfe25fd88f0998959cd7ceb2b
+package.json          d12bb17d4d4609a013e2d0f9b490828a22f4fcda
+browser-smoke.py      effd6aa5851dd6dd3fa21c190585e83f8516bf11
+verify-formats.py     af41e484816563b8399f5829cb8b16d497a802f8
+consumer-safety.py    f34f626eb98571b3fab3ee227999abed1a8c9c30
+stress.mjs            21532b08a444fc1e60322937a0d6e6fb3a0948cd
+
+$ npm test [exit 0]
+TOTAL 20 PASS (original)
+TOTAL 20 PASS (edge)
+PASS Markdown pasted HTML is entity-escaped, not rendered as raw HTML
+PASS Markdown preserves literal ampersands and Vietnamese text through safe escaping
+PASS Plain text export remains faithful to user-entered HTML-like text
+PASS CSV formula-leading text is neutralized by default
+PASS CSV alternative formula triggers are neutralized
+PASS CSV ordinary text remains byte-for-byte unchanged except quoting
+PASS CSV raw opt-out preserves formula-like strings, but is explicitly opt-in
+PASS CSV invalid safety policy fails closed
+PASS CSV risky meeting title is guarded too
+PASS CSV risky anchorId is guarded in marked mode
+PASS TXT non-default ordered list numbering is honored
+PASS Markdown non-default ordered list numbering is honored
+PASS DOCX native list numbering has correct startOverride
+PASS Separate DOCX ordered list groups have separate numbering instances and starts
+PASS Export does not mutate input document even with safety transforms
+TOTAL 15 PASS (security)
+TOTAL UNIT: 55/55 PASS
+
+$ npm run generate [exit 0]
+WROTE clean txt, md, csv, docx
+WROTE with-marks txt, md, csv, docx
+TOTAL 8 sample files produced
+
+$ npm run test:formats [exit 0]
+PASS formats: clean
+PASS formats: with-marks
+TOTAL 2 modes PASS (ZIP CRC/XML DOCX, strict CSV parser, Unicode TXT, Pandoc GFM)
+
+$ npm run test:consumers [exit 0]
+PASS Pandoc: pasted HTML remains text, no active script tag
+PASS LibreOffice Calc: CSV safe mode reads 4 text fields, no formula cell
+PASS LibreOffice Calc negative control: raw opt-out imported a formula for =1+1
+
+$ npm run test:stress [exit 0]
+PASS 10000 synthetic paragraphs, four formats, markers preserved
+{"blocks":10000,"elapsedMs":311.7,"rssMiB":156.74,"docxBytes":5059218,"csvBytes":2596546,"mdBytes":1264476,"txtBytes":1161133}
+
+$ npm run test:browser [exit 0]
+PASS Chromium Blob download: moc-hop-ban-sach.docx
+PASS Chromium Blob download: moc-hop-ban-sach.txt
+PASS Chromium Blob download: moc-hop-ban-sach.md
+PASS Chromium Blob download: moc-hop-ban-sach.csv
+PASS Chromium Blob download: moc-hop-kem-moc.docx
+PASS Chromium Blob download: moc-hop-kem-moc.txt
+PASS Chromium Blob download: moc-hop-kem-moc.md
+PASS Chromium Blob download: moc-hop-kem-moc.csv
+PASS Chromium malformed JSON displays an error
+TOTAL 9 PASS; Chromium 144.0.7559.96; IN-MEMORY_SHIM (NOT HTTP-ORIGIN E2E)
+
+$ render_docx.py samples/meeting-clean.docx --emit_pdf [exit 0]
+Pages rendered: 1
+$ render_docx.py samples/meeting-with-marks.docx --emit_pdf [exit 0]
+Pages rendered: 1
+Human visual inspection: PASS both page PNGs (Unicode/formatting/mark readability)
+Safety DOCX with orderedList.start=7 opened LibreOffice: numbers 7,8 rendered.
+
+NOT_RUN: clean git clone from GitHub (github.com DNS unavailable)
+NOT_RUN: Microsoft Word and Excel on Windows
+NOT_RUN: HTTP-origin Chrome/Edge E2E (browser policy blocked localhost)
+NOT_RUN: integrated application TC36 / device-specific acceptance

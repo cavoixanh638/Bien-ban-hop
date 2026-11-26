@@ -1,0 +1,269 @@
+:root{font-family:Inter,"Segoe UI",Arial,sans-serif;color:#243842;background:#eef2f2;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{cursor:pointer;border:1px solid #d5dedf;background:#fff;color:#27424c;border-radius:10px;padding:9px 12px;transition:background .15s,transform .15s}button:hover:not(:disabled){background:#e9f3f1}button:active:not(:disabled){transform:translateY(1px)}button:disabled{opacity:.43;cursor:not-allowed}
+#app{min-height:100vh;display:grid;grid-template-columns:252px minmax(470px,1fr) 296px}
+.sidebar{background:#152b35;color:#dce7e8;display:flex;flex-direction:column;padding:24px 16px 18px;min-width:0}
+.brand{display:flex;align-items:center;gap:12px;padding:0 8px 27px;border-bottom:1px solid #2c4650}.brand-logo{background:#76b9a2;color:#09242b;border-radius:13px;width:42px;height:42px;display:grid;place-items:center;font-size:25px;font-weight:800}.brand strong{display:block;font-size:17px;letter-spacing:-.025em}.brand small{display:block;font-size:11px;margin-top:4px;color:#9bb5bc}
+.side-section{flex:1;min-height:0;overflow:auto}.side-heading{display:flex;align-items:center;justify-content:space-between;margin:27px 7px 13px;color:#9db4bb;font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase}.side-heading button{color:#ddf5ed;background:#29444d;border:1px solid #375760;border-radius:8px;padding:1px 9px;font-size:22px}.meeting-list{display:flex;flex-direction:column;gap:5px}.meeting{display:block;width:100%;text-align:left;background:transparent;color:#c4d4d8;border:1px solid transparent;padding:12px 11px;line-height:1.5}.meeting strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}.meeting small{color:#89a8b1;font-size:11px}.meeting.active{background:#294953;color:#fff;border-color:#3c6771}.meeting:hover{background:#27444d}.update-app{margin-top:12px;background:#29444d;border:1px solid #45666b;color:#dce7e8;font-size:11px;padding:7px 9px}.sidebar-foot{padding:18px 8px 0;border-top:1px solid #2c4650;font-size:11px;color:#a3bdc3}.dot{display:inline-block;width:6px;height:6px;background:#7dbea8;border-radius:50%;margin-right:5px}
+.workspace{min-width:0;display:flex;flex-direction:column;max-height:100vh}.topbar{padding:23px 36px 18px;display:flex;justify-content:space-between;align-items:center;gap:16px;background:#fff;border-bottom:1px solid #e1e8e7}.eyebrow{font-size:10px;font-weight:800;letter-spacing:.15em;color:#6e918b;margin-bottom:6px}.topbar input{border:0;outline:none;background:transparent;color:#1b333e;max-width:500px;width:100%;font-size:23px;letter-spacing:-.04em;font-weight:700}.top-status{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.chip{border-radius:20px;background:#eff6f4;border:1px solid #deeeea;padding:6px 10px;font-size:11px;white-space:nowrap;color:#406958}.chip.error{background:#fff3ed;color:#a84b24;border-color:#f0d7c8}.chip.warning{background:#fff9e9;color:#806420;border-color:#f4e8bb}
+.toolbar{display:flex;align-items:center;justify-content:center;gap:5px;padding:10px 24px;background:#fff;border-bottom:1px solid #e1e8e7;flex-wrap:wrap}.toolbar button{border-color:transparent;min-width:34px;padding:6px 9px;font-size:14px}.toolbar .separator{height:20px;border-left:1px solid #d8e1e2;margin:0 5px}
+.paper-wrap{padding:27px 28px 64px;flex:1;overflow:auto}.paper{max-width:875px;margin:0 auto;background:white;min-height:650px;padding:64px clamp(24px,6%,70px);box-shadow:0 7px 30px #1d384309;border:1px solid #e6ebeb;border-radius:7px}
+#editor{min-height:480px;outline:none;cursor:text}.tiptap{min-height:480px;outline:none;font-family:"Times New Roman",Times,serif;font-size:14pt;line-height:1.15;letter-spacing:normal;word-spacing:normal;color:#23353c}.tiptap p{margin:0}/* Enter creates a new paragraph; line-height alone controls adjacent line spacing. */.tiptap h2{font-family:"Times New Roman",Times,serif;font-size:20px}.tiptap ul,.tiptap ol{padding-left:26px}.time-span[data-time-recording-id]{border-radius:2px;text-decoration:none;cursor:pointer}.time-span:hover{background:#e4f2eb}.time-span:not([data-time-recording-id]){text-decoration:none}.message{position:sticky;bottom:12px;align-self:center;background:#214d4a;color:white;box-shadow:0 8px 20px #29433930;padding:10px 17px;border-radius:12px;max-width:90%;font-size:12px;display:none;z-index:2}.message.visible{display:block}.message.error{background:#9f3e30}
+.panel{background:#f9fbfb;border-left:1px solid #dce5e5;max-height:100vh;overflow:auto;padding:28px 21px 18px}.panel-title{font-size:11px;font-weight:800;letter-spacing:.12em;color:#809799;text-transform:uppercase;margin:0 0 14px}.panel-title:not(:first-child){margin-top:27px}.rec-state{display:flex;align-items:center;gap:12px;background:#fff;border-radius:12px;padding:14px;border:1px solid #e1ebea;margin-bottom:12px}.rec-light{width:11px;height:11px;border-radius:50%;background:#b6c6c8;box-shadow:0 0 0 5px #edf1f0}.rec-light.active{background:#eb6b5d;box-shadow:0 0 0 5px #fdebe8;animation:pulse 1.8s ease-in-out infinite}.rec-light.paused{background:#e2b64e}.rec-state strong{font-size:13px}.rec-state #rec-clock{font-variant-numeric:tabular-nums;color:#61787d;font-size:19px;font-weight:600;margin-top:3px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.controls .primary{grid-column:1/-1;background:#205951;color:white;border-color:#205951;font-weight:700}.controls .primary:hover{background:#164941}.controls button{font-size:12px}.panel-small{font-size:11px;line-height:1.7;color:#6e878a;margin-top:12px}.play-row{display:flex;align-items:center;justify-content:space-between;gap:8px}.play-row label,.field{font-size:12px;color:#5b747b}.field{display:flex;align-items:center;gap:8px;margin:14px 0}.field select,.play-row select{background:#fff;border:1px solid #d7e1e1;border-radius:8px;padding:7px 8px;color:#345159}.field select{margin-left:auto}.anchor-status{border:1px dashed #cbdadb;border-radius:10px;background:#fff;padding:14px;margin-top:13px;min-height:72px;line-height:1.65;color:#5d777c;font-size:12px;word-break:break-word}.exports{display:grid;grid-template-columns:1fr 1fr;gap:7px}.exports button{font-size:12px}.wide{display:block;width:100%;margin-top:12px;font-size:12px;text-align:center}.panel-divider{margin:25px 0;border-top:1px solid #dce6e6}.technical{font-size:11px;white-space:pre-wrap;line-height:1.8;color:#6a8288}.experimental{margin-top:29px;font-size:10px;line-height:1.65;color:#9b7471}
+@keyframes pulse{50%{box-shadow:0 0 0 8px #fce1dc}}@media(max-width:1150px){#app{grid-template-columns:210px minmax(360px,1fr)}.panel{grid-column:2;max-height:none;padding:18px 28px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:8px 18px}.panel-title{grid-column:1/-1;margin-top:14px!important}.panel-divider,.technical,.experimental{grid-column:1/-1}.workspace{max-height:none;min-height:74vh}.paper-wrap{overflow:visible}.sidebar{grid-row:1/3}}
+@media(max-width:720px){#app{display:block}.sidebar{padding:13px 16px}.brand{padding-bottom:13px}.side-section{max-height:165px}.sidebar-foot{display:none}.workspace{min-height:auto}.topbar{padding:17px}.topbar input{font-size:19px}.toolbar{padding:8px 14px}.toolbar-hint{display:none}.paper-wrap{padding:12px}.paper{padding:25px 20px;min-height:360px}.tiptap{font-size:14pt}.panel{display:block;padding:20px;max-height:none}.panel-title:not(:first-child){margin-top:22px!important}}
+
+/* Mic test is independent from recording; keep the indicator legible at 24" / 2K. */
+.mic-check{background:#fff;border:1px solid #e1ebea;border-radius:12px;padding:12px;margin:10px 0 12px;display:flex;flex-direction:column;gap:9px}
+.mic-label{color:#54727a;font-size:11px;font-weight:700}
+#mic-device{width:100%;max-width:100%;border:1px solid #d7e1e1;border-radius:8px;background:#fff;padding:8px;color:#345159;font-size:12px}
+#mic-test{margin:0}
+.mic-meter{width:100%;height:12px;background:#e7eeef;border-radius:12px;overflow:hidden;border:1px solid #d5e2e0}
+#mic-level-fill{height:100%;width:0%;background:linear-gradient(90deg,#69c1a0,#2d8973,#ddb35b);transition:width .13s ease-out}
+#mic-test-status{margin-top:0;min-height:34px}
+#recording-path{border-left:3px solid #78aa9d;padding-left:10px;overflow-wrap:anywhere}
+#retry-local-recording{margin-top:8px}
+@media(prefers-reduced-motion:reduce){#mic-level-fill{transition:none}}
+
+/* Meeting-wide playback scrubber lives with the document, not in the narrow
+   right sidebar. Recorded PCM is green, missing samples are gray, and the
+   boundary line separates sessions without fabricating off-record wall time. */
+.timeline-dock{flex:0 0 auto;background:#fff;border-top:1px solid #dbe6e4;padding:14px clamp(14px,3%,36px) 12px;box-shadow:0 -5px 20px #142b350a;z-index:1}
+.timeline-heading{display:flex;align-items:baseline;gap:12px;justify-content:space-between;margin-bottom:8px}
+.timeline-heading strong{font-size:10px;letter-spacing:.1em;color:#2a665c}
+#timeline-summary{font-size:11px;color:#647e81;font-variant-numeric:tabular-nums;text-align:right}
+.timeline-control-row{display:grid;grid-template-columns:auto auto minmax(90px,1fr) auto;align-items:center;gap:12px}
+#timeline-play{min-width:72px;border-color:#b8d6ca;color:#19614f;background:#edf7f2;font-size:12px;font-weight:700;white-space:nowrap}
+#timeline-play:hover:not(:disabled){background:#d8ece4}
+.timeline-time{font-variant-numeric:tabular-nums;font-size:12px;white-space:nowrap;color:#34575c;font-weight:700}
+.timeline-scrub{position:relative;height:26px;min-width:0;display:flex;align-items:center}
+.timeline-bands{position:absolute;left:0;right:0;top:9px;height:9px;background:#e0e8e8;border-radius:6px;overflow:hidden;pointer-events:none}
+.timeline-band{position:absolute;top:0;bottom:0}
+.timeline-band.recorded{background:#48a98a}
+.timeline-band.gap{background:repeating-linear-gradient(45deg,#aebdc0,#aebdc0 4px,#dbe3e4 4px,#dbe3e4 8px)}
+.timeline-boundary{position:absolute;top:0;bottom:0;width:3px;background:#1b4651;border-left:1px solid #fff;border-right:1px solid #fff}
+#timeline-seek{appearance:none;-webkit-appearance:none;position:relative;width:100%;margin:0;padding:0;height:26px;background:transparent;cursor:pointer;outline-offset:3px}
+#timeline-seek::-webkit-slider-runnable-track{background:transparent;border:0;height:9px}
+#timeline-seek::-moz-range-track{background:transparent;border:0;height:9px}
+#timeline-seek::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;background:#fff;border:2px solid #176652;width:16px;height:16px;border-radius:50%;box-shadow:0 1px 4px #0003;margin-top:-3.5px}
+#timeline-seek::-moz-range-thumb{background:#fff;border:2px solid #176652;width:13px;height:13px;border-radius:50%;box-shadow:0 1px 4px #0003}
+#timeline-seek:disabled{cursor:not-allowed;opacity:.55}
+.timeline-sessions{display:flex;gap:7px;flex-wrap:wrap;margin-top:5px}
+.timeline-session{font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #d7e4e1;background:#f4f8f7;color:#376760}
+.timeline-notice{min-height:16px;font-size:10px;line-height:1.35;margin-top:6px;color:#718789}
+@media(max-width:1150px){.timeline-dock{grid-column:2;min-width:0}}
+@media(max-width:720px){.timeline-dock{padding:11px 14px}.timeline-heading{align-items:start;flex-direction:column;gap:3px}.timeline-control-row{grid-template-columns:auto 1fr auto;gap:8px}#timeline-play{grid-column:1}.timeline-control-row .timeline-scrub{grid-row:2;grid-column:1/-1}.timeline-time{font-size:11px}.timeline-control-row #timeline-total{grid-column:3;grid-row:1}.timeline-control-row #timeline-current{grid-column:2;grid-row:1}}
+
+/* Audio → note follow: an ephemeral UI treatment only. Never changes
+   ProseMirror marks, text formatting, caret, or exported DOCX. */
+.paper{position:relative}
+.note-follow-overlay{position:absolute;inset:0;z-index:2;pointer-events:none;user-select:none}
+.note-playback-layer{position:absolute;inset:0;pointer-events:none}
+.note-playback-highlight-rect{position:absolute;display:block;background:rgba(44,166,119,.2);outline:1px solid rgba(31,146,104,.48);border-radius:3px;box-shadow:0 0 0 2px rgba(77,180,139,.09);pointer-events:none}
+.note-playback-gutter{position:absolute;display:block;width:5px;border-radius:4px;background:#289f75;box-shadow:0 0 0 5px rgba(49,171,125,.1);pointer-events:none}
+.note-capture-pointer{position:absolute;display:block;width:5px;border-radius:4px;background:#e66e58;box-shadow:0 0 0 5px rgba(230,110,88,.12);pointer-events:none;animation:note-capture-pulse 1.9s ease-in-out infinite}
+@keyframes note-capture-pulse{50%{box-shadow:0 0 0 8px rgba(230,110,88,.065)}}
+@media(prefers-reduced-motion:reduce){.note-capture-pointer{animation:none}}
+.note-follow-strip{display:flex;align-items:center;gap:8px;min-width:0;margin-top:6px;padding:6px 8px;border-radius:7px;background:#eef7f2;color:#426960}
+.note-follow-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:#409c79}
+#note-follow-status{font-size:11px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#note-follow-toggle{white-space:nowrap;flex-shrink:0;background:#fff;color:#2d7361;font-size:10px;padding:4px 7px;border:1px solid #c6ddd2;border-radius:6px}
+#note-follow-toggle[aria-pressed="false"]{color:#71848b;background:#f7faf9}
+
+@media(max-width:720px){.note-follow-strip{flex-wrap:wrap}#note-follow-status{white-space:normal}}
+
+
+/* G00 UX: bright sidebar, on-demand rename, and replay controls at the timeline. */
+.sidebar{background:linear-gradient(165deg,#e1f8f1 0%,#e4f7fa 58%,#d4edf7 100%);
+  color:#173e49;border-right:1px solid #b9dcd9}
+.brand{border-bottom-color:#bededb}
+.brand-logo{background:linear-gradient(145deg,#0e958a,#28adba);color:#fff;box-shadow:0 5px 13px #0d787b30}
+.brand strong{color:#16414a}.brand small{color:#4c7b80}
+.side-heading{color:#336872}
+.side-heading button{background:#fff;color:#126b70;border:1px solid #9ed1cb;box-shadow:0 2px 6px #40878a12}
+.side-heading button:hover:not(:disabled){background:#d4f2e9}
+.meeting-row{position:relative;min-width:0}
+.meeting-row .meeting{background:transparent;color:#3a5f69;padding-right:40px}
+.meeting-row .meeting strong{font-size:13px}
+.meeting-row .meeting small{color:#5b8990}
+.meeting-row .meeting.active{background:#fff;color:#12535c;border-color:#9fd5ce;box-shadow:0 3px 12px #2d8b8b12}
+.meeting-row .meeting.active small{color:#4a8b8a}
+.meeting-row .meeting:hover:not(.active){background:#ffffffa8;color:#135663}
+.meeting-row .meeting.active:hover{background:#f8fffd}
+.meeting-edit{position:absolute;right:8px;top:13px;z-index:1;width:27px;height:27px;padding:0;
+  background:#e2f5f2;color:#216f6a;border:1px solid #b3dcd5;border-radius:7px;font-size:15px}
+.meeting-edit:hover:not(:disabled){background:#c8ebe3}
+.meeting-title-editor{margin:9px 2px;padding:12px;background:#fff;border:1px solid #abdbd2;
+  border-radius:11px;box-shadow:0 5px 15px #2e8c8914}
+.meeting-title-editor[hidden]{display:none}
+.meeting-title-editor label{display:block;color:#2e6971;font-size:11px;font-weight:700;margin-bottom:6px}
+.meeting-title-editor input{width:100%;min-width:0;padding:9px 10px;border:1px solid #abd3cd;
+  border-radius:8px;background:#fff;color:#173f49;font-size:13px}
+.meeting-title-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:8px}
+.meeting-title-actions button{font-size:11px;padding:6px 10px}
+#meeting-title-save{background:#177b74;color:#fff;border-color:#177b74}
+.sidebar-foot{border-top-color:#bcdcd9;color:#467a80}
+.dot{background:#17a787}.update-app{background:#fff;color:#236a6d;border-color:#abd3d1}
+.update-app:hover:not(:disabled){background:#dcf5ee}
+
+.timeline-playback-options{display:flex;flex-wrap:wrap;align-items:center;gap:7px 13px;
+  margin-top:8px;padding-top:8px;border-top:1px solid #e3eeec}
+.timeline-playback-options label{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
+  font-size:11px;font-weight:600;color:#4b7277}
+.timeline-playback-options select{padding:5px 7px;border:1px solid #bfd8d4;border-radius:7px;
+  font-size:11px;background:#fff;color:#23565e}
+#play-stop{padding:6px 10px;font-size:11px;border-color:#bedbd5;background:#f1f9f6;color:#1c665b}
+#play-stop:hover:not(:disabled){background:#def2ea}
+.timeline-playback-options .anchor-status{flex:1 1 260px;min-height:0;margin:0;padding:0;
+  border:0;border-radius:0;background:transparent;font-size:11px;line-height:1.5;color:#57797e}
+@media(max-width:720px){
+  .timeline-playback-options{gap:8px}
+  .timeline-playback-options .anchor-status{flex:1 0 100%}
+}
+
+
+/* G00 Word editing: controls stay compact on 2K, search does not cover the text. */
+.word-menu{position:relative;z-index:12;font-size:12px}
+.word-menu>summary{cursor:pointer;color:#316a67;border:1px solid #cce3de;border-radius:8px;
+  background:#f3faf7;list-style:none;padding:7px 10px;white-space:nowrap}
+.word-menu>summary::-webkit-details-marker{display:none}
+.word-menu-inner{position:absolute;top:calc(100% + 8px);left:0;z-index:15;
+  width:min(640px,calc(100vw - 290px));display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:11px;background:#fff;border:1px solid #b7dcd5;padding:14px;border-radius:11px;
+  box-shadow:0 12px 30px #183d4140}
+.word-menu-inner label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:#496d70}
+.word-menu-inner select,.word-menu-inner input{height:32px;width:100%;min-width:0;border:1px solid #c6ddda;
+  background:#fff;border-radius:7px;color:#174c50;padding:4px}
+.word-actions{grid-column:1/-1;display:flex;justify-content:center;flex-wrap:wrap;gap:5px}
+.toolbar .word-actions button{font-size:11px;background:#f3f8f8;border:1px solid #dae8e7;padding:5px 8px}
+.find-panel[hidden]{display:none}.find-panel{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;
+  border-bottom:1px solid #d5e8e4;background:#f7fcfa;padding:8px 26px}
+.find-panel input{min-width:110px;max-width:240px;flex:1;border:1px solid #c0dbd7;
+  border-radius:7px;padding:8px;background:#fff;color:#214e54;font-size:12px}
+.find-panel button{padding:6px 9px;font-size:12px}
+#find-count{min-width:74px;text-align:center;color:#59817e;font-size:11px}
+.tiptap table{border-collapse:collapse;table-layout:fixed;width:100%;margin:12px 0}
+.tiptap th,.tiptap td{border:1px solid #9db4b2;padding:8px;vertical-align:top;min-width:28px}
+.tiptap th{background:#e9f5f1;font-weight:700}
+.tiptap .selectedCell{background:#d1e6f7}
+.tiptap a{color:#0a6a9c;text-decoration:underline}
+.tiptap .find-and-replace-result{background:#ffdf7f55}
+.tiptap .find-and-replace-result-current{background:#f5a44288}
+@media(max-width:720px){.word-menu-inner{width:min(440px,calc(100vw - 26px));grid-template-columns:repeat(2,minmax(0,1fr))}
+.find-panel{padding:8px 12px}.find-panel input{max-width:none}}
+
+
+/* Local full-text search: index only when requested, never modify source notes. */
+.meeting-search-label{display:block;margin:0 7px 6px;color:#44777a;font-size:10px;font-weight:700}
+#meeting-search{display:block;width:calc(100% - 14px);margin:0 7px 7px;
+  border:1px solid #a3d2ca;background:#ffffffda;border-radius:8px;
+  padding:9px 10px;color:#1b515a;font-size:12px;outline-offset:2px}
+.meeting-search-status{min-height:14px;margin:0 7px 8px;font-size:10px;color:#467e7d}
+
+
+/* Focused listening and non-destructive voice EQ controls in the playback dock */
+.timeline-playback-options #focus-duration,
+.timeline-playback-options #voice-filter{max-width:116px}
+/* Playback choices explain automatic 30s focus and conflicts inline (no toast). */
+.playback-mode-status{flex:1 0 100%;font-size:11px;line-height:1.35;
+  color:#276579;background:#edf7fa;border-left:3px solid #7ab2c5;
+  padding:4px 9px;border-radius:4px}
+.timeline-playback-options #focus-duration{border:1px solid #659db3;
+  background:#f3faff;font-weight:700}
+
+
+
+/* Native Chromium print/PDF from the current note without forcing live editor pagination. */
+@page{size:A4;margin:20mm}
+@media print{
+  html,body,#app{height:auto!important;min-height:0!important;display:block!important;
+    overflow:visible!important;background:#fff!important}
+  .sidebar,.panel,.toolbar,.find-panel,.timeline-dock,.message,.meeting-title-editor{display:none!important}
+  .workspace{display:block!important;max-height:none!important;min-height:0!important;overflow:visible!important}
+  .paper-wrap{display:block!important;overflow:visible!important;padding:0!important}
+  .paper{max-width:none!important;min-height:0!important;width:100%!important;border:0!important;
+    border-radius:0!important;padding:0!important;box-shadow:none!important}
+  .tiptap{min-height:0!important;color:#000!important;font-family:"Times New Roman",serif;font-size:14pt}
+  .tiptap table,.tiptap p,.tiptap h1,.tiptap h2,.tiptap h3{break-inside:avoid}
+}
+
+/* Status remains accessible to assistive technologies without occupying toolbar space. */
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;
+  margin:-1px!important;overflow:hidden!important;clip-path:inset(50%)!important;
+  white-space:nowrap!important;border:0!important}
+
+/* A/B loop and short seeking live next to the meeting timeline, no new side panel. */
+.ab-controls{display:flex;flex-wrap:wrap;align-items:center;gap:5px 7px}
+.ab-controls button{padding:5px 7px;font-size:11px;border-radius:7px}
+#loop-status{font-size:11px;color:#365a60;min-width:105px;font-variant-numeric:tabular-nums}
+#loop-play[aria-pressed="true"]{background:#d8eee6;border-color:#68ad93;color:#165a46;font-weight:700}
+
+/* Bookmarks live in ProseMirror itself, never in an independent timestamp table. */
+.tiptap [data-important-note="true"]{box-shadow:inset 0 -.42em #f5df84}
+.bookmark-panel{border-top:1px solid #e0ece7;padding-top:7px;margin-top:7px}
+.bookmark-panel summary{cursor:pointer;color:#276956;font-size:11px;font-weight:700}
+.bookmark-list{display:flex;gap:5px;flex-wrap:wrap;padding-top:6px;max-height:95px;overflow:auto}
+.bookmark-item{padding:5px 8px;border-radius:7px;font-size:11px;
+  color:#235c55;border:1px solid #b5d5cb;background:#f7fbf4;text-align:left}
+#storage-health[data-level="warning"]{background:#fff5e8;color:#965210;border-left:3px solid #e8a548}
+
+/* Small, bounded image/link/page-break helpers keep Word-like editing local. */
+.word-link-field{display:inline-flex!important;flex-direction:row!important;align-items:center;
+  width:min(250px,100%);gap:5px;margin:0!important;font-size:11px}
+#word-link-url{min-width:90px;flex:1;padding:5px;border-radius:6px;
+  border:1px solid #c4dad5;color:#23585a;background:#fff;font-size:11px}
+.tiptap img[data-meeting-image]{display:block;max-width:100%;height:auto;object-fit:contain;margin:8px 0}
+.tiptap .meeting-page-break{display:block;min-height:13px;border-top:2px dashed #a4b9b9;
+  margin:14px 0;background:repeating-linear-gradient(-45deg,#f5f9f8,#f5f9f8 6px,#e9f0ee 6px,#e9f0ee 12px)}
+@media print{
+  .tiptap .meeting-page-break{height:0;min-height:0;break-after:page;page-break-after:always;
+    margin:0;border:0;background:none}
+}
+
+
+/* Waveform is opt-in, read-only sampled PCM. Separate it from coverage!
+   Upper blue column lane = relative sampled RMS; lower green/gray stripe =
+   authoritative committed-vs-missing samples. Previously both occupied an
+   18px-high green bar and low-volume columns were effectively invisible. */
+.timeline-scrub{height:50px}
+.timeline-scrub .timeline-bands{top:3px;height:42px;background:#eef5f8;
+  border:1px solid #d3e4ea;border-radius:8px;overflow:hidden}
+.timeline-scrub .timeline-band{top:auto;bottom:0;height:9px}
+.timeline-waveform{position:absolute;top:2px;left:0;right:0;bottom:12px;
+  pointer-events:none;overflow:hidden;z-index:1}
+.timeline-waveform-bar{position:absolute;top:50%;transform:translateY(-50%);
+  background:#1465a3;opacity:1;border-radius:3px;min-height:4px}
+.timeline-scrub .timeline-boundary{z-index:2;top:0;bottom:0}
+.timeline-scrub #timeline-seek{position:absolute;left:0;bottom:0;
+  width:100%;height:22px;z-index:3}
+.waveform-options{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:7px}
+#waveform-load{padding:4px 9px;font-size:11px;border-color:#a7c8d8;
+  background:#edf6fb;color:#14597f;font-weight:700}
+#waveform-load:hover:not(:disabled){background:#d9edf8}
+#waveform-status{font-size:11px;line-height:1.35;color:#496f7b}
+
+/* Recording actions: pause/finish must be immediately distinguishable.
+   The default Start button stays disabled while recording. */
+.controls #rec-pause:not(:disabled),
+.controls #rec-stop:not(:disabled){min-height:44px;font-size:13px;
+  font-weight:800;border-width:1px;box-shadow:0 2px 7px #1a303323}
+.controls #rec-pause[data-mode="pause"]:not(:disabled){
+  background:#ffc65c;border-color:#b67714;color:#382304}
+.controls #rec-pause[data-mode="pause"]:hover:not(:disabled){background:#ffda8e}
+.controls #rec-pause[data-mode="resume"]:not(:disabled){
+  background:#167c60;border-color:#09634a;color:#fff}
+.controls #rec-pause[data-mode="resume"]:hover:not(:disabled){background:#10664e}
+.controls #rec-stop:not(:disabled){background:#c72f3a;border-color:#9d1c27;color:#fff}
+.controls #rec-stop:hover:not(:disabled){background:#a9202c}
+.controls #rec-pause:focus-visible,
+.controls #rec-stop:focus-visible{outline:3px solid #17577a;outline-offset:3px}
+@media print{.waveform-options{display:none!important}}
+
+/* Keep the collapse control outside the dock so it is always reachable.
+   Hiding removes the complete playback dock from layout without unmounting
+   its controls, selection, waveform or playback state. */
+#playback-dock[hidden]{display:none!important}
+.toolbar #playback-dock-toggle{white-space:nowrap;font-size:12px;font-weight:600;
+  border:1px solid #c7dedb;background:#f2f8f7;color:#315e58}
+.toolbar #playback-dock-toggle[aria-expanded="false"]{background:#e4f2ed;border-color:#9bc9ba}
+.toolbar #playback-dock-toggle:focus-visible{outline:2px solid #176450;outline-offset:2px}

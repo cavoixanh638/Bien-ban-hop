@@ -1,0 +1,4 @@
+# Reproducible, generated sample artifacts; create with node generate.mjs
+samples/
+__pycache__/
+*.pyc

@@ -1,8 +1,39 @@
-# THIẾT KẾ THU ÂM VÀ PHÁT LẠI — MỐC HỌP V1.2
+# THIẾT KẾ THU ÂM VÀ PHÁT LẠI — BIÊN BẢN HỌP V1.2
 
 **Trạng thái:** Đặc tả thử nghiệm, **chưa lựa chọn engine production**, chưa có kết quả benchmark. Tài liệu này hợp nhất kế hoạch lựa chọn bộ ghi âm và thiết kế Virtual Multi-Segment Player; thông tin PASS/FAIL thực tế thuộc [STATUS.md](STATUS.md).
 
 **Phạm vi tài liệu:** audio capture, lưu bền vững/checkpoint/khôi phục, nguồn micro và âm thanh máy tính, Virtual Timeline, phát/tua qua các file. So sánh bốn công nghệ và căn cứ lựa chọn tại [TECHNICAL_OPTIONS.md](TECHNICAL_OPTIONS.md); quyết định production vẫn phải dựa benchmark Gói 1.2. Quy tắc liên kết chữ với mốc thuộc [TIMELINE_RULES.md](TIMELINE_RULES.md); schema/manifest thuộc [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## G00 — Thiết kế phát theo luồng G00 mới (22/11/2026)
+
+**Bản này thay thế cổng 15/30/60 giây của G00 ngày 21/11.** Điều kiện không đổi: mọi PCM phải được đọc từ sampleRanges đã được G03 commit; bản ghi âm gốc, OPFS, manifest, `timeSpan`, ID cuộc họp và dấu mốc không bị xử lý hay sửa. Chỉ thay đường phát.
+
+1. **Luồng C2 mặc định 1× / không yêu cầu pitch:** tiếp tục dùng AudioBufferSource scheduler, nhưng `ProgressiveSilenceIndex` chỉ đọc PCM kế tiếp từng cửa sổ **8 giây**, hủy khi Stop, giảm bộ nhớ và không quét toàn bộ 2–3 giờ trước khi phát. Nếu skip bị tắt, không phân tích thêm.
+2. **Luồng pitch-preserve khi rate ≠1×:** sử dụng HTMLMediaElement `preservesPitch=true`, `planStreamChunk` giới hạn **6 giây hoặc 8 MiB PCM f32** mỗi phần. Trình duyệt nối qua MediaElementSource → tùy chọn RNNoise (AudioWorklet 48k) → EQ/dry/wet. Một chunk đang phát và tối đa một chunk được nạp trước; `positionMs` tính từ **startSample nguồn + currentTime × sourceRate**, không từ elapsed thời gian nghe đã bỏ khoảng im lặng. URL Blob, node, media được đóng khi Stop/switch.
+3. **Kết hợp và thay đổi trong khi nghe:** không cưỡng bức chọn một trong hai `preservePitch`/`skipSilence`. RNNoise độc lập. Khi rate khác 1× giữ pitch bật mặc định. Thay đổi checkbox/rate khi đang nghe tạo yêu cầu mới từ sample nguồn hiện tại; serial cancellation/last-request-wins chống lệnh cũ phát lại.
+4. **Phát xuyên session:** `nextContiguousSession` cho phép chuyển phiên sau khi nguồn trước đã kết thúc tại mẫu cuối thực và phiên sau bắt đầu có PCM tại sample 0, không có gap/trailing unavailable, không có A–B. Timeline chỉ nối clocks các phiên, **không** cộng thời gian nghỉ hoặc tái gán mốc.
+5. **Chất lượng:** MediaElement từng chunk có thể gây mép nối nghe thấy trong điều kiện phần cứng thật. Không được tuyên bố nối âm gapless trước khi đo jitter, click, CPU/RAM, time-drift và lời nói nhỏ trên Windows micro thật. RMS silence cũng không phải speech-VAD ML.
+
+**Bằng chứng:** unit 3h giả/PCM corrupt/cancel/next-session, E2E file WAV 16s tốc độ 2× với khoảng im lặng và 3 bộ lọc, chuyển nhiều chunk và đổi chế độ khi đang nghe. Chỉ ghi Code SHA = Tested SHA khi CI mới SUCCESS. Các cổng Windows thật/3 giờ/mất điện/UniKey/Word giữ NOT_RUN và RELEASE HOLD.
+
+## G00 — Điều phối lựa chọn playback và giới hạn skip silence (21/11/2026)
+
+`reconcilePlaybackOptions()` là một bộ điều phối **UI thuần**, không được thay đổi PCM hay timestamp: bật RMS skip trong Liên tục phải chuyển dropdown nhìn thấy được sang focus 30s; chủ động chọn lại Liên tục phải bỏ chọn skip. Tốc độ ≠1× không kết hợp đồng thời skip silence và `preservesPitch`; lựa chọn thay đổi gần nhất được ưu tiên, có trạng thái thông báo. Bộ phát vẫn kiểm tra đầu vào và từ chối lời gọi không hợp lệ từ ngoài UI; không tự phát sai nguồn nếu UI bị bypass.
+
+`scanVerifiedSilenceSpan()` chỉ dành cho **đoạn hữu hạn**: focus đã chọn hoặc vòng lặp A–B 0,4–120s, quét tuần tự từng phần tối đa 60s dùng OPFS worker, kiểm tra từng PCM seek có thật và hủy khi Stop/switch. Không cấp phép quét toàn bộ recording vài giờ khi focus=0. Cửa sổ quét và các vùng im lặng vẫn đánh dấu bằng mẫu nguồn; không cộng dồn đồng hồ phát rút gọn thành `audioOffsetMs`, không vượt gap/session, không sửa `timeSpan` hoặc WAV. Đã có unit scan 0,4/90s và browser E2E tương tác focus/pitch/RNNoise.
+
+**Kiểm tra:** [CI #44908183703](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44908183703) SUCCESS (code/tested SHA `d730b40d763acc0453056d5f27d711a0c35c41a5`); Chrome dev 38 PASS +1 SKIP, production/PWA 39 PASS, Node 100 PASS mỗi OS. Chất lượng âm thanh/CPU/RAM và dữ liệu ghi nhiều giờ trên thiết bị thật vẫn **NOT_RUN**. **Không tuyên bố VAD ML hoặc engine phát production hoàn chỉnh**.
+
+## G00 — Hợp đồng audio nâng cao đã tích hợp mức alpha (21/11/2026)
+
+Đây là **đường phát tùy chọn, tắt mặc định**, không thay bộ thu G02, định dạng PCM/OPFS G03, audio manifest, sample clock, `timeSpan`, hay sao lưu v1/v2. **Mọi lựa chọn mốc** vẫn phải có `recordingId` và mẫu PCM durable khớp; ở ranh giới nhiều WAV, chỉ được đi tiếp khi mẫu sau kề ngay mẫu trước, không chạy qua gap hay sang phiên khác. Phát/clip A–B giới hạn cùng một recordingId.
+
+- **Giữ cao độ:** Khi người dùng chọn nghe tập trung 15/30/60 giây và tốc độ ≠1, có thể dựng WAV Float32 từ cửa sổ PCM đã xác minh (≤32 MiB) cho HTMLAudioElement với `preservesPitch=true` rồi đưa vào Web Audio chỉ trong luồng phát. Giữ đường C2 mặc định cho phát liên tục/lâu; nếu API thiếu hoặc chọn Liên tục với giữ cao độ, báo lỗi thay vì ngầm chuyển nguồn.
+- **RNNoise:** `@sapphi-red/web-noise-suppressor@0.4.1` được nạp động dưới dạng WASM/AudioWorklet 48kHz và đặt trước EQ trong đường phát, tắt mặc định. Không sửa/ghi lại WAV, không gửi PCM ra network/CDN. Thất bại khởi tạo phải hiển thị rõ; đóng/disconnect processor sau Stop hoặc đổi phiên. PWA chỉ cache tệp asset thuộc cùng origin sau khi tải.
+- **Bỏ qua im lặng:** Quét theo luồng một cửa sổ PCM durable ≤60 giây, tính RMS trong những cửa sổ khoảng 25ms; các khoảng quá ngưỡng im lặng được đưa vào tập sample-range để scheduler bỏ qua trong lúc phát. `positionMs` vẫn báo mẫu **nguồn**, không phải vị trí rút gọn của thời gian nghe; `audioOffsetMs` và Mark không được cập nhật. Đây không phải VAD/người nói dựa mô hình; không phối hợp với giữ pitch ở tốc độ khác 1× trong alpha.
+- **Waveform:** các cột RMS lấy mẫu tối đa 128 điểm ×1024 frame, chỉ ở sample-range durable, không suy diễn khoảng thiếu. Thao tác có cancel/close OPFS worker riêng khi đổi phiên, không đọc toàn bộ WAV nhiều giờ.
+
+**Code SHA = Tested SHA:** `8cf09646b4800037caadd9cd5e391da94f90af32`, [CI #44890639015](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44890639015) SUCCESS (Node Windows/Linux 89/89, Chromium dev 34 PASS + 1 skip, production 35 PASS). Đây là bằng chứng tương tác giả lập/bundle, **không** phải benchmark phần cứng, pitch perceptual, RNNoise speech separation, đọc >2GB hoặc phê duyệt phát hành. Các trường hợp thiết bị Windows/IME/micro thật, 3 giờ, mất điện/quota, TCs đầy đủ vẫn NOT_RUN / RELEASE HOLD.
 
 ## I. Thu, lưu và lựa chọn bộ ghi âm
 

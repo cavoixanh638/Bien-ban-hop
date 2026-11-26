@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Biên bản họp · Capture PoC 02</title><style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#1a2940;background:#f3f6fa}*{box-sizing:border-box}
+main{max-width:960px;margin:2rem auto;padding:0 1rem}h1{font-size:1.55rem;margin-bottom:.2rem}h2{font-size:1.15rem}
+p{color:#49617c;line-height:1.5}section{background:white;padding:1.2rem;border:1px solid #dbe3ed;border-radius:14px;margin:1rem 0}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem}
+label{font-size:.88rem;display:block;color:#3b4f67}select,input{margin-top:.3rem;display:block;width:100%;padding:.6rem;border:1px solid #acbbc9;border-radius:8px;background:white}
+.buttons{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem}button{border:0;border-radius:8px;background:#255db4;color:white;padding:.65rem .95rem;cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}button.alt{background:#e8eff9;color:#154179}
+pre{max-height:330px;overflow:auto;background:#0f2139;color:#d8e8fe;padding:1rem;border-radius:9px;font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+strong{color:#1c426e}small{color:#65768b}#status{font-weight:600}
+</style></head><body><main>
+<h1>Biên bản họp — PoC thu âm và truyền PCM</h1>
+<p>Đối chứng AudioWorklet/PCM và MediaRecorder với <strong>cùng nguồn âm thanh</strong>. Đây là bản thử kỹ thuật, chưa ghi OPFS, không thay ứng dụng ghi chú. Dùng Chrome/Edge trên localhost hoặc HTTPS.</p>
+<section><h2>Cấu hình</h2><div class="controls">
+<label>Nguồn âm thanh<select id="source"><option value="synthetic">Tổng hợp 437 Hz (không cần quyền)</option><option value="microphone">Microphone (cần quyền)</option><option value="display-audio">Audio chia sẻ màn hình (nếu có track)</option></select></label>
+<label>Bộ thu<select id="engine"><option value="both">Cả hai, cùng nguồn</option><option value="pcm">Chỉ AudioWorklet/PCM</option><option value="media">Chỉ MediaRecorder</option></select></label>
+<label>Frames / batch<select id="batchFrames"><option>2048</option><option>4096</option></select></label>
+<label>Pool buffer<select id="poolSize"><option>3</option><option selected>8</option><option>16</option></select></label>
+<label>Hàng đợi tối đa<select id="maxQueue"><option>2</option><option selected>6</option><option>12</option></select></label>
+<label>Worker chậm (ms/chunk)<input id="delayMs" type="number" min="0" max="5000" value="0"></label>
+<label>CPU Worker (ms/chunk)<input id="cpuBurnMs" type="number" min="0" max="1000" value="0"></label>
+<label>MediaRecorder timeslice (ms)<input id="mediaTimesliceMs" type="number" min="250" max="5000" value="600"></label>
+</div><div class="buttons"><button id="start">Bắt đầu</button><button id="pause" class="alt" disabled>Pause</button><button id="resume" class="alt" disabled>Resume</button><button id="trackEnd" class="alt" disabled>Mô phỏng ngắt nguồn</button><button id="stop" disabled>Dừng và đo</button><button id="downloadWav" class="alt" disabled>Tải WAV mẫu đầu</button><button id="downloadWebm" class="alt" disabled>Tải WebM thử</button></div>
+<p id="status" role="status">Chưa bắt đầu. crossOriginIsolated: <span id="isolated"></span></p><small>Không có SharedArrayBuffer. ACK trả buffer ≠ xác nhận ghi bền vững. WAV tải về là tiền tố liên tục tối đa 8 giây, không phải toàn phiên. Nếu trình duyệt không trả lời yêu cầu quyền micro, nút Dừng sẽ thoát ngay nhưng Start vẫn bị khóa đến khi quyền được trả lời và mọi track cấp muộn đã dừng.</small>
+</section>
+<section><h2>Giám sát sự kiện</h2><pre id="events">[]</pre></section>
+<section><h2>Kết quả theo hợp đồng</h2><pre id="results">Chưa có kết quả.</pre></section>
+</main><script type="module">
+import {CaptureComparison, runAutomated, verifyDecodable} from './src/controller.mjs';
+window.capturePoc = {CaptureComparison, runAutomated, verifyDecodable};
+const el = id => document.getElementById(id);
+el('isolated').textContent = String(crossOriginIsolated);
+let run = null;
+let uiMode = 'idle';
+function buttons(mode,paused=false) {
+  uiMode=mode;
+  el('start').disabled = (mode!=='idle' && mode!=='stopped') || !!run?.permissionPendingCleanup;
+  el('stop').disabled = mode==='idle'||mode==='stopped'||mode==='stopping';
+  el('pause').disabled = mode!=='capturing'||paused;
+  el('resume').disabled = mode!=='capturing'||!paused;
+  el('trackEnd').disabled = mode!=='capturing';
+}
+function config() {return {source:el('source').value,engine:el('engine').value,
+  batchFrames:Number(el('batchFrames').value),poolSize:Number(el('poolSize').value),maxQueue:Number(el('maxQueue').value),
+  delayMs:Number(el('delayMs').value),cpuBurnMs:Number(el('cpuBurnMs').value),mediaTimesliceMs:Number(el('mediaTimesliceMs').value)};}
+function reportEvent(event) {
+  el('events').textContent = JSON.stringify(run?.events.slice(-25) || [event],null,2);
+  el('status').textContent = `${event.type} · ${Math.round(event.inputMonoMs)} ms · ${run?.recordingId || ''}`;
+  // Stop may return before an OS permission prompt is resolved; never offer a new
+  // session until that pending promise settles and any late-granted track is stopped.
+  if (event.type==='permission-settled' && uiMode==='permission_pending_cleanup' &&
+      run && !run.permissionPendingCleanup && run.resourcesReleased) {
+    buttons('stopped');
+    el('status').textContent='Quyền micro đã trả lời; không còn nguồn từ phiên đã hủy. Có thể bắt đầu lại.';
+    el('results').textContent=JSON.stringify(run.results(),null,2);
+  }
+}
+el('start').onclick = async () => {
+  if(uiMode!=='idle' && uiMode!=='stopped')return; // Protect against synchronous double clicks.
+  buttons('starting');
+  el('results').textContent='Đang yêu cầu quyền và thiết lập nguồn…';
+  el('downloadWav').disabled=true;el('downloadWebm').disabled=true;
+  const previous=run;
+  const candidate=new CaptureComparison(reportEvent);
+  run=candidate; // never overwrite an active/pending recorder
+  try {
+    await previous?.dispose?.();
+    await candidate.start(config());
+    if(run===candidate && candidate.state==='capturing') {
+      buttons('capturing');el('results').textContent='Đang thu…';
+    }
+  } catch(error) {
+    if(run===candidate && uiMode!=='stopping'){
+      buttons(candidate.permissionPendingCleanup?'permission_pending_cleanup':'stopped');
+      el('status').textContent=candidate.permissionPendingCleanup
+        ? 'Đã hủy Start. Hộp thoại cấp quyền chưa trả lời; chưa xác nhận giải phóng micro. Hãy trả lời/đóng hộp thoại trước khi thử lại.'
+        : `Không thể bắt đầu: ${error}. Đã dọn tài nguyên.`;
+    }
+  }
+};
+el('pause').onclick = () => {if(run?.state==='capturing'){run.pause();buttons('capturing',true);}};
+el('resume').onclick = () => {if(run?.state==='capturing'){run.resume();buttons('capturing',false);}};
+el('trackEnd').onclick = () => {if(run?.state==='capturing')run.simulateTrackEnd();};
+el('stop').onclick = async () => {
+  if(!run || uiMode==='stopping')return;
+  const candidate=run;
+  buttons('stopping');
+  el('status').textContent='Đang dừng/hủy khởi tạo, giải phóng micro và chờ ACK…';
+  try {
+    const result=await candidate.stop();
+    if(candidate.media) {
+      const file=await candidate.media.getCompleteBlob();
+      if(file)result.mediaVerification=await verifyDecodable(file);
+    }
+    if(run!==candidate)return;
+    el('results').textContent=JSON.stringify(result,null,2);
+    el('downloadWav').disabled=!candidate.worker || !candidate.workletFinal;
+    el('downloadWebm').disabled=!candidate.media || !(await candidate.media.getCompleteBlob());
+    if(candidate.permissionPendingCleanup) {
+      buttons('permission_pending_cleanup');
+      el('status').textContent='Đã thoát chờ Stop, nhưng hộp thoại cấp quyền CHƯA kết thúc; chưa thể xác nhận giải phóng micro. Trả lời/đóng prompt để thử lại.';
+    } else buttons('stopped');
+  } catch(error) {
+    if(run!==candidate)return;
+    buttons(candidate.permissionPendingCleanup?'permission_pending_cleanup':'stopped');
+    el('results').textContent=JSON.stringify(candidate.results(),null,2);
+    el('status').textContent=candidate.permissionPendingCleanup
+      ? `Stop báo lỗi ${error}; quyền micro còn treo. Không khởi động phiên mới cho tới khi prompt kết thúc.`
+      : `Lỗi dừng/timeout: ${error}. Bộ thu đã thử dọn tài nguyên; KHÔNG có ACK lưu bền vững.`;
+  }
+};
+function download(blob,name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');a.href=url;a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
+el('downloadWav').onclick = async () => {try {const result = await run.exportPcmPrefixWav();download(new Blob([result.wav],{type:'audio/wav'}), 'capture-prefix.wav');} catch(error){el('status').textContent=String(error);}};
+el('downloadWebm').onclick = async () => {try {const file=await run.media.getCompleteBlob();if(!file)throw new Error('Full container incomplete/unavailable');download(file,'capture-mediarecorder.webm');} catch(error){el('status').textContent=String(error);}};
+</script></body></html>

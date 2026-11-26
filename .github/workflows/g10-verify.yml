@@ -1,0 +1,79 @@
+name: G10 integration verification (no deployment)
+# Check PR updates exactly once. A previous push+PR double trigger
+# cancelled one duplicate run and made GitHub Desktop show a red X,
+# even while both actual checks on the same SHA were successful.
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "poc/**"
+      - ".github/workflows/g10-verify.yml"
+permissions:
+  contents: read
+concurrency:
+  group: g10-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  contracts:
+    name: G10 contract + Vite build (Linux/Windows)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install exact locked dependencies (no package-lock drift)
+        working-directory: app
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test G10 core and local WAV Recording backend (native Node)
+        working-directory: app
+        run: npm test
+      - name: Build integrated application
+        working-directory: app
+        run: npm run build
+      - name: Test G01 editor policy (native Node)
+        working-directory: poc/01-editor
+        run: npm run test:unit
+      - name: Test G02 audio and transport (native Node)
+        working-directory: poc/02-capture
+        run: npm test
+      - name: Test G03 OPFS reference (native Node)
+        working-directory: poc/03-opfs
+        run: npm test
+      - name: Test G05 player reference (native Node)
+        working-directory: poc/05-player
+        run: npm test
+      - name: Test G07 backup reference (native Node)
+        working-directory: poc/07-backup
+        run: npm test
+      - name: Test G08 document export (native Node)
+        working-directory: poc/08-export
+        run: npm test
+
+      - name: Install Chromium for true HTTP browser smoke
+        if: matrix.os == 'ubuntu-24.04'
+        working-directory: app
+        run: npx playwright install --with-deps chromium
+      - name: Run G10 Chromium integration smoke
+        if: matrix.os == 'ubuntu-24.04'
+        working-directory: app
+        run: npm run test:e2e
+      - name: Run G10 built production preview and offline PWA smoke
+        if: matrix.os == 'ubuntu-24.04'
+        working-directory: app
+        env:
+          G10_PREVIEW: '1'
+        run: npm run test:e2e
+      - name: Upload failing browser traces (no personal data fixtures)
+        if: failure() && matrix.os == 'ubuntu-24.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: g10-browser-traces
+          path: |
+            app/test-results/
+            app/playwright-report/
+          retention-days: 3

@@ -2,6 +2,60 @@
 
 **Trạng thái:** Bộ tiêu chí dự kiến, **chưa chạy test**, không có kết quả PASS được kế thừa. Nguồn phạm vi: [PLAN_V1_2.md](PLAN_V1_2.md); **trạng thái thực tế và dẫn chứng chỉ ghi tại [STATUS.md](STATUS.md)**. Tài liệu kiểm thử này không tự thể hiện một ca đã PASS chỉ vì tiêu chí đã được viết.
 
+## G00 — Subcase ẩn/hiện thanh nghe lại (26/11/2026)
+
+- Mặc định dock hiện; nút ở toolbar vẫn hiển thị lúc dock ẩn. Khi ẩn, toàn bộ dock không chiếm chiều cao, vùng soạn thảo mở rộng; khi hiện, tốc độ, skip, waveform và các điều khiển còn nguyên trong DOM. Kiểm trạng thái aria-expanded/aria-controls.
+- Ẩn/hiện trong lúc ghi không làm dừng thu, không mất quyền ghi/mốc chữ; sau Kết thúc vẫn có audio đã lưu, hiện lại để nghe được. Nút thu bên phải không bị ẩn. Kiểm bằng Chromium dev/prod với micro giả lập.
+- Reload phải nhớ lựa chọn ẩn/hiện cục bộ; PWA cập nhật shell không xóa ghi chú hoặc OPFS. Thiết bị Windows thật NOT_RUN; ghi bằng chứng CI đúng SHA trong STATUS.md.
+
+## G00 — Nghiệm thu bổ sung cho xử lý liên tục theo luồng (22/11/2026)
+
+Bản sau 22/11 **không còn giới hạn giữ cao độ và RMS skip ở 15/30/60 giây** như checkpoint cũ bên dưới. Kiểm tra riêng theo các mức bằng chứng:
+
+| Subcase | Cổng | Điều kiện và bằng chứng cần có |
+|---|---|---|
+| Liên tục nhiều giờ/giới hạn bộ nhớ | TC16/TC23/TC24 | Bật skip + pitch ở 1,5–2× khi `focus-duration=0`; chỉ đọc cửa sổ PCM 8s và WAV media ≤6s/≤8 MiB, không phân tích toàn 3h trước khi bắt đầu. Unit kiểm nguồn giả 3h; browser phải phát qua ≥2 chunk, theo dõi RSS/CPU máy thật **NOT_RUN** |
+| Ba bộ lọc đồng thời | TC22/TC23/TC25 | RNNoise + giữ cao độ + bỏ qua im lặng cùng bật trong Liên tục, phát chính xác file có tiếng/silence, không thay `timeSpan` hoặc mẫu WAV; test browser dev/prod; cảm nhận giọng nói và thông số latencies Windows **NOT_RUN** |
+| Thay tùy chọn khi đang nghe | TC22/TC23 | Đổi liên tiếp tốc độ, pitch, skip, RNNoise; lệnh cuối cùng phải thắng, start lại đúng source offset (không quay về 0/đoạn đã bỏ). Dừng khi đang prefetch không tự phát lại; kiểm Chromium và test thật |
+| Session-to-session | TC16/TC24/TC25 | Khi Liên tục, hết một session đúng mẫu cuối và session kế bắt đầu từ sample 0 thì được sang; nếu trailing/leading gap, source khác, hay loop A–B thì không tự nhảy. Unit và E2E hai phiên với micro giả, phải giữ note nguyên bản |
+| Giao diện/cập nhật offline | TC32/TC34 | Checkbox giữ pitch bật mặc định; chọn Liên tục không tắt skip, các lựa chọn độc lập; UI hiển thị trạng thái; PWA cache version mới và dữ liệu OPFS/IDB cũ giữ nguyên khi cập nhật an toàn |
+| Độ liên tục âm thanh thực | TC23/TC25/TC35 | Nghe file dài, giọng thật ở tốc độ 0,5/1,5/2× và RNNoise trên loa/micro Windows, phát hiện seam/drop/click ở mỗi chunk, đo jitter, CPU/RAM, mẫu/gap và nguồn thời gian. **NOT_RUN**, không được tuyên bố gapless/perceptual PASS chỉ từ giả lập |
+
+Chỉ đánh dấu **CI PASS** khi Windows/Linux Node, Chromium dev + production/PWA đều SUCCESS ở **đúng Code SHA**. Bài giả 3 giờ không phải chạy thật 3 giờ; test micro giả không thay bằng chứng UniKey/EVKey, hiệu quả lọc nhiễu, nghe giọng thật hoặc độ bền trên thiết bị thật. Giữ RELEASE HOLD.
+
+## G00 — Subcase hồi quy phát lại khi bật nhiều lựa chọn (21/11/2026)
+
+**Tái hiện lỗi thực tế đã sửa:** chế độ `Nghe tập trung = Liên tục` (`focus-duration = 0`), bật `Giữ cao độ` ở tốc độ 1× và `Bỏ qua im lặng` rồi bấm vào phiên/đoạn chữ. Trước sửa, bộ phân tích RMS ném lỗi phải chọn 15/30/60 giây. Sau sửa, dropdown phải **hiện 30 giây** ngay lúc bật skip, status văn bản giải thích, có thể nghe PCM; không được sửa source/notes, không được xuất hiện toast lỗi. Chuyển ngược về Liên tục phải bỏ chọn skip; ở tốc độ 0,75×, bật pitch rồi skip (hoặc thứ tự ngược) phải giữ lựa chọn mới nhất và thông báo rõ.
+
+**Các ca thêm:** A–B 0,4 giây (không bỏ nhầm im lặng ngắn hơn ngưỡng 750ms), A–B 90 giây chia cửa sổ quét ≤60 giây, sai PCM/gap/cancel phải từ chối; PCM vẫn đọc từ đúng `recordingId`. Chromium E2E kiểm đường nghe pitch + RNNoise, skip + RNNoise, màu nút thu theo state và waveform tách lớp. CI [#44908183703](https://github.com/cavoixanh638/Bien-ban-hop/actions/runs/44908183703) đúng SHA `d730b40d763acc0453056d5f27d711a0c35c41a5` **PASS** (Node 100/100 mỗi OS, Chromium dev 38 PASS + 1 SKIP, production/PWA 39/39 PASS). **Không** tuyên bố tính năng bỏ qua im lặng Liên tục hàng giờ: chỉ hỗ trợ focus 15/30/60 hoặc A–B tường minh 0,4–120 giây. Windows micro thật/IME/Word/3h/backup lớn vẫn **NOT_RUN**.
+
+Đã rà soát tình trạng kiểm thử của 18 nhóm tính năng trong `STATUS.md`; một số nhóm chỉ có bằng chứng E2E/Unit đường cơ bản, các tiêu chí nghiệm thu đầy đủ TC01–TC38 chưa được thực thi trên thiết bị thật. Giữ **INTEGRATION_ALPHA / RELEASE HOLD**.
+
+## G00 — Subcase kiểm thử 18 tính năng bổ sung (18/11/2026)
+
+**Giữ nguyên mã TC01–TC38.** Các subcase sau gắn với mã TC gốc, không tự tạo trạng thái PASS. Các bài unit/e2e chỉ có chứng cứ khi GitHub Actions kết thúc SUCCESS tại đúng Code SHA. Mọi trường hợp cần thiết bị thật vẫn `NOT_RUN` cho tới khi có số liệu và log.
+
+| Subcase | TC hiện hành | Phương pháp và điều kiện đạt |
+|---|---|---|
+| A–B liên tục / gap / phiên | TC23/TC25 | Cặp A,B cùng vùng sample durable được phép; A/B băng qua gap, khác phiên, quá 120s bị chặn. Phải thử loop nhiều vòng, Stop/Seek/switch không tự resume từ task cũ; đo gap/drop/duplicate khi qua segment. |
+| Tua ±10s/tốc độ | TC22–TC26 | Tua tuyệt đối trên timeline, từ chối vùng missing; thử 0,5–2×. C2 mặc định `playbackRate` còn đổi pitch; opt-in giữ cao độ đoạn ngắn đã PASS CI, nhưng cảm nhận giọng thật vẫn NOT_RUN. |
+| Thụt đầu dòng/nested list | TC01/TC09/TC36 | `firstLineIndentPt` 0–72, lưu/reopen, export DOCX twip đúng; sink/lift nested list; không làm thay `timeSpan`. |
+| Nhập WAV/MP3 | TC27/TC28/TC30 | WAV PCM mono/stereo 8–192k, chunk ≤32k frames, rollback OPFS nếu lỗi trước IDB ref; MP3/M4A/WebM/OGG chỉ nếu decode thành công và nằm trong giới hạn; nhập file lớn phải chặn rõ, không crash. |
+| Gõ khi phát file nhập | TC02/TC22/TC27/TC28 | `imported_playback` chỉ khi player đang phát, sampleRange xác minh, đúng meeting; pause/seek/gap hoặc đổi meeting không gán audioOffsetMs giả. |
+| Bookmark trong ghi chú | TC02/TC09/TC26 | Chỉ bôi đen chữ có một mốc hợp lệ mới đánh dấu; lưu `important` trong ProseMirror, tập hợp theo recordingId/anchorId, click nghe; không phá Undo, paste, nguồn gốc. |
+| Quota cảnh báo | TC19/TC29 | `navigator.storage.estimate()` chỉ hiển thị ước tính, báo WARNING ở ngưỡng; thiếu API báo UNKNOWN, không báo lưu giả. |
+| Verify ZIP toàn bộ | TC30/TC31/TC38 | Chọn tệp sao lưu v2, đọc stream SHA256/CRC từng entry; thiếu/hỏng entry trả FAIL, không thay đổi bản gốc, không giả kết quả v1. |
+| Xuất riêng WAV A–B | TC23/TC25/TC30 | Chỉ cho phép vùng contiguous đã commit; header WAV PCM f32 chuẩn, dung lượng chính xác, không vượt gap/phiên, không sửa OPFS. |
+| DOCX ảnh/link/ngắt trang | TC09/TC36 | PNG/JPEG ≤300KB, link allowlist http(s)/mailto, pageBreak; mở file DOCX trong Word/LibreOffice có ảnh/quan hệ link/pagebreak hợp lệ. Bài Microsoft Word Windows thật `NOT_RUN`. |
+| Table colspan/rowspan | TC09/TC36 | Tiptap gộp/tách ô, XML DOCX có gridSpan/vMerge đúng; bảng dài và Word Windows thật `NOT_RUN`. |
+| G00 waveform quan sát được | TC16/TC24 | Sau khi mẫu PCM được đọc, cột sóng **xanh lam** hiện ở làn **trên** dải recorded/gap, tách màu và có độ cao ≥4px; khung tua ≥48px. Không vẽ cột giả ở gap; RMS=0 chỉ hiển thị baseline thấp, cực nhỏ không được thổi thành sóng to. Kiểm DOM geometry, CSS màu, đủ 128 vị trí lấy mẫu và giữ mốc chữ; test Chromium dev/prod đúng SHA. |
+| G00 màu và trạng thái nút thu | TC01/TC12/TC13 | Chưa thu: Pause/Stop disabled; đang thu: Start disabled, Pause **vàng cam**, Stop **đỏ**, cỡ nút ≥44px, chữ rõ; tạm dừng: Resume **xanh lá**, Stop vẫn đỏ; sau Kết thúc cả hai disabled, bản ghi vẫn lưu. Thử keyboard/focus/giả lập và Windows micro thật; không coi CSS có nút là nghiệm thu cơ chế thu dài. |
+| Waveform lấy mẫu PCM (G00) | TC16/TC23/TC24 | Sau Stop, người dùng tự bấm Hiện dạng sóng; tối đa 128 bins × 1024 samples, chỉ đọc sampleRanges đã commit, vẽ RMS; vùng gap không được tô biên độ. Kiểm đóng reader trước khi đổi cuộc họp/phát hoặc thu; đọc lỗi phải bỏ waveform, tuyệt đối không sửa WAV/manifest/timeSpan/note. Test đúng SHA trên Chromium dev và production; Windows 3h thật NOT_RUN. |\n| Giữ cao độ opt-in | TC22/TC23/TC25 | Cửa sổ nghe 15/30/60s, ≤32 MiB, tốc độ 0,5–2×: `preservesPitch` thật trên WAV xác minh; trình duyệt không hỗ trợ hoặc chế độ Liên tục phải báo lỗi, không ngầm đổi pitch. Chromium dev/production PASS ở SHA `8cf0964`; chất lượng giọng thật/CPU-RAM Windows **NOT_RUN**. |
+| Lọc nhiễu RNNoise WASM | TC16/TC22/TC23 | Mô hình local WASM `@sapphi-red/web-noise-suppressor@0.4.1`, AudioWorklet 48kHz, chỉ xử lý luồng phát; tắt mặc định; không sửa bản ghi/mốc. Unit/build + Chromium dev/production PASS ở SHA `8cf0964`. Benchmark CPU/RAM/âm người nói chồng, browser thiếu AudioWorklet **NOT_RUN**. |
+| Bỏ qua im lặng RMS | TC16/TC23/TC25/TC27 | PCM durable ≤60s, phát bỏ đoạn yên tĩnh có xác minh theo ngưỡng RMS, giữ mép; tuyệt đối không đổi recordingId/audioOffsetMs, không xuyên gap, không giả speech-VAD. Chromium dev/production PASS SHA `8cf0964`; nghe với nhiễu nền/giọng thật NOT_RUN. |
+| A–B / clip WAV qua segment liền mẫu | TC16/TC23/TC25/TC30 | Có thể phát/lặp/xuất clip xuyên segment khác file nhưng **cùng recordingId, các sampleRanges kề nhau**, chính xác số mẫu; âm thanh gap/phiên khác hoặc file hỏng bị chặn. Unit PASS; chưa đo drop/duplicate sample trên máy thật, NOT_RUN. |
+| Legacy restore sau tích hợp | TC30/TC35/TC38 | Sau mọi thay đổi player/editor kiểm restore v1/v2 và chuyển vào meeting mới (internal transition cho phép dù đang transfer), không overwrite meeting hiện có. |
+
 ## Nguyên tắc
 
 - Kiểm thử tự động (unit/integration/e2e) **và** thao tác bộ gõ thật trên Windows Chrome/Edge.

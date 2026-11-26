@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.cache/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.log
+playwright-report/
+test-results/

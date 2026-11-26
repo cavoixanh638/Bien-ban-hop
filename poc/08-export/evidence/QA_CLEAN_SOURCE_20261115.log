@@ -1,0 +1,30 @@
+G08 CLEAN SOURCE EXTRACTION — 2026-11-15
+Source: exact GitHub blob bytes at code commit 82d93899e953f78baf0a41914866115c89ebdc7e
+Input: only the 14 committed source/config/fixture files in an empty temp directory, no node_modules, no generated samples; Git blob SHA-1 of 13 tracked content files matched.
+NOT a clean git clone (github.com DNS unavailable); clean SOURCE directory verified, not a Git worktree.
+
+$ node test.mjs
+TOTAL 20 PASS
+$ node edge.test.mjs
+TOTAL 20 PASS
+$ node security.test.mjs
+TOTAL 15 PASS
+$ node generate.mjs
+WROTE clean txt, md, csv, docx
+WROTE with-marks txt, md, csv, docx
+TOTAL 8 samples PASS
+$ python verify-formats.py
+PASS formats: clean
+PASS formats: with-marks
+TOTAL 2 modes PASS
+$ python consumer-safety.py
+PASS Pandoc: pasted HTML remains text, no active script tag
+PASS LibreOffice Calc: CSV safe mode reads 4 text fields, no formula cell
+PASS LibreOffice Calc negative control: raw opt-out imported a formula for =1+1
+$ python browser-smoke.py
+PASS 8 Chromium Blob downloads matching generated outputs
+PASS Chromium malformed JSON displays an error
+TOTAL 9 PASS; Chromium 144.0.7559.96; IN-MEMORY_SHIM, NOT HTTP E2E
+
+Generated file bundle: G08-export-round2-8-mau.zip (8 synthetic samples, available in conversation)
+NOT_RUN clean remote git checkout / Word Windows / browser HTTP origin / integrated TC36.

@@ -1,0 +1,467 @@
+{
+  "schemaVersion": 1,
+  "kind": "native-contenteditable-event-baseline",
+  "evidenceScope": "Linux Chromium / Playwright synthetic keyboard; NO Tiptap editor and NO Windows UniKey/EVKey",
+  "os": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "browser": "Chromium 144.0.7559.96",
+  "script": "python3 scripts/browser-native-event-probe.py",
+  "scenario": "synthetic ASCII letters + Backspace/Insert; no native Windows IME",
+  "eventCount": 56,
+  "kinds": {
+    "keydown": 14,
+    "beforeinput": 14,
+    "input": 14,
+    "keyup": 14
+  },
+  "finalLengthOnly": 12,
+  "events": [
+    {
+      "kind": "keydown",
+      "timeMs": 190,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "beforeinput",
+      "timeMs": 190.2,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "input",
+      "timeMs": 190.6,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "keyup",
+      "timeMs": 222.1,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "keydown",
+      "timeMs": 222.9,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "beforeinput",
+      "timeMs": 223,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "input",
+      "timeMs": 223.4,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "keyup",
+      "timeMs": 254.7,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "keydown",
+      "timeMs": 255.4,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "beforeinput",
+      "timeMs": 255.5,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "input",
+      "timeMs": 256,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "keyup",
+      "timeMs": 286.2,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "keydown",
+      "timeMs": 287.1,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "beforeinput",
+      "timeMs": 287.1,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "input",
+      "timeMs": 287.5,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "keyup",
+      "timeMs": 318.9,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "keydown",
+      "timeMs": 319.6,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "beforeinput",
+      "timeMs": 319.6,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "input",
+      "timeMs": 320,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "keyup",
+      "timeMs": 350.3,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "keydown",
+      "timeMs": 351.2,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "beforeinput",
+      "timeMs": 351.3,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "input",
+      "timeMs": 351.6,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "keyup",
+      "timeMs": 382.7,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "keydown",
+      "timeMs": 384.8,
+      "key": "Backspace",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "beforeinput",
+      "timeMs": 384.9,
+      "key": null,
+      "inputType": "deleteContentBackward",
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "input",
+      "timeMs": 385.5,
+      "key": null,
+      "inputType": "deleteContentBackward",
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "keyup",
+      "timeMs": 386.1,
+      "key": "Backspace",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "keydown",
+      "timeMs": 387.5,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "beforeinput",
+      "timeMs": 387.6,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "input",
+      "timeMs": 387.8,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "keyup",
+      "timeMs": 418,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "keydown",
+      "timeMs": 420.2,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "beforeinput",
+      "timeMs": 420.3,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "input",
+      "timeMs": 420.8,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "keyup",
+      "timeMs": 422,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "keydown",
+      "timeMs": 423.9,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "beforeinput",
+      "timeMs": 423.9,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "input",
+      "timeMs": 424.2,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "keyup",
+      "timeMs": 455.8,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "keydown",
+      "timeMs": 456.7,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "beforeinput",
+      "timeMs": 456.7,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "input",
+      "timeMs": 457.2,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "keyup",
+      "timeMs": 488.4,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "keydown",
+      "timeMs": 489,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "beforeinput",
+      "timeMs": 489.1,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "input",
+      "timeMs": 489.5,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "keyup",
+      "timeMs": 520.9,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "keydown",
+      "timeMs": 521.7,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "beforeinput",
+      "timeMs": 521.7,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "input",
+      "timeMs": 522.1,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "keyup",
+      "timeMs": 553.5,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "keydown",
+      "timeMs": 554.5,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    },
+    {
+      "kind": "beforeinput",
+      "timeMs": 554.5,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "input",
+      "timeMs": 554.9,
+      "key": null,
+      "inputType": "insertText",
+      "dataLength": 1,
+      "isComposing": false
+    },
+    {
+      "kind": "keyup",
+      "timeMs": 586.3,
+      "key": "[printable]",
+      "inputType": null,
+      "dataLength": null,
+      "isComposing": false
+    }
+  ]
+}

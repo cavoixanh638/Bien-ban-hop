@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#e1f7f4">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="description" content="Biên bản họp — ghi chú trung tâm, ghi âm và nghe lại theo từng đoạn chữ.">
+  <title>Biên bản họp • Bản tích hợp thử nghiệm G10</title>
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-logo">B</div><div><strong>Biên bản họp</strong><small>Bản tích hợp thử nghiệm</small></div></div>
+      <div class="side-section">
+        <div class="side-heading"><span>Cuộc họp của tôi</span><button id="new-meeting" title="Tạo cuộc họp">＋</button></div>
+        <label class="meeting-search-label" for="meeting-search">Tìm cuộc họp hoặc nội dung đã ghi</label>
+        <input id="meeting-search" type="search" placeholder="Tìm cả chữ không dấu…" autocomplete="off" aria-label="Tìm trong tất cả cuộc họp">
+        <div id="meeting-search-status" class="meeting-search-status" aria-live="polite"></div>
+        <div id="meeting-list" class="meeting-list" role="list"></div>
+        <div id="meeting-title-editor" class="meeting-title-editor" hidden>
+          <label for="meeting-title">Đổi tên cuộc họp</label>
+          <input id="meeting-title" aria-label="Tên cuộc họp" placeholder="Tên cuộc họp" spellcheck="false" autocorrect="off" autocapitalize="off" data-gramm="false">
+          <div class="meeting-title-actions">
+            <button id="meeting-title-save" type="button">Lưu tên</button>
+            <button id="meeting-title-cancel" type="button">Hủy</button>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-foot"><span class="dot"></span> Lưu tại trình duyệt của thiết bị này<br><button id="update-app" class="update-app" disabled>Cập nhật phiên bản</button></div>
+    </aside>
+    <main class="workspace">
+      <div class="toolbar" aria-label="Công cụ soạn thảo">
+        <button data-action="bold" title="In đậm (Ctrl+B)"><b>B</b></button>
+        <button data-action="italic" title="In nghiêng (Ctrl+I)"><i>I</i></button>
+        <button data-action="underline" title="Gạch chân (Ctrl+U)"><u>U</u></button>
+        <button data-action="strike" title="Gạch ngang"><s>S</s></button>
+        <button data-action="bulletList" title="Danh sách chấm">• ≡</button>
+        <button data-action="orderedList" title="Danh sách số">1. ≡</button>
+        <div class="separator"></div>
+        <button data-action="undo" title="Hoàn tác (Ctrl+Z)">↶</button>
+        <button data-action="redo" title="Làm lại (Ctrl+Y)">↷</button>
+        <button id="open-find" type="button" title="Tìm kiếm (Ctrl+F), thay thế (Ctrl+H)">⌕ Tìm</button>
+        <button id="bookmark-toggle" type="button" title="Chọn chữ có mốc âm thanh rồi đánh dấu để nghe lại">☆ Quan trọng</button>
+        <details id="word-menu" class="word-menu">
+          <summary>Định dạng &amp; bảng</summary>
+          <div class="word-menu-inner" aria-label="Các chức năng soạn thảo Word">
+            <label>Kiểu đoạn <select id="word-heading"><option value="0">Văn bản</option><option value="1">Tiêu đề 1</option><option value="2">Tiêu đề 2</option><option value="3">Tiêu đề 3</option></select></label>
+            <label>Phông chữ <select id="word-font"><option value="Times New Roman">Times New Roman</option><option value="Arial">Arial</option><option value="Calibri">Calibri</option></select></label>
+            <label>Cỡ chữ (pt) <select id="word-size"><option value="12">12</option><option value="13">13</option><option value="14" selected>14</option><option value="16">16</option><option value="18">18</option><option value="20">20</option><option value="24">24</option></select></label>
+            <label>Màu chữ <input id="word-color" type="color" value="#23353c" aria-label="Chọn màu chữ"></label>
+            <label>Tô sáng <input id="word-highlight" type="color" value="#fff3a0" aria-label="Chọn màu tô sáng"></label>
+            <label>Giãn dòng <select id="word-lineheight"><option value="1">1,0</option><option value="1.15" selected>1,15</option><option value="1.5">1,5</option><option value="2">2,0</option></select></label>
+            <div class="word-actions" aria-label="Căn lề và bảng">
+              <button type="button" data-word="alignLeft" title="Căn trái">≡ Trái</button>
+              <button type="button" data-word="alignCenter" title="Căn giữa">≡ Giữa</button>
+              <button type="button" data-word="alignRight" title="Căn phải">≡ Phải</button>
+              <button type="button" data-word="alignJustify" title="Căn đều">≡ Đều</button>
+              <button type="button" id="indent-more" title="Thụt dòng đầu thêm 12 pt">→ Đầu dòng</button>
+              <button type="button" id="indent-less" title="Giảm thụt đầu dòng 12 pt">← Đầu dòng</button>
+              <button type="button" data-word="nestList" title="Đưa mục danh sách xuống một cấp">↳ Danh sách</button>
+              <button type="button" data-word="unnestList" title="Đưa mục danh sách lên một cấp">↰ Danh sách</button>
+              <button type="button" data-word="insertTable">＋ Bảng 3×3</button>
+              <button type="button" data-word="addRowAfter">＋ Dòng</button>
+              <button type="button" data-word="addColumnAfter">＋ Cột</button>
+              <button type="button" data-word="deleteRow">− Dòng</button>
+              <button type="button" data-word="deleteColumn">− Cột</button>
+              <button type="button" data-word="mergeOrSplit">Gộp/Tách ô</button>
+              <button type="button" data-word="deleteTable">Xóa bảng</button>
+              <label class="word-link-field">Liên kết <input id="word-link-url" type="url" placeholder="https://…" aria-label="Địa chỉ liên kết"></label>
+              <button type="button" id="word-add-link">Gắn liên kết</button>
+              <button type="button" id="word-remove-link">Bỏ liên kết</button>
+              <button type="button" id="word-page-break">Ngắt trang</button>
+              <button type="button" id="word-insert-image">Chèn ảnh PNG/JPEG</button>
+              <input id="word-image-file" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" hidden aria-label="Chọn ảnh nhỏ để chèn vào ghi chú">
+            </div>
+          </div>
+        </details>
+        <button id="playback-dock-toggle" type="button" aria-controls="playback-dock" aria-expanded="true" title="Ẩn hoặc hiện toàn bộ thanh nghe lại, không ảnh hưởng ghi âm">Ẩn thanh nghe lại</button>
+      </div>
+      <!-- Hidden visually, retained for screen readers and save/lease correctness. -->
+      <div class="sr-only" aria-live="polite" aria-atomic="false">
+        <span id="writer-status">Chờ tải</span>
+        <span id="save-status">Chưa tải</span>
+      </div>
+      <section id="find-panel" class="find-panel" aria-label="Tìm và thay thế" hidden>
+        <input id="find-query" type="search" placeholder="Tìm trong ghi chú" aria-label="Từ cần tìm">
+        <button type="button" id="find-prev" title="Kết quả trước">↑</button>
+        <button type="button" id="find-next" title="Kết quả tiếp">↓</button>
+        <span id="find-count" aria-live="polite">0 kết quả</span>
+        <input id="find-replacement" placeholder="Thay bằng…" aria-label="Nội dung thay thế">
+        <button type="button" id="find-replace">Thay</button>
+        <button type="button" id="find-replace-all">Thay tất cả</button>
+        <button type="button" id="find-close" title="Đóng tìm kiếm" aria-label="Đóng tìm kiếm">×</button>
+      </section>
+      <section class="paper-wrap"><div class="paper">
+        <div id="editor" aria-label="Nội dung ghi chú cuộc họp"></div>
+      </div></section>
+      <section id="playback-dock" class="timeline-dock" aria-label="Thanh thời gian toàn bộ ghi âm">
+        <div class="timeline-heading"><strong>TOÀN BỘ GHI ÂM</strong><span id="timeline-summary">Chưa có phiên ghi âm</span></div>
+        <div class="timeline-control-row">
+          <button id="timeline-play" type="button" disabled title="Phát / dừng tại vị trí đã chọn">▶ Phát</button>
+          <span id="timeline-current" class="timeline-time" aria-label="Thời điểm đang chọn">00:00:00</span>
+          <div class="timeline-scrub">
+            <div id="timeline-bands" class="timeline-bands" aria-hidden="true"></div>
+            <input id="timeline-seek" type="range" min="0" max="1" value="0" step="1" disabled aria-label="Tua trong toàn bộ thời lượng ghi âm">
+          </div>
+          <span id="timeline-total" class="timeline-time" aria-label="Tổng thời gian phiên ghi âm">00:00:00</span>
+        </div>
+        <div class="timeline-playback-options" aria-label="Tùy chọn nghe lại">
+          <button id="play-stop" type="button" title="Dừng phát lại">■ Dừng</button>
+          <label for="play-rate">Tốc độ
+            <select id="play-rate" title="Khi tăng/giảm tốc độ, trình duyệt tự giữ cao độ giọng nếu bật tùy chọn Giữ cao độ">
+              <option value="0.5">0,5×</option><option value="0.75">0,75×</option>
+              <option value="0.9">0,9×</option><option value="1" selected>1,0×</option>
+              <option value="1.1">1,1×</option><option value="1.25">1,25×</option>
+              <option value="1.5">1,5×</option><option value="1.75">1,75×</option>
+              <option value="2">2,0×</option>
+            </select>
+          </label>
+          <label for="focus-duration">Nghe tập trung
+            <select id="focus-duration" aria-label="Giới hạn đoạn nghe sau mốc">
+              <option value="0">Liên tục</option><option value="15000">15 giây</option>
+              <option value="30000">30 giây</option><option value="60000">60 giây</option>
+            </select>
+          </label>
+          <label for="pitch-preserve" title="Giữ cao độ tự nhiên khi thay đổi tốc độ bằng bộ giải mã trình duyệt; đọc WAV theo từng đoạn nhỏ kể cả khi nghe Liên tục.">
+            <input id="pitch-preserve" type="checkbox" checked> Giữ cao độ tự động
+          </label>
+          <label for="silence-skip" title="Bỏ qua khoảng yên tĩnh dài trong khi phát bằng cách phân tích các cửa sổ PCM nhỏ, áp dụng cả Liên tục; không thay đổi WAV hoặc mốc nguồn.">
+            <input id="silence-skip" type="checkbox"> Bỏ qua im lặng
+          </label>
+          <label for="rnnoise-toggle" title="RNNoise xử lý giọng nói trong AudioWorklet/WASM cục bộ khi phát lại; không sửa WAV hoặc bản ghi gốc, tắt mặc định.">
+            <input id="rnnoise-toggle" type="checkbox"> Lọc nhiễu RNNoise (thử nghiệm)
+          </label>
+          <span id="playback-mode-status" class="playback-mode-status" role="status" aria-live="polite">Chế độ Liên tục hỗ trợ giữ cao độ, lọc nhiễu và bỏ qua im lặng.</span>
+          <div class="ab-controls" aria-label="Lặp đoạn A đến B">
+            <button id="skip-back" type="button" title="Lùi 10 giây (Alt+Shift+Mũi tên trái)">−10s</button>
+            <button id="skip-forward" type="button" title="Tiến 10 giây (Alt+Shift+Mũi tên phải)">+10s</button>
+            <button id="loop-set-a" type="button" title="Đặt điểm A ở vị trí thanh tua">Đặt A</button>
+            <button id="loop-set-b" type="button" title="Đặt điểm B ở vị trí thanh tua">Đặt B</button>
+            <button id="loop-play" type="button" title="Nghe lặp đoạn A–B (cùng vùng WAV đã xác minh)">Lặp A–B</button>
+            <button id="export-clip" type="button" title="Xuất WAV từ mốc A đến B đã xác minh, tối đa 120 giây">Xuất WAV A–B</button>
+            <button id="loop-clear" type="button" title="Tắt lặp A–B và bỏ hai mốc">Xóa A–B</button>
+            <span id="loop-status" role="status" aria-live="polite">Chưa đặt A–B</span>
+          </div>
+          <label for="preroll">Nghe lùi trước mốc
+            <select id="preroll"><option value="0">Không</option><option value="3000">3 giây</option><option value="5000" selected>5 giây</option><option value="10000">10 giây</option></select>
+          </label>
+          <label for="voice-filter">Làm rõ giọng
+            <select id="voice-filter" aria-label="Bộ lọc giọng nói khi nghe">
+              <option value="off">Gốc</option><option value="clear">Nhẹ</option>
+              <option value="stronger">Rõ hơn</option>
+            </select>
+          </label>
+          <div id="anchor-status" class="anchor-status" role="status" aria-live="polite">Chọn một đoạn chữ đã gắn mốc để nghe lại.</div>
+        </div>
+        <div class="waveform-options">
+          <button id="waveform-load" type="button" disabled title="Đọc lượng nhỏ mẫu PCM thật từ vùng đã lưu, không sửa âm thanh">Hiện dạng sóng</button>
+          <span id="waveform-status" role="status" aria-live="polite">Dạng sóng lấy mẫu; không thay thế vùng ghi âm/thiếu âm thanh trên thanh tua.</span>
+        </div>
+        <div id="timeline-sessions" class="timeline-sessions" aria-label="Danh sách phiên ghi âm"></div>
+        <div class="note-follow-strip" aria-label="Liên kết vị trí âm thanh với ghi chú">
+          <span class="note-follow-dot" aria-hidden="true"></span>
+          <span id="note-follow-status" role="status" aria-live="polite">Khi nghe lại, đoạn ghi chú gần mốc phát sẽ sáng lên.</span>
+          <button id="note-follow-toggle" type="button" aria-pressed="true" title="Tự cuộn đến đoạn ghi chú có mốc âm thanh đang nghe">Tự cuộn: Bật</button>
+        </div>
+        <details id="bookmark-panel" class="bookmark-panel">
+          <summary>Mốc quan trọng đã đánh dấu (<span id="bookmark-count">0</span>)</summary>
+          <div id="bookmark-list" class="bookmark-list" aria-label="Danh sách đoạn quan trọng"></div>
+        </details>
+        <div id="timeline-notice" class="timeline-notice" role="status" aria-live="polite">Thanh tua sẽ xuất hiện sau khi bản ghi âm được lưu.</div>
+      </section>
+      <div id="message" class="message" role="status" aria-live="polite"></div>
+    </main>
+    <aside class="panel">
+      <div class="panel-title">ÂM THANH</div>
+      <div class="rec-state"><div id="rec-light" class="rec-light"></div><div><strong id="rec-label">Chưa ghi âm</strong><div id="rec-clock">00:00:00</div></div></div>
+      <div class="mic-check">
+        <label class="mic-label" for="mic-device">Micro đầu vào</label>
+        <select id="mic-device" aria-label="Chọn micro"><option value="">Micro mặc định</option></select>
+        <button id="mic-test" class="wide" type="button">Thử micro (15 giây)</button>
+        <div id="mic-meter" class="mic-meter" role="meter" aria-label="Mức tín hiệu micro" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="mic-level-fill"></div></div>
+        <div id="mic-test-status" class="panel-small" role="status" aria-live="polite">Bấm Thử micro để kiểm tra máy có thu được giọng nói hay không.</div>
+      </div>
+      <div class="controls"><button id="rec-start" class="primary">● Bắt đầu ghi</button><button id="rec-pause" disabled>Tạm dừng</button><button id="rec-stop" disabled>Kết thúc</button></div>
+      <div id="recording-path" class="panel-small">Audio tự lưu vào OPFS; khi chạy app bằng START_WINDOWS.cmd, tệp WAV được tự động sao chép vào app/Recording sau khi Kết thúc.</div>
+      <button id="retry-local-recording" type="button" class="wide" disabled>Lưu lại WAV vào Recording</button>
+      <div class="panel-title">TỆP & XUẤT</div>
+      <div class="exports"><button data-export="docx">Word</button><button data-export="txt">TXT</button><button data-export="md">Markdown</button><button data-export="csv">CSV</button></div>
+      <label class="field" for="page-margin-preset">Lề trang Word / In PDF
+        <select id="page-margin-preset">
+          <option value="official" selected>Biên bản: trái 3 cm, các lề khác 2 cm</option>
+          <option value="balanced">Cân đối: trái/phải 2,5 cm</option>
+          <option value="compact">Lề đều 2 cm</option>
+        </select>
+      </label>
+      <button id="import-audio" class="wide" type="button">Nhập bản ghi âm có sẵn (WAV/MP3/M4A…)</button>
+      <input id="audio-file" type="file" accept=".wav,.mp3,.m4a,.mp4,.webm,.ogg,audio/*" hidden aria-label="Chọn file âm thanh có sẵn">
+      <div id="import-audio-status" class="panel-small" role="status" aria-live="polite">WAV tối đa 2 GB/3 giờ; file nén tối đa 32 MB/30 phút. Nhập không thay bản thu cũ.</div>
+      <button id="import-word" class="wide" type="button">Chèn nội dung từ Word (.docx)</button>
+      <input id="word-file" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden aria-label="Chọn tệp Word">
+      <button id="print-document" class="wide" type="button">In / Lưu PDF (A4)</button>
+      <label class="field"><input id="verify-after-backup" type="checkbox" checked> Kiểm chứng file ngay sau khi sao lưu (có thể lâu với tệp lớn)</label>
+      <button id="backup" class="wide">Sao lưu biên bản và ghi âm</button>
+      <button id="import-backup" class="wide" type="button">Khôi phục biên bản từ tệp</button>
+      <button id="verify-backup" class="wide" type="button">Kiểm chứng file sao lưu (SHA-256/CRC)</button>
+      <input type="file" id="verify-backup-file" accept=".bbhop,.mochop,application/zip" hidden aria-label="Chọn file sao lưu cần kiểm chứng">
+      <input type="file" id="import-file" accept=".bbhop,.mochop,application/zip" style="display:none" aria-label="Chọn tệp sao lưu biên bản họp">
+      <button id="import-cancel" class="wide" type="button" style="display:none">Hủy nhập dữ liệu</button>
+      <div id="transfer-status" class="panel-small" role="status" aria-live="polite">Tệp sao lưu chứa biên bản, các mốc thời gian và toàn bộ phiên ghi âm; có thể chuyển sang máy khác.</div>
+      <div id="storage-health" class="panel-small" role="status" aria-live="polite">Đang kiểm tra dung lượng lưu trữ…</div>
+      <button id="refresh-storage" class="wide" type="button">Kiểm tra dung lượng</button>
+      <label class="field"><input type="checkbox" id="include-time"> Kèm mốc thời gian trong file xuất</label>
+      <div class="panel-divider"></div>
+      <div id="technical-status" class="technical">Chưa có phiên ghi.</div>
+      <p class="experimental">G10 • Bản thử nghiệm chưa nghiệm thu TC01–TC38. Không dùng cho cuộc họp quan trọng khi chưa thử trên thiết bị thực.</p>
+    </aside>
+  </div>
+  <script type="module" src="./src/main.mjs"></script>
+</body>
+</html>

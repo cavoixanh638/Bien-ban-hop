@@ -1,0 +1,18 @@
+# Dependencies are local build outputs, not application source.
+node_modules/
+
+# Generated bundler and browser-test artifacts.
+dist/
+.vite/
+test-results/
+playwright-report/
+coverage/
+
+# Local config and transient diagnostics.
+.env.local
+.env.*.local
+npm-debug.log*
+*.tsbuildinfo
+
+# Actual local microphone recordings: never upload personal WAVs to GitHub.
+Recording/
