@@ -6,6 +6,14 @@
 
 Tệp này **kết hợp CURRENT_STATE + WORKBOARD + sổ quyết định gọn**, không phải hồ sơ lịch sử dài. Mọi trạng thái phải có bằng chứng; **không** biến “đã lập kế hoạch” thành PASS.
 
+## G00 — Ẩn/hiện toàn bộ thanh nghe lại (26/11/2026)
+
+- Theo yêu cầu người dùng: khi soạn biên bản trong lúc ghi âm, có thể thu gọn toàn bộ thanh nghe lại để tăng diện tích trang ghi chú.
+- Nút **Ẩn thanh nghe lại / Hiện thanh nghe lại** nằm ở toolbar soạn thảo, luôn thao tác được kể cả khi dock đã ẩn hoặc đang thu. Mặc định hiện ở trình duyệt mới; lựa chọn gần nhất lưu trong localStorage riêng cho giao diện. Không tự ẩn khi bắt đầu ghi nếu người dùng không yêu cầu.
+- Ẩn cả timeline, nút nghe, tốc độ, hiệu ứng, A–B, waveform, phiên và danh sách mốc quan trọng bằng thuộc tính hidden trên section; không tháo DOM, không reset lựa chọn phát, không đổi trạng thái thu/phát, OPFS, IndexedDB, WAV, timeSpan hoặc dữ liệu cuộc họp. Nút Bắt đầu/Tạm dừng/Kết thúc bên phải vẫn nguyên.
+- E2E `app/e2e/playback-dock-visibility.spec.mjs` kiểm dock không chiếm chỗ, trang ghi chú mở rộng, khôi phục lựa chọn phát, ghi nhớ ẩn/hiện sau reload, ẩn/hiện khi đang thu, giữ mốc ghi chú và phát lại sau khi kết thúc. PWA shell cache đã đổi phiên bản.
+- **Code SHA:** `eade5d7496ad590a73d7689fe1b047217da5cdae` (mã + test); **Tested SHA: NOT_RUN tại lúc ghi checkpoint**, cần kiểm kết quả CI đúng commit trước khi kết luận. Micro/IME Windows thật và các cổng phát hành vẫn NOT_RUN / RELEASE HOLD. PR #1 Draft, không merge/deploy.
+
 ## G00 — Phát liên tục theo luồng: giữ cao độ + RNNoise + bỏ qua im lặng (22/11/2026)
 
 **Phạm vi hiện hành (thay thế giới hạn nghe tập trung trong checkpoint 21/11 bên dưới):**
