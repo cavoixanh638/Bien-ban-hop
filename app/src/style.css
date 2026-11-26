@@ -258,3 +258,12 @@
 .controls #rec-pause:focus-visible,
 .controls #rec-stop:focus-visible{outline:3px solid #17577a;outline-offset:3px}
 @media print{.waveform-options{display:none!important}}
+
+/* Keep the collapse control outside the dock so it is always reachable.
+   Hiding removes the complete playback dock from layout without unmounting
+   its controls, selection, waveform or playback state. */
+#playback-dock[hidden]{display:none!important}
+.toolbar #playback-dock-toggle{white-space:nowrap;font-size:12px;font-weight:600;
+  border:1px solid #c7dedb;background:#f2f8f7;color:#315e58}
+.toolbar #playback-dock-toggle[aria-expanded="false"]{background:#e4f2ed;border-color:#9bc9ba}
+.toolbar #playback-dock-toggle:focus-visible{outline:2px solid #176450;outline-offset:2px}
