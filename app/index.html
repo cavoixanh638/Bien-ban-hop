@@ -76,6 +76,7 @@
             </div>
           </div>
         </details>
+        <button id="playback-dock-toggle" type="button" aria-controls="playback-dock" aria-expanded="true" title="Ẩn hoặc hiện toàn bộ thanh nghe lại, không ảnh hưởng ghi âm">Ẩn thanh nghe lại</button>
       </div>
       <!-- Hidden visually, retained for screen readers and save/lease correctness. -->
       <div class="sr-only" aria-live="polite" aria-atomic="false">
@@ -95,7 +96,7 @@
       <section class="paper-wrap"><div class="paper">
         <div id="editor" aria-label="Nội dung ghi chú cuộc họp"></div>
       </div></section>
-      <section class="timeline-dock" aria-label="Thanh thời gian toàn bộ ghi âm">
+      <section id="playback-dock" class="timeline-dock" aria-label="Thanh thời gian toàn bộ ghi âm">
         <div class="timeline-heading"><strong>TOÀN BỘ GHI ÂM</strong><span id="timeline-summary">Chưa có phiên ghi âm</span></div>
         <div class="timeline-control-row">
           <button id="timeline-play" type="button" disabled title="Phát / dừng tại vị trí đã chọn">▶ Phát</button>
