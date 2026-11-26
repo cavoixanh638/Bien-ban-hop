@@ -946,8 +946,24 @@ async function applyPlaybackOptionsLive(){
     if(generation===liveReplayGeneration)liveReplayAnchor=null;
   }
 }
+// This is a device-local presentation preference, not meeting data.
+function wirePlaybackDockVisibility(){
+  const dock=$('playback-dock'),toggle=$('playback-dock-toggle');
+  const key='bien-ban-hop:ui:playback-dock-hidden';
+  const setHidden=(hidden,persist=false)=>{
+    dock.hidden=hidden;
+    toggle.setAttribute('aria-expanded',String(!hidden));
+    toggle.textContent=hidden?'Hiện thanh nghe lại':'Ẩn thanh nghe lại';
+    if(persist){try{localStorage.setItem(key,hidden?'1':'0');}catch{}}
+  };
+  let hidden=false;
+  try{hidden=localStorage.getItem(key)==='1';}catch{}
+  setHidden(hidden);
+  toggle.addEventListener('click',()=>setHidden(!dock.hidden,true));
+}
 function wire(){
   wireWordTools();
+  wirePlaybackDockVisibility();
   for(const [id,kind] of [['silence-skip','silence'],['pitch-preserve','pitch'],
     ['focus-duration','focus'],['play-rate','rate'],['rnnoise-toggle','rnnoise']])
     $(id).addEventListener('change',()=>{
