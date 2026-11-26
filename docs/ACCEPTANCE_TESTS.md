@@ -2,6 +2,12 @@
 
 **Trạng thái:** Bộ tiêu chí dự kiến, **chưa chạy test**, không có kết quả PASS được kế thừa. Nguồn phạm vi: [PLAN_V1_2.md](PLAN_V1_2.md); **trạng thái thực tế và dẫn chứng chỉ ghi tại [STATUS.md](STATUS.md)**. Tài liệu kiểm thử này không tự thể hiện một ca đã PASS chỉ vì tiêu chí đã được viết.
 
+## G00 — Subcase ẩn/hiện thanh nghe lại (26/11/2026)
+
+- Mặc định dock hiện; nút ở toolbar vẫn hiển thị lúc dock ẩn. Khi ẩn, toàn bộ dock không chiếm chiều cao, vùng soạn thảo mở rộng; khi hiện, tốc độ, skip, waveform và các điều khiển còn nguyên trong DOM. Kiểm trạng thái aria-expanded/aria-controls.
+- Ẩn/hiện trong lúc ghi không làm dừng thu, không mất quyền ghi/mốc chữ; sau Kết thúc vẫn có audio đã lưu, hiện lại để nghe được. Nút thu bên phải không bị ẩn. Kiểm bằng Chromium dev/prod với micro giả lập.
+- Reload phải nhớ lựa chọn ẩn/hiện cục bộ; PWA cập nhật shell không xóa ghi chú hoặc OPFS. Thiết bị Windows thật NOT_RUN; ghi bằng chứng CI đúng SHA trong STATUS.md.
+
 ## G00 — Nghiệm thu bổ sung cho xử lý liên tục theo luồng (22/11/2026)
 
 Bản sau 22/11 **không còn giới hạn giữ cao độ và RMS skip ở 15/30/60 giây** như checkpoint cũ bên dưới. Kiểm tra riêng theo các mức bằng chứng:
